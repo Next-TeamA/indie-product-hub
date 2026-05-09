@@ -1,0 +1,73 @@
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.auth import get_current_user
+from app.core.supabase import supabase
+from app.models.issue import IssueCreate, IssueUpdate
+
+router = APIRouter(prefix="/projects/{project_id}/issues", tags=["issues"])
+
+
+@router.get("")
+async def list_issues(
+    project_id: str,
+    status: str | None = None,
+    user: dict = Depends(get_current_user),
+):
+    query = (
+        supabase.table("issues")
+        .select("*")
+        .eq("project_id", project_id)
+        .order("created_at", desc=True)
+    )
+    if status:
+        query = query.eq("status", status)
+
+    result = query.execute()
+    return result.data
+
+
+@router.post("", status_code=201)
+async def create_issue(
+    project_id: str, body: IssueCreate, user: dict = Depends(get_current_user)
+):
+    data = {
+        "project_id": project_id,
+        "title": body.title,
+        "description": body.description,
+        "severity": body.severity,
+        "category": body.category,
+        "status": "open",
+    }
+    result = supabase.table("issues").insert(data).execute()
+    return result.data[0]
+
+
+@router.patch("/{issue_id}")
+async def update_issue(
+    project_id: str,
+    issue_id: str,
+    body: IssueUpdate,
+    user: dict = Depends(get_current_user),
+):
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    result = (
+        supabase.table("issues")
+        .update(updates)
+        .eq("id", issue_id)
+        .eq("project_id", project_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    return result.data[0]
+
+
+@router.delete("/{issue_id}", status_code=204)
+async def delete_issue(
+    project_id: str, issue_id: str, user: dict = Depends(get_current_user)
+):
+    supabase.table("issues").delete().eq("id", issue_id).eq(
+        "project_id", project_id
+    ).execute()
