@@ -3,23 +3,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import {
-  ChevronLeft,
-  Copy,
-  Trash2,
-  Save,
-  Sparkles,
-  ChevronLeft as PrevIcon,
-  ChevronRight as NextIcon,
-  Send,
-} from "lucide-react";
+import { ChevronLeft, Copy, Trash2, Save, Sparkles, Send } from "lucide-react";
 import {
   listPromotions,
   updatePromotion,
   deletePromotion,
+  getProjectPromotionInfo,
   type Promotion,
   type Platform,
   type PromotionStatus,
+  type ProjectPromotionInfo,
 } from "@/lib/api/promotion";
 import { cn } from "@/lib/utils";
 
@@ -55,33 +48,34 @@ function toKoDate(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()} (${KO_DAYS[d.getDay()]})`;
 }
 
-// Mock AI generation
+// Mock AI generation — 실제 연동 시 이 함수를 API 호출로 교체
 function mockGenerate(opts: {
-  serviceName: string;
-  description: string;
-  targetUser: string;
-  keyValues: string;
-  reference: string;
+  projectInfo: ProjectPromotionInfo;
+  message: string;
   tone: Tone;
   contentType: ContentType;
-  siteUrl: string;
+  reference: string;
   platform: Platform;
 }): { hook: string; content: string; hashtags: string[] } {
+  const { projectInfo, message, tone, contentType, reference } = opts;
+
   const hooks: Record<Tone, string> = {
-    "친근한":  `${opts.serviceName}으로 더 가볍게 시작하세요`,
-    "전문적":  `${opts.serviceName}: ${opts.description}`,
-    "유머":    `복잡한 도구는 이제 그만 👋`,
+    "친근한": `${projectInfo.service_name}으로 더 가볍게 시작하세요`,
+    "전문적": `${projectInfo.service_name}: ${projectInfo.description}`,
+    "유머":   `복잡한 도구는 이제 그만 👋`,
   };
+
   const bodies: Record<ContentType, string> = {
-    "출시":   `${opts.serviceName}이 출시되었습니다.\n\n${opts.description}\n→ ${opts.reference || "지금 바로 시작해보세요"}`,
-    "회고":   `${opts.serviceName} 팀의 솔직한 회고\n\n잘 된 것: ${opts.keyValues.split("\n")[0] || "꾸준한 빌드"}\n개선할 것: 더 빠른 피드백 수집`,
-    "업데이트":`새로운 업데이트가 나왔습니다!\n\n${opts.keyValues || "주요 기능이 개선되었습니다."}\n\n사용해보고 피드백 남겨주세요 🙏`,
-    "Q&A":    `자주 받는 질문에 답해드립니다.\n\nQ: ${opts.reference || "왜 만들었나요?"}\nA: ${opts.description}`,
+    "출시":    `${projectInfo.service_name}이 출시되었습니다.\n\n${message || projectInfo.description}\n→ ${reference || "지금 바로 시작해보세요"}`,
+    "회고":    `${projectInfo.service_name} 솔직한 회고\n\n${message || projectInfo.key_values.split("\n")[0] || "꾸준한 빌드"}\n\n다음 달엔 더 잘할 수 있을 것 같습니다.`,
+    "업데이트":`새로운 업데이트가 나왔습니다!\n\n${message || projectInfo.key_values}\n\n사용해보고 피드백 남겨주세요 🙏`,
+    "Q&A":     `자주 받는 질문에 답해드립니다.\n\nQ: ${reference || "왜 만들었나요?"}\nA: ${message || projectInfo.description}`,
   };
+
   return {
-    hook: hooks[opts.tone],
-    content: bodies[opts.contentType],
-    hashtags: ["#인디메이커", `#${opts.serviceName.replace(/\s/g, "")}`, "#빌드인퍼블릭"],
+    hook: hooks[tone],
+    content: bodies[contentType],
+    hashtags: ["#인디메이커", `#${projectInfo.service_name.replace(/\s/g, "")}`, "#빌드인퍼블릭"],
   };
 }
 
@@ -93,59 +87,67 @@ export default function PostEditorPage() {
 
   const isNew = postId === "new";
 
-  // Loaded post
-  const [promotion, setPromotion] = useState<Promotion | null>(null);
-  const [loading,   setLoading]   = useState(!isNew);
+  // Loaded data
+  const [promotion,    setPromotion]    = useState<Promotion | null>(null);
+  const [projectInfo,  setProjectInfo]  = useState<ProjectPromotionInfo | null>(null);
+  const [loading,      setLoading]      = useState(!isNew);
 
   // Editable right-side state
-  const [editHook,     setEditHook]     = useState("");
-  const [editContent,  setEditContent]  = useState("");
-  const [editHashtags, setEditHashtags] = useState<string[]>([]);
-  const [editStatus,   setEditStatus]   = useState<PromotionStatus>("draft");
+  const [editHook,       setEditHook]       = useState("");
+  const [editContent,    setEditContent]    = useState("");
+  const [editHashtags,   setEditHashtags]   = useState<string[]>([]);
+  const [editStatus,     setEditStatus]     = useState<PromotionStatus>("draft");
   const [activePlatform, setActivePlatform] = useState<Platform>("threads");
 
-  // Left-side briefing form
-  const [serviceName,  setServiceName]  = useState("TaskFlow");
-  const [description,  setDescription]  = useState("체크박스 하나로 시작하는 PM 도구");
-  const [targetUser,   setTargetUser]   = useState("인디 메이커 / 1인 PM");
-  const [keyValues,    setKeyValues]    = useState("빈 줄에 한 줄 PRD가 됨\n체크박스로 진행 관리\n자동 일정 제안");
-  const [reference,    setReference]    = useState("PM 도구가 너무 복잡합니다");
-  const [tone,         setTone]         = useState<Tone>("친근한");
-  const [contentType,  setContentType]  = useState<ContentType>("출시");
-  const [siteUrl,      setSiteUrl]      = useState("https://taskflow.app");
+  // Left-side: 홍보 방향 입력
+  const [message,           setMessage]           = useState("");   // 이번 포스트 핵심 메시지
+  const [tone,              setTone]              = useState<Tone>("친근한");
+  const [contentType,       setContentType]       = useState<ContentType>("출시");
+  const [reference,         setReference]         = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(["threads"]);
 
-  // AI generation state
+  // UI state
   const [generating, setGenerating] = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [deleting,   setDeleting]   = useState(false);
 
+  // Fetch promotion post + project info
   useEffect(() => {
-    if (isNew) return;
-    setLoading(true);
-    listPromotions(projectId)
-      .then(list => {
-        const found = list.find(p => p.id === postId);
-        if (found) {
-          setPromotion(found);
-          setEditHook(found.hook);
-          setEditContent(found.content);
-          setEditHashtags(found.hashtags);
-          setEditStatus(found.status);
-          setActivePlatform(found.platform);
-          setSelectedPlatforms([found.platform]);
+    const fetchAll = async () => {
+      setLoading(true);
+      try {
+        const [info, list] = await Promise.all([
+          getProjectPromotionInfo(projectId),
+          isNew ? Promise.resolve([]) : listPromotions(projectId),
+        ]);
+        setProjectInfo(info);
+        if (!isNew) {
+          const found = (list as Promotion[]).find(p => p.id === postId);
+          if (found) {
+            setPromotion(found);
+            setEditHook(found.hook);
+            setEditContent(found.content);
+            setEditHashtags(found.hashtags);
+            setEditStatus(found.status);
+            setActivePlatform(found.platform);
+            setSelectedPlatforms([found.platform]);
+          }
         }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
   }, [projectId, postId, isNew]);
 
   const handleGenerate = useCallback(() => {
+    if (!projectInfo) return;
     setGenerating(true);
     setTimeout(() => {
       const result = mockGenerate({
-        serviceName, description, targetUser, keyValues,
-        reference, tone, contentType, siteUrl,
+        projectInfo, message, tone, contentType, reference,
         platform: activePlatform,
       });
       setEditHook(result.hook);
@@ -153,14 +155,12 @@ export default function PostEditorPage() {
       setEditHashtags(result.hashtags);
       setGenerating(false);
     }, 900);
-  }, [serviceName, description, targetUser, keyValues, reference, tone, contentType, siteUrl, activePlatform]);
+  }, [projectInfo, message, tone, contentType, reference, activePlatform]);
 
   const handleSave = async () => {
-    if (!promotion && !isNew) return;
     setSaving(true);
     try {
       if (isNew) {
-        // For new posts, just navigate back (full create flow out of scope here)
         router.push(`/projects/${projectId}/promotion`);
         return;
       }
@@ -194,6 +194,7 @@ export default function PostEditorPage() {
   };
 
   const handleCopy = () => {
+    const siteUrl = projectInfo?.site_url ?? "";
     const text = `${editHook}\n\n${editContent}\n\n${editHashtags.join(" ")}${siteUrl ? `\n↗ ${siteUrl}` : ""}`;
     navigator.clipboard.writeText(text).catch(console.error);
   };
@@ -204,9 +205,9 @@ export default function PostEditorPage() {
     );
   };
 
-  const pm = PLATFORM_META[activePlatform];
-  const charCount = editContent.length;
-  const charLimit = pm.maxChars;
+  const pm         = PLATFORM_META[activePlatform];
+  const charCount  = editContent.length;
+  const charLimit  = pm.maxChars;
 
   if (loading) {
     return (
@@ -226,9 +227,7 @@ export default function PostEditorPage() {
         transition={{ duration: 0.45, ease: EASE }}
       >
         <div>
-          <p className="h-eyebrow mb-0.5">
-            PROMOTION &rsaquo; POST
-          </p>
+          <p className="h-eyebrow mb-0.5">PROMOTION &rsaquo; POST</p>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold tracking-tight">홍보글 만들기</h1>
             {promotion && (
@@ -278,56 +277,31 @@ export default function PostEditorPage() {
         </div>
       </motion.div>
 
-      {/* Split editor body */}
+      {/* Split editor */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── Left: Briefing form ── */}
-        <div className="w-[420px] shrink-0 border-r border-border overflow-y-auto">
+        {/* ── Left: 홍보 방향 입력 ── */}
+        <div className="w-[400px] shrink-0 border-r border-border overflow-y-auto">
           <div className="p-6 flex flex-col gap-4">
 
-            <Field label="서비스 이름">
-              <input
-                value={serviceName}
-                onChange={e => setServiceName(e.target.value)}
-                className="input-hero w-full h-10 px-3 text-sm"
-                placeholder="TaskFlow"
-              />
-            </Field>
+            {/* 프로젝트 정보 요약 (읽기 전용) */}
+            {projectInfo && (
+              <div className="rounded-xl bg-muted/50 border border-border px-4 py-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
+                  프로젝트 정보 (자동 반영)
+                </p>
+                <p className="text-sm font-semibold">{projectInfo.service_name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{projectInfo.description}</p>
+              </div>
+            )}
 
-            <Field label="핵심 설명">
-              <input
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                className="input-hero w-full h-10 px-3 text-sm"
-                placeholder="한 줄로 서비스를 설명해주세요"
-              />
-            </Field>
-
-            <Field label="타겟 사용자">
-              <input
-                value={targetUser}
-                onChange={e => setTargetUser(e.target.value)}
-                className="input-hero w-full h-10 px-3 text-sm"
-                placeholder="인디 메이커 / 1인 PM"
-              />
-            </Field>
-
-            <Field label="핵심 가치">
+            <Field label="이번 포스트 핵심 메시지">
               <textarea
-                value={keyValues}
-                onChange={e => setKeyValues(e.target.value)}
+                value={message}
+                onChange={e => setMessage(e.target.value)}
                 className="input-hero w-full px-3 py-2.5 text-sm resize-none"
-                placeholder={"한 줄씩 입력해주세요\n예) 빠른 온보딩\n예) 팀 협업 지원"}
-                rows={4}
-              />
-            </Field>
-
-            <Field label="레퍼런스 본문">
-              <input
-                value={reference}
-                onChange={e => setReference(e.target.value)}
-                className="input-hero w-full h-10 px-3 text-sm"
-                placeholder="이 글에서 전달할 핵심 메시지"
+                placeholder={"이번 글에서 무엇을 전달하고 싶으신가요?\n예) v0.3 출시, 반복 일정 기능 추가됨"}
+                rows={3}
               />
             </Field>
 
@@ -371,19 +345,13 @@ export default function PostEditorPage() {
               </Field>
             </div>
 
-            <Field label="사이트 주소">
+            <Field label="레퍼런스">
               <input
-                value={siteUrl}
-                onChange={e => setSiteUrl(e.target.value)}
+                value={reference}
+                onChange={e => setReference(e.target.value)}
                 className="input-hero w-full h-10 px-3 text-sm"
-                placeholder="https://example.com"
+                placeholder="참고할 링크나 내용을 입력해주세요"
               />
-            </Field>
-
-            <Field label="스크린샷">
-              <div className="w-full h-28 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-sm text-muted-foreground cursor-pointer hover:bg-muted/30 transition-colors">
-                이미지를 드래그하거나 클릭해서 업로드
-              </div>
             </Field>
 
             <Field label="플랫폼">
@@ -407,15 +375,21 @@ export default function PostEditorPage() {
               </div>
             </Field>
 
+            <Field label="스크린샷">
+              <div className="w-full h-28 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-sm text-muted-foreground cursor-pointer hover:bg-muted/30 transition-colors">
+                이미지를 드래그하거나 클릭해서 업로드
+              </div>
+            </Field>
+
             {/* Generate CTA */}
             <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-foreground">입력한 정보로 홍보글 만들기</p>
-                <p className="text-xs text-muted-foreground mt-0.5">선택한 AI 옵션에 맞게 생성합니다 →</p>
+                <p className="text-sm font-semibold">입력한 내용으로 홍보글 만들기</p>
+                <p className="text-xs text-muted-foreground mt-0.5">AI가 프로젝트 정보를 참고해 생성합니다 →</p>
               </div>
               <button
                 onClick={handleGenerate}
-                disabled={generating}
+                disabled={generating || !projectInfo}
                 className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
               >
                 {generating ? (
@@ -476,10 +450,12 @@ export default function PostEditorPage() {
               {/* Profile row */}
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                  {serviceName.charAt(0) || "A"}
+                  {projectInfo?.service_name.charAt(0) ?? "A"}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">@{serviceName.toLowerCase().replace(/\s/g, "")}_app</p>
+                  <p className="text-sm font-semibold">
+                    @{(projectInfo?.service_name ?? "app").toLowerCase().replace(/\s/g, "")}_app
+                  </p>
                   <p className="text-xs text-muted-foreground">{pm.name}</p>
                 </div>
                 <span className={cn("ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full", pm.bg, pm.text)}>
@@ -493,7 +469,7 @@ export default function PostEditorPage() {
                 onChange={e => setEditHook(e.target.value)}
                 className="w-full text-sm font-semibold leading-snug bg-transparent border-none outline-none resize-none"
                 rows={2}
-                placeholder="훅 문구를 입력해주세요..."
+                placeholder="훅 문구를 입력하거나 생성하기를 눌러보세요..."
               />
 
               {/* Content (editable) */}
@@ -511,16 +487,18 @@ export default function PostEditorPage() {
               </div>
 
               {/* Hashtags */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {editHashtags.map(tag => (
-                  <span key={tag} className="text-xs text-primary font-medium">{tag}</span>
-                ))}
-              </div>
+              {editHashtags.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {editHashtags.map(tag => (
+                    <span key={tag} className="text-xs text-primary font-medium">{tag}</span>
+                  ))}
+                </div>
+              )}
 
               {/* Link */}
-              {siteUrl && (
+              {projectInfo?.site_url && (
                 <p className="text-xs text-muted-foreground">
-                  ↗ {siteUrl.replace("https://", "")}
+                  ↗ {projectInfo.site_url.replace("https://", "")}
                 </p>
               )}
 
@@ -556,9 +534,6 @@ export default function PostEditorPage() {
                 </button>
               ))}
             </div>
-            <button className="h-8 px-4 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
-              다른 편집 보기
-            </button>
             <button
               onClick={() => { setEditStatus("scheduled"); handleSave(); }}
               className="h-8 px-4 rounded-lg bg-muted text-sm font-medium hover:bg-muted/70 transition-colors"

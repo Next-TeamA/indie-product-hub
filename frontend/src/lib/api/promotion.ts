@@ -63,3 +63,33 @@ export async function updatePromotion(id: string, data: PromotionUpdateInput): P
 export async function deletePromotion(id: string): Promise<void> {
   return apiFetch(`/api/promotions/${id}`, { method: "DELETE" });
 }
+
+// --- Project Promotion Info ---
+
+export type ProjectPromotionInfo = {
+  project_id: string;
+  service_name: string;
+  description: string;
+  target_user: string;
+  key_values: string;
+  site_url: string;
+  updated_at: string;
+};
+
+export type ProjectPromotionInfoUpdateInput = Partial<
+  Omit<ProjectPromotionInfo, "project_id" | "updated_at">
+>;
+
+export async function getProjectPromotionInfo(projectId: string): Promise<ProjectPromotionInfo> {
+  return apiFetch<ProjectPromotionInfo>(`/api/projects/${projectId}/promotion-info`);
+}
+
+export async function updateProjectPromotionInfo(
+  projectId: string,
+  data: ProjectPromotionInfoUpdateInput
+): Promise<ProjectPromotionInfo> {
+  return apiFetch<ProjectPromotionInfo>(`/api/projects/${projectId}/promotion-info`, {
+    method: "PATCH",
+    body: data,
+  });
+}

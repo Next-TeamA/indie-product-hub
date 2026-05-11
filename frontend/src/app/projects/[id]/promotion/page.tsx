@@ -3,9 +3,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "motion/react";
-import { ChevronLeft, ChevronRight, Plus, Settings, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Settings, ArrowRight, X, FileText } from "lucide-react";
 import Link from "next/link";
-import { listPromotions, type Promotion, type Platform, type PromotionStatus } from "@/lib/api/promotion";
+import {
+  listPromotions,
+  getProjectPromotionInfo,
+  updateProjectPromotionInfo,
+  type Promotion,
+  type Platform,
+  type PromotionStatus,
+  type ProjectPromotionInfo,
+} from "@/lib/api/promotion";
 import { cn } from "@/lib/utils";
 
 // --- Constants ---
@@ -53,6 +61,13 @@ export default function PromotionPage() {
   const [selected,  setSelected]  = useState<string>(todayStr);
   const [promos,    setPromos]    = useState<Promotion[]>([]);
 
+  // Project info modal
+  const [showInfoModal, setShowInfoModal]   = useState(false);
+  const [infoForm,      setInfoForm]        = useState<Omit<ProjectPromotionInfo, "project_id" | "updated_at">>({
+    service_name: "", description: "", target_user: "", key_values: "", site_url: "",
+  });
+  const [infoSaving, setInfoSaving] = useState(false);
+
   useEffect(() => {
     listPromotions(projectId).then(setPromos).catch(console.error);
   }, [projectId, viewYear, viewMonth]);
@@ -73,6 +88,34 @@ export default function PromotionPage() {
     }
     return map;
   }, [promos]);
+
+  const openInfoModal = async () => {
+    setShowInfoModal(true);
+    try {
+      const info = await getProjectPromotionInfo(projectId);
+      setInfoForm({
+        service_name: info.service_name,
+        description:  info.description,
+        target_user:  info.target_user,
+        key_values:   info.key_values,
+        site_url:     info.site_url,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveInfoModal = async () => {
+    setInfoSaving(true);
+    try {
+      await updateProjectPromotionInfo(projectId, infoForm);
+      setShowInfoModal(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setInfoSaving(false);
+    }
+  };
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
@@ -135,6 +178,13 @@ export default function PromotionPage() {
             aria-label="다음 달"
           >
             <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={openInfoModal}
+            className="flex items-center gap-1.5 h-9 px-4 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            프로젝트 정보
           </button>
           <Link
             href={`/projects/${projectId}/promotion/post/new`}
@@ -348,6 +398,82 @@ export default function PromotionPage() {
           </div>
         </motion.aside>
       </div>
+
+      {/* Project Info Modal */}
+      {showInfoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowInfoModal(false)}
+          />
+          {/* Panel */}
+          <motion.div
+            className="relative z-10 w-full max-w-md bg-card border border-border rounded-2xl shadow-xl p-6 mx-4"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: EASE }}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold">프로젝트 정보</h2>
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Fields */}
+            <div className="flex flex-col gap-3">
+              {([
+                { key: "service_name", label: "서비스 이름",    placeholder: "TaskFlow" },
+                { key: "description",  label: "핵심 설명",      placeholder: "한 줄로 서비스를 설명해주세요" },
+                { key: "target_user",  label: "타겟 사용자",    placeholder: "인디 메이커 / 1인 PM" },
+                { key: "site_url",     label: "사이트 주소",    placeholder: "https://example.com" },
+              ] as { key: keyof typeof infoForm; label: string; placeholder: string }[]).map(({ key, label, placeholder }) => (
+                <div key={key} className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+                  <input
+                    value={infoForm[key]}
+                    onChange={e => setInfoForm(f => ({ ...f, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="input-hero h-10 px-3 text-sm w-full"
+                  />
+                </div>
+              ))}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">핵심 가치</label>
+                <textarea
+                  value={infoForm.key_values}
+                  onChange={e => setInfoForm(f => ({ ...f, key_values: e.target.value }))}
+                  placeholder={"한 줄씩 입력해주세요\n예) 빠른 온보딩\n예) 팀 협업 지원"}
+                  className="input-hero px-3 py-2.5 text-sm w-full resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className="h-9 px-4 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={saveInfoModal}
+                disabled={infoSaving}
+                className="h-9 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {infoSaving ? "저장 중..." : "저장"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

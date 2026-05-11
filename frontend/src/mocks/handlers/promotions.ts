@@ -1,7 +1,29 @@
 import { http, HttpResponse } from "msw";
-import type { Promotion, PromotionCreateInput, PromotionUpdateInput } from "@/lib/api/promotion";
+import type {
+  Promotion,
+  PromotionCreateInput,
+  PromotionUpdateInput,
+  ProjectPromotionInfo,
+  ProjectPromotionInfoUpdateInput,
+} from "@/lib/api/promotion";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// --- Project Promotion Info store ---
+
+const infoStore: Record<string, ProjectPromotionInfo> = {};
+
+function defaultInfo(projectId: string): ProjectPromotionInfo {
+  return {
+    project_id: projectId,
+    service_name: "TaskFlow",
+    description: "체크박스 하나로 시작하는 PM 도구",
+    target_user: "인디 메이커 / 1인 PM",
+    key_values: "빈 줄에 한 줄 PRD가 됨\n체크박스로 진행 관리\n자동 일정 제안",
+    site_url: "https://taskflow.app",
+    updated_at: new Date().toISOString(),
+  };
+}
 
 let store: Promotion[] = [
   {
@@ -211,5 +233,21 @@ export const promotionHandlers = [
     }
     store.splice(idx, 1);
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  // GET /api/projects/:projectId/promotion-info
+  http.get(`${API_URL}/api/projects/:projectId/promotion-info`, ({ params }) => {
+    const { projectId } = params as { projectId: string };
+    const info = infoStore[projectId] ?? defaultInfo(projectId);
+    return HttpResponse.json(info);
+  }),
+
+  // PATCH /api/projects/:projectId/promotion-info
+  http.patch(`${API_URL}/api/projects/:projectId/promotion-info`, async ({ params, request }) => {
+    const { projectId } = params as { projectId: string };
+    const body = (await request.json()) as ProjectPromotionInfoUpdateInput;
+    const existing = infoStore[projectId] ?? defaultInfo(projectId);
+    infoStore[projectId] = { ...existing, ...body, updated_at: new Date().toISOString() };
+    return HttpResponse.json(infoStore[projectId]);
   }),
 ];
