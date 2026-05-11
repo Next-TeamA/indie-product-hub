@@ -1,40 +1,25 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Plus, Rocket, ExternalLink, Calendar } from "lucide-react";
+import { Plus, Rocket, ExternalLink, Calendar, Loader2 } from "lucide-react";
 import Link from "next/link";
+
+import { useProjects } from "@/hooks/use-projects";
+import type { Project } from "@/lib/api/projects";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
-// 임시 mock 데이터 — 추후 Supabase 연동
-const MOCK_PROJECTS = [
-  {
-    id: "1",
-    name: "TaskFlow",
-    description: "팀 업무 관리 SaaS",
-    status: "운영중",
-    lastActivity: "2일 전",
-    promotionCount: 12,
-    issueCount: 3,
-  },
-  {
-    id: "2",
-    name: "PixelSnap",
-    description: "디자인 에셋 생성기",
-    status: "준비중",
-    lastActivity: "5일 전",
-    promotionCount: 4,
-    issueCount: 0,
-  },
-];
+const STATUS_LABELS: Record<string, string> = {
+  preparing: "Preparing",
+  active: "Active",
+  paused: "Paused",
+  archived: "Archived",
+};
 
-function ProjectCard({
-  project,
-  index,
-}: {
-  project: (typeof MOCK_PROJECTS)[0];
-  index: number;
-}) {
+function ProjectCard({ project, index }: { project: Project; index: number }) {
+  const statusLabel = STATUS_LABELS[project.status] ?? project.status;
+  const isActive = project.status === "active";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
@@ -59,47 +44,71 @@ function ProjectCard({
             <div>
               <h3 className="font-semibold text-base">{project.name}</h3>
               <p className="text-sm text-muted-foreground">
-                {project.description}
+                {project.description || "No description"}
               </p>
             </div>
           </div>
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-              project.status === "운영중"
+              isActive
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
             }`}
           >
-            {project.status}
+            {statusLabel}
           </span>
         </div>
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <ExternalLink className="w-3.5 h-3.5" />
-            홍보 {project.promotionCount}건
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5" />
-            {project.lastActivity}
-          </span>
-          {project.issueCount > 0 && (
-            <span className="flex items-center gap-1.5 text-destructive">
-              이슈 {project.issueCount}건
+          {project.sns_channels.length > 0 && (
+            <span className="flex items-center gap-1.5">
+              <ExternalLink className="w-3.5 h-3.5" />
+              {project.sns_channels.length} channels
             </span>
           )}
+          <span className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" />
+            {new Date(project.created_at).toLocaleDateString("ko-KR")}
+          </span>
         </div>
 
         <div className="mt-4 h-px bg-border opacity-0 group-hover:opacity-100 transition-opacity" />
         <p className="mt-3 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-          대시보드 열기 →
+          Open dashboard
         </p>
       </Link>
     </motion.div>
   );
 }
 
+function ProjectsSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {[0, 1].map((i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-border bg-card p-6 animate-pulse"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-muted" />
+            <div className="space-y-2 flex-1">
+              <div className="h-4 w-32 bg-muted rounded" />
+              <div className="h-3 w-48 bg-muted rounded" />
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div className="h-3 w-20 bg-muted rounded" />
+            <div className="h-3 w-24 bg-muted rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProjectsPage() {
+  const { projects, error, isLoading } = useProjects();
+
   return (
     <div className="min-h-dvh bg-background">
       <header className="border-b border-border">
@@ -122,7 +131,7 @@ export default function ProjectsPage() {
               className="btn-hero bg-primary text-primary-foreground flex items-center gap-2 text-sm h-10 px-5"
             >
               <Plus className="w-4 h-4" />
-              새 프로젝트
+              New Project
             </Link>
           </motion.div>
         </div>
@@ -136,14 +145,34 @@ export default function ProjectsPage() {
           transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
         >
           <p className="h-eyebrow mb-2">MY PROJECTS</p>
-          <p className="text-muted-foreground text-sm">
-            {MOCK_PROJECTS.length}개의 프로젝트를 관리하고 있습니다
-          </p>
+          {!isLoading && !error && (
+            <p className="text-muted-foreground text-sm">
+              {projects.length > 0
+                ? `Managing ${projects.length} project${projects.length > 1 ? "s" : ""}`
+                : ""}
+            </p>
+          )}
         </motion.div>
 
-        {MOCK_PROJECTS.length > 0 ? (
+        {isLoading ? (
+          <ProjectsSkeleton />
+        ) : error ? (
+          <motion.div
+            className="flex flex-col items-center justify-center py-20 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <p className="text-destructive mb-4">Failed to load projects</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-muted-foreground underline"
+            >
+              Retry
+            </button>
+          </motion.div>
+        ) : projects.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            {MOCK_PROJECTS.map((project, i) => (
+            {projects.map((project, i) => (
               <ProjectCard key={project.id} project={project} index={i} />
             ))}
 
@@ -151,7 +180,7 @@ export default function ProjectsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                delay: 0.1 + MOCK_PROJECTS.length * 0.06,
+                delay: 0.1 + projects.length * 0.06,
                 duration: 0.5,
                 ease: EASE_OUT_EXPO,
               }}
@@ -164,7 +193,7 @@ export default function ProjectsPage() {
                            hover:border-foreground/20 hover:text-foreground"
               >
                 <Plus className="w-8 h-8" />
-                <span className="text-sm font-medium">프로젝트 추가</span>
+                <span className="text-sm font-medium">Add Project</span>
               </Link>
             </motion.div>
           </div>
@@ -178,16 +207,16 @@ export default function ProjectsPage() {
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
               <Rocket className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h2 className="h-title mb-2">아직 프로젝트가 없습니다</h2>
+            <h2 className="h-title mb-2">No projects yet</h2>
             <p className="text-lede mb-8">
-              첫 프로젝트를 등록하고 관리를 시작하세요
+              Create your first project to get started
             </p>
             <Link
               href="/projects/new"
               className="btn-hero bg-primary text-primary-foreground flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              첫 프로젝트 만들기
+              Create First Project
             </Link>
           </motion.div>
         )}

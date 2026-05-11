@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useProject } from "@/hooks/use-projects";
 
 // ─── 상수 ────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ function SectionLink({ href, label }: { href: string; label: string }) {
 export default function DashboardPage() {
   const params = useParams();
   const id = params.id as string;
+  const { project } = useProject(id);
   const [period, setPeriod] = useState<Period>("7일");
 
   const today = new Date(2026, 4, 10);
@@ -177,7 +179,7 @@ export default function DashboardPage() {
         <motion.div variants={fadeUp} className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-muted-foreground tracking-widest uppercase mb-1">Dashboard</p>
-            <h1 className="text-2xl font-bold tracking-tight">TaskFlow</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{project?.name ?? "Dashboard"}</h1>
           </div>
           <div className="flex items-center gap-2">
             {ISSUES.filter(i => i.severity === "critical").length > 0 && (

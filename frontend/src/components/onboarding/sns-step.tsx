@@ -45,9 +45,10 @@ const SNS_OPTIONS = [
 interface SnsStepProps {
   onNext: (data: { selectedSns: string[] }) => void;
   onBack: () => void;
+  isLoading?: boolean;
 }
 
-export function SnsStep({ onNext, onBack }: SnsStepProps) {
+export function SnsStep({ onNext, onBack, isLoading }: SnsStepProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (id: string) =>
@@ -130,17 +131,19 @@ export function SnsStep({ onNext, onBack }: SnsStepProps) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNext({ selectedSns: [] })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            disabled={isLoading}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
           >
             건너뛰기
           </button>
           <motion.button
             onClick={() => onNext({ selectedSns: selected })}
-            className="btn-hero bg-primary text-primary-foreground cursor-pointer"
+            disabled={isLoading}
+            className="btn-hero bg-primary text-primary-foreground cursor-pointer disabled:opacity-50"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            다음 →
+            {isLoading ? "Creating..." : "다음 →"}
           </motion.button>
         </div>
       </motion.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
@@ -9,6 +9,7 @@ import { PrdStep } from "@/components/onboarding/prd-step";
 import { GithubStep } from "@/components/onboarding/github-step";
 import { SnsStep } from "@/components/onboarding/sns-step";
 import { CompleteStep } from "@/components/onboarding/complete-step";
+import { createProject } from "@/lib/api/projects";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
@@ -77,8 +78,31 @@ const initialState: State = {
 
 export default function NewProjectPage() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const currentIndex = STEPS.indexOf(state.stage);
   const router = useRouter();
+
+  async function handleSnsComplete(data: { selectedSns: string[] }) {
+    setIsCreating(true);
+    setCreateError(null);
+    try {
+      const project = await createProject({
+        name: state.projectName,
+        description: state.projectDescription || undefined,
+        prd: state.prd || undefined,
+        github_repo_url: state.repoUrl || undefined,
+        sns_channels: data.selectedSns,
+      });
+      setCreatedProjectId(project.id);
+      dispatch({ type: "sns_done", payload: data });
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : "Failed to create project");
+    } finally {
+      setIsCreating(false);
+    }
+  }
 
   return (
     <div className="onboard-shell">
@@ -96,6 +120,12 @@ export default function NewProjectPage() {
           </button>
           <Stepper steps={STEPS.slice(0, -1)} currentIndex={currentIndex} />
         </>
+      )}
+
+      {createError && (
+        <div className="fixed top-6 right-6 z-50 bg-destructive/10 text-destructive px-4 py-2 rounded-xl text-sm">
+          {createError}
+        </div>
       )}
 
       <AnimatePresence mode="wait">
@@ -122,12 +152,16 @@ export default function NewProjectPage() {
           )}
           {state.stage === "sns" && (
             <SnsStep
-              onNext={(data) => dispatch({ type: "sns_done", payload: data })}
+              onNext={handleSnsComplete}
               onBack={() => dispatch({ type: "back" })}
+              isLoading={isCreating}
             />
           )}
           {state.stage === "complete" && (
-            <CompleteStep projectName={state.projectName} />
+            <CompleteStep
+              projectName={state.projectName}
+              projectId={createdProjectId}
+            />
           )}
         </motion.div>
       </AnimatePresence>

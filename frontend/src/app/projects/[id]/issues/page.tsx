@@ -4,8 +4,10 @@ import { motion } from "motion/react";
 import {
   AlertTriangle, Clock, CheckCircle2, XCircle,
   Server, Shield, Zap, Database, Globe,
-  GitCommit, Activity, RefreshCw, ChevronRight,
+  GitCommit, Activity, RefreshCw, ChevronRight, Loader2,
 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useIssues } from "@/hooks/use-issues";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } };
@@ -21,12 +23,9 @@ type IssueSeverity = "critical" | "warning" | "info";
 type DeployStatus  = "success" | "failed" | "running" | "cancelled";
 type ServiceStatus = "healthy" | "degraded" | "down";
 
-const MOCK_ISSUES = [
-  { id: "1", title: "SSL 인증서 만료 예정 (5/15)", severity: "critical" as IssueSeverity, category: "보안",  icon: Shield,        time: "2시간 전",  status: "open" as IssueStatus },
-  { id: "2", title: "API 응답 시간 평균 2.3s 초과",  severity: "warning"  as IssueSeverity, category: "성능",  icon: Zap,           time: "6시간 전",  status: "investigating" as IssueStatus },
-  { id: "3", title: "배포 실패: main@a3f2d1c",       severity: "warning"  as IssueSeverity, category: "배포",  icon: Server,        time: "12시간 전", status: "resolved" as IssueStatus },
-  { id: "4", title: "Error rate 증가: /api/checkout",severity: "critical" as IssueSeverity, category: "에러",  icon: AlertTriangle, time: "1일 전",    status: "open" as IssueStatus },
-];
+const CATEGORY_ICON: Record<string, React.ElementType> = {
+  security: Shield, performance: Zap, deployment: Server, error: AlertTriangle, general: AlertTriangle,
+};
 
 const MOCK_DEPLOYS = [
   { id: "d1", commit: "f7a3b2e", msg: "feat: 결제 플로우 UX 개선",       author: "박보겸", time: "14분 전",  duration: "2m 34s", status: "running"   as DeployStatus, env: "production" as const },
@@ -66,10 +65,13 @@ const SEVERITY_CFG: Record<IssueSeverity, { bg: string; text: string; border: st
 };
 
 export default function IssuesPage() {
-  const openCount    = MOCK_ISSUES.filter(i => i.status !== "resolved").length;
-  const criticalCount = MOCK_ISSUES.filter(i => i.severity === "critical" && i.status !== "resolved").length;
-  const warningCount  = MOCK_ISSUES.filter(i => i.severity === "warning"  && i.status !== "resolved").length;
-  const resolvedCount = MOCK_ISSUES.filter(i => i.status === "resolved").length;
+  const { id: projectId } = useParams<{ id: string }>();
+  const { issues, isLoading } = useIssues(projectId);
+
+  const openCount     = issues.filter(i => i.status !== "resolved").length;
+  const criticalCount = issues.filter(i => i.severity === "critical" && i.status !== "resolved").length;
+  const warningCount  = issues.filter(i => i.severity === "warning"  && i.status !== "resolved").length;
+  const resolvedCount = issues.filter(i => i.status === "resolved").length;
   const deploySuccessRate = Math.round(
     MOCK_DEPLOYS.filter(d => d.status === "success").length /
     MOCK_DEPLOYS.filter(d => d.status !== "running").length * 100
@@ -205,32 +207,46 @@ export default function IssuesPage() {
               <p className="text-sm font-semibold">이슈 목록</p>
             </div>
             <div className="flex flex-col gap-2.5">
-              {MOCK_ISSUES.map(issue => {
-                const cfg = SEVERITY_CFG[issue.severity];
-                const StatusIcon = STATUS_ICON[issue.status];
-                return (
-                  <div
-                    key={issue.id}
-                    className={`rounded-xl border-l-4 ${cfg.border} ${cfg.bg} px-4 py-3 flex items-center gap-3 cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-all`}
-                  >
-                    <issue.icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{issue.title}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`text-[10px] font-medium ${cfg.text}`}>{issue.category}</span>
-                        <span className="text-[10px] text-muted-foreground">{issue.time}</span>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : issues.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">No issues found</p>
+                </div>
+              ) : (
+                issues.map(issue => {
+                  const sev = (issue.severity as IssueSeverity) || "info";
+                  const st = (issue.status as IssueStatus) || "open";
+                  const cfg = SEVERITY_CFG[sev] ?? SEVERITY_CFG.info;
+                  const StatusIcon = STATUS_ICON[st] ?? XCircle;
+                  const CategoryIcon = CATEGORY_ICON[issue.category] ?? AlertTriangle;
+                  const timeAgo = new Date(issue.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                  return (
+                    <div
+                      key={issue.id}
+                      className={`rounded-xl border-l-4 ${cfg.border} ${cfg.bg} px-4 py-3 flex items-center gap-3 cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-all`}
+                    >
+                      <CategoryIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{issue.title}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`text-[10px] font-medium ${cfg.text}`}>{issue.category}</span>
+                          <span className="text-[10px] text-muted-foreground">{timeAgo}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <StatusIcon className={`w-3.5 h-3.5 ${
+                          st === "resolved" ? "text-emerald-500" :
+                          st === "investigating" ? "text-amber-500" : "text-red-500"
+                        }`} />
+                        <span className="text-[10px] text-muted-foreground">{STATUS_LABEL[st]}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <StatusIcon className={`w-3.5 h-3.5 ${
-                        issue.status === "resolved" ? "text-emerald-500" :
-                        issue.status === "investigating" ? "text-amber-500" : "text-red-500"
-                      }`} />
-                      <span className="text-[10px] text-muted-foreground">{STATUS_LABEL[issue.status]}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
             <div className="mt-4 pt-4 border-t border-border">

@@ -1,20 +1,32 @@
 from google import genai
-from fastapi import APIRouter, Depends, HTTPException
-from app.core.auth import get_current_user
+from fastapi import APIRouter, Depends
+
+from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.project_access import verify_project_access
 from app.core.config import settings
+from app.core.exceptions import ExternalAPIError
 from app.core.supabase import supabase
 from app.models.promotion import PromotionRequest
 
-_client = genai.Client(api_key=settings.gemini_api_key)
-
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
+
+# Lazy init: Gemini client is created on first use, not at import time.
+_client: genai.Client | None = None
+
+
+def _get_gemini_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=settings.gemini_api_key)
+    return _client
 
 
 @router.get("/history")
 async def get_history(
-    project_id: str, user: dict = Depends(get_current_user)
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
-    """프로젝트의 홍보 대화 히스토리 조회."""
     result = (
         supabase.table("promotion_messages")
         .select("*")
@@ -30,8 +42,8 @@ async def generate_promotion(
     project_id: str,
     body: PromotionRequest,
     user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
-    """홍보 콘텐츠 생성 — Gemini로 콘텐츠를 생성하고 대화 히스토리에 저장합니다."""
     # 사용자 메시지 저장
     user_msg = {
         "project_id": project_id,
@@ -48,12 +60,13 @@ async def generate_promotion(
         f"{template_hint}\n\n요청: {body.message}"
     )
     try:
-        response = _client.models.generate_content(
-            model="gemini-2.0-flash", contents=prompt
+        client = _get_gemini_client()
+        response = client.models.generate_content(
+            model="gemini-2.5-flash", contents=prompt
         )
         ai_content = response.text
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini 호출 실패: {e}")
+        raise ExternalAPIError("Gemini", str(e))
 
     # AI 응답 저장
     ai_msg = {

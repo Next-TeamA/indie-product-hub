@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends
-from app.core.auth import get_current_user
+
+from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.project_access import verify_project_access
 from app.core.supabase import supabase
 
 router = APIRouter(prefix="/projects/{project_id}/insights", tags=["insights"])
@@ -7,13 +9,11 @@ router = APIRouter(prefix="/projects/{project_id}/insights", tags=["insights"])
 
 @router.get("/marketing")
 async def get_marketing_insights(
-    project_id: str, user: dict = Depends(get_current_user)
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
-    """홍보 인사이트 -- 채널별 성과, 주간 추이.
-
-    TODO: SNS API 연동 후 실제 데이터로 교체.
-    현재는 DB에서 promotion_metrics 테이블 조회.
-    """
+    """홍보 인사이트 -- 채널별 성과, 주간 추이."""
     metrics = (
         supabase.table("promotion_metrics")
         .select("*")
@@ -27,13 +27,11 @@ async def get_marketing_insights(
 
 @router.get("/operations")
 async def get_operations_insights(
-    project_id: str, user: dict = Depends(get_current_user)
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
-    """운영 인사이트 -- 이슈 요약, 이상 감지.
-
-    TODO: GitHub API 연동으로 배포 로그 분석, 에러 트래킹 연동.
-    현재는 issues 테이블에서 집계.
-    """
+    """운영 인사이트 -- 이슈 요약."""
     issues = (
         supabase.table("issues")
         .select("severity, status")
@@ -43,8 +41,12 @@ async def get_operations_insights(
 
     data = issues.data or []
     summary = {
-        "critical_open": len([i for i in data if i["severity"] == "critical" and i["status"] != "resolved"]),
-        "warning_open": len([i for i in data if i["severity"] == "warning" and i["status"] != "resolved"]),
+        "critical_open": len(
+            [i for i in data if i["severity"] == "critical" and i["status"] != "resolved"]
+        ),
+        "warning_open": len(
+            [i for i in data if i["severity"] == "warning" and i["status"] != "resolved"]
+        ),
         "resolved": len([i for i in data if i["status"] == "resolved"]),
         "total": len(data),
     }

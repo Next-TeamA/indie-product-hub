@@ -8,9 +8,10 @@ const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
 interface CompleteStepProps {
   projectName: string;
+  projectId?: string | null;
 }
 
-export function CompleteStep({ projectName }: CompleteStepProps) {
+export function CompleteStep({ projectName, projectId }: CompleteStepProps) {
   const router = useRouter();
 
   return (
@@ -70,7 +71,7 @@ export function CompleteStep({ projectName }: CompleteStepProps) {
       </div>
 
       <motion.button
-        onClick={() => router.push("/projects/1")}
+        onClick={() => router.push(projectId ? `/projects/${projectId}` : "/projects")}
         className="btn-hero bg-primary text-primary-foreground mt-10 cursor-pointer"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
