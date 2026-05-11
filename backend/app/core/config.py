@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_service_role_key: str
     frontend_url: str = "http://localhost:3000"
+    gemini_api_key: str
 
     model_config = {"env_file": ".env"}
 
