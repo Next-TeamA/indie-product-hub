@@ -451,32 +451,29 @@ export default function PromotionPage() {
               </DrawerField>
 
               <DrawerField label="핵심 설명" hint="한 문장으로 서비스를 설명해주세요">
-                <textarea
+                <AutoResizeTextarea
                   value={infoForm.description}
-                  onChange={e => setInfoForm(f => ({ ...f, description: e.target.value }))}
+                  onChange={v => setInfoForm(f => ({ ...f, description: v }))}
                   placeholder="예) 체크박스 하나로 시작하는 PM 도구"
-                  className="input-hero px-3.5 py-3 text-sm w-full resize-none"
-                  rows={3}
+                  minRows={3}
                 />
               </DrawerField>
 
               <DrawerField label="타겟 사용자" hint="누구를 위한 서비스인가요?">
-                <textarea
+                <AutoResizeTextarea
                   value={infoForm.target_user}
-                  onChange={e => setInfoForm(f => ({ ...f, target_user: e.target.value }))}
+                  onChange={v => setInfoForm(f => ({ ...f, target_user: v }))}
                   placeholder="예) 인디 메이커, 1인 PM, 사이드 프로젝트를 운영하는 개발자"
-                  className="input-hero px-3.5 py-3 text-sm w-full resize-none"
-                  rows={3}
+                  minRows={3}
                 />
               </DrawerField>
 
               <DrawerField label="핵심 가치" hint="서비스의 강점을 한 줄씩 입력하세요">
-                <textarea
+                <AutoResizeTextarea
                   value={infoForm.key_values}
-                  onChange={e => setInfoForm(f => ({ ...f, key_values: e.target.value }))}
+                  onChange={v => setInfoForm(f => ({ ...f, key_values: v }))}
                   placeholder={"예) 빈 줄에 한 줄 PRD가 됨\n예) 체크박스로 진행 관리\n예) 복잡한 설정 없이 바로 시작"}
-                  className="input-hero px-3.5 py-3 text-sm w-full resize-none"
-                  rows={5}
+                  minRows={5}
                 />
               </DrawerField>
 
@@ -541,6 +538,41 @@ export default function PromotionPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  minRows = 3,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  minRows?: number;
+}) {
+  return (
+    <textarea
+      value={value}
+      placeholder={placeholder}
+      rows={minRows}
+      onChange={e => {
+        onChange(e.target.value);
+        const MAX_HEIGHT = 7 * 24 + 24; // 7줄 * line-height + padding
+        e.target.style.height = "auto";
+        e.target.style.height = `${Math.min(e.target.scrollHeight, MAX_HEIGHT)}px`;
+        e.target.style.overflowY = e.target.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+      }}
+      onFocus={e => {
+        const MAX_HEIGHT = 7 * 24 + 24;
+        e.target.style.height = "auto";
+        e.target.style.height = `${Math.min(e.target.scrollHeight, MAX_HEIGHT)}px`;
+        e.target.style.overflowY = e.target.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+      }}
+      className="input-hero px-3.5 py-3 text-sm w-full resize-none overflow-hidden"
+      style={{ minHeight: `${minRows * 1.6 + 1.5}rem` }}
+    />
   );
 }
 
