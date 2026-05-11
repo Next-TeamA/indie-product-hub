@@ -73,6 +73,8 @@ export type ProjectPromotionInfo = {
   target_user: string;
   key_values: string;
   site_url: string;
+  default_hashtags: string[];
+  logo_url: string | null;
   updated_at: string;
 };
 

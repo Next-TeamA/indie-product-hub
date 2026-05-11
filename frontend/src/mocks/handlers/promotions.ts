@@ -21,6 +21,8 @@ function defaultInfo(projectId: string): ProjectPromotionInfo {
     target_user: "인디 메이커 / 1인 PM",
     key_values: "빈 줄에 한 줄 PRD가 됨\n체크박스로 진행 관리\n자동 일정 제안",
     site_url: "https://taskflow.app",
+    default_hashtags: ["#인디메이커", "#빌드인퍼블릭", "#PM도구"],
+    logo_url: null,
     updated_at: new Date().toISOString(),
   };
 }
