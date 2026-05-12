@@ -446,7 +446,7 @@ export default function PostEditorPage() {
 
           {/* Preview card */}
           <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-            <div className="max-w-lg mx-auto w-full bg-card border border-border rounded-2xl shadow-sm p-5 flex flex-col gap-4">
+            <div className="max-w-lg mx-auto w-full bg-card border border-border rounded-3xl shadow-sm p-5 flex flex-col gap-4">
               {/* Profile row */}
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">

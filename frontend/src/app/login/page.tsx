@@ -29,7 +29,7 @@ export default function LoginPage() {
         transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
       >
         <motion.div
-          className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground"
+          className="flex items-center justify-center w-16 h-16 rounded-3xl bg-primary text-primary-foreground"
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.6, ease: EASE_OUT_EXPO }}

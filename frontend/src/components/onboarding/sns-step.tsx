@@ -3,43 +3,19 @@
 import { motion } from "motion/react";
 import { Check } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
-
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
-};
-
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
 const item = {
   hidden: { opacity: 0, y: 12, filter: "blur(6px)" },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.5, ease: EASE_OUT_EXPO },
-  },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE_OUT_EXPO } },
 };
 
 const SNS_OPTIONS = [
-  {
-    id: "threads",
-    label: "Threads",
-    icon: "TH",
-    desc: "Meta OAuth 연동",
-  },
-  {
-    id: "bluesky",
-    label: "Bluesky",
-    icon: "BS",
-    desc: "앱 비밀번호로 즉시 연동",
-  },
-  {
-    id: "mastodon",
-    label: "Mastodon",
-    icon: "MT",
-    desc: "인스턴스별 OAuth 연동",
-  },
+  { id: "threads", label: "Threads", icon: "TH", desc: "Meta OAuth" },
+  { id: "x", label: "X (Twitter)", icon: "X", desc: "OAuth 2.0 + PKCE" },
+  { id: "bluesky", label: "Bluesky", icon: "BS", desc: "App password" },
 ] as const;
 
 interface SnsStepProps {
@@ -50,31 +26,19 @@ interface SnsStepProps {
 
 export function SnsStep({ onNext, onBack, isLoading }: SnsStepProps) {
   const [selected, setSelected] = useState<string[]>([]);
+  const t = useTranslations("onboarding");
+  const tCommon = useTranslations("common");
 
   const toggle = (id: string) =>
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
+    setSelected((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
 
   return (
-    <motion.div
-      className="relative z-10 w-full max-w-lg mx-auto px-6"
-      variants={stagger}
-      initial="hidden"
-      animate="show"
-    >
+    <motion.div className="relative z-10 w-full max-w-lg mx-auto px-6" variants={stagger} initial="hidden" animate="show">
       <motion.div variants={item} className="mb-2">
-        <p className="h-eyebrow">STEP 3</p>
+        <p className="h-eyebrow">{t("step3")}</p>
       </motion.div>
-
-      <motion.h2 variants={item} className="h-title mb-3">
-        SNS 채널 연동
-      </motion.h2>
-
-      <motion.p variants={item} className="text-lede mb-8">
-        홍보 콘텐츠를 자동으로 배포할 채널을 선택하세요.
-        나중에 추가할 수도 있습니다.
-      </motion.p>
+      <motion.h2 variants={item} className="h-title mb-3">{t("snsTitle")}</motion.h2>
+      <motion.p variants={item} className="text-lede mb-8">{t("snsDesc")}</motion.p>
 
       <motion.div variants={item} className="grid grid-cols-1 gap-3">
         {SNS_OPTIONS.map((sns) => {
@@ -83,17 +47,15 @@ export function SnsStep({ onNext, onBack, isLoading }: SnsStepProps) {
             <motion.button
               key={sns.id}
               onClick={() => toggle(sns.id)}
-              className={`flex items-center gap-4 h-14 rounded-2xl px-5
-                         border transition-all duration-200 cursor-pointer text-left
-                         ${
-                           isSelected
-                             ? "border-foreground/20 bg-foreground/[0.04]"
-                             : "border-border bg-card hover:border-foreground/10"
-                         }`}
+              className={`flex items-center gap-4 h-14 rounded-3xl px-5 transition-all duration-200 cursor-pointer text-left ${
+                isSelected
+                  ? "bg-[rgba(239,255,0,0.06)] text-foreground"
+                  : "bg-card hover:bg-secondary"
+              }`}
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.985 }}
             >
-              <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-bold">
+              <span className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold">
                 {sns.icon}
               </span>
               <div className="flex-1">
@@ -104,13 +66,9 @@ export function SnsStep({ onNext, onBack, isLoading }: SnsStepProps) {
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 420,
-                    damping: 24,
-                  }}
+                  transition={{ type: "spring", stiffness: 420, damping: 24 }}
                 >
-                  <Check className="w-4 h-4 text-foreground" />
+                  <Check className="w-4 h-4 text-primary" />
                 </motion.div>
               )}
             </motion.button>
@@ -118,15 +76,9 @@ export function SnsStep({ onNext, onBack, isLoading }: SnsStepProps) {
         })}
       </motion.div>
 
-      <motion.div
-        variants={item}
-        className="mt-8 flex items-center justify-between"
-      >
-        <button
-          onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          ← 이전
+      <motion.div variants={item} className="mt-8 flex items-center justify-between">
+        <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+          ← {tCommon("back")}
         </button>
         <div className="flex items-center gap-3">
           <button
@@ -134,7 +86,7 @@ export function SnsStep({ onNext, onBack, isLoading }: SnsStepProps) {
             disabled={isLoading}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
           >
-            건너뛰기
+            {tCommon("skip")}
           </button>
           <motion.button
             onClick={() => onNext({ selectedSns: selected })}
@@ -143,7 +95,7 @@ export function SnsStep({ onNext, onBack, isLoading }: SnsStepProps) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            {isLoading ? "Creating..." : "다음 →"}
+            {isLoading ? t("creating") : `${tCommon("next")} →`}
           </motion.button>
         </div>
       </motion.div>
