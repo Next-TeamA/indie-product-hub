@@ -17,6 +17,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProjectAvatar } from "@/components/project-avatar";
 
 interface ProjectSidebarProps {
   projectId: string;
@@ -56,11 +57,8 @@ export function ProjectSidebar({
             >
               <PanelLeftOpen className="w-4 h-4 text-muted-foreground" />
             </button>
-            <Link
-              href="/projects"
-              className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold"
-            >
-              {projectName[0]?.toUpperCase()}
+            <Link href="/projects">
+              <ProjectAvatar name={projectName} size={40} />
             </Link>
           </div>
         ) : (
@@ -81,9 +79,7 @@ export function ProjectSidebar({
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-                {projectName[0]?.toUpperCase()}
-              </div>
+              <ProjectAvatar name={projectName} size={32} />
               <h2 className="font-semibold text-sm truncate">{projectName}</h2>
             </div>
           </>

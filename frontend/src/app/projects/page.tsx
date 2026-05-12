@@ -13,6 +13,7 @@ import { useProjects } from "@/hooks/use-projects";
 import { useUser } from "@/hooks/use-user";
 import type { Project } from "@/lib/api/projects";
 import { Logo } from "@/components/logo";
+import { ProjectAvatar } from "@/components/project-avatar";
 
 const EASE_OUT = [0.0, 0.0, 0.2, 1.0] as const;
 
@@ -93,9 +94,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
       >
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
-            {project.name[0]?.toUpperCase()}
-          </div>
+          <ProjectAvatar name={project.name} size={40} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-sm truncate">{project.name}</h3>
