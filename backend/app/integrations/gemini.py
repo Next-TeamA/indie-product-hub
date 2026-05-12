@@ -42,15 +42,19 @@ async def generate_json(
     prompt: str,
     system: str | None = None,
     model: str = "gemini-2.5-flash",
+    use_search: bool = False,
 ) -> dict | list:
-    """Generate structured JSON response."""
+    """Generate structured JSON response. Optionally use Google Search grounding."""
     try:
         client = _get_client()
+        tools = []
+        if use_search:
+            tools = [types.Tool(google_search=types.GoogleSearch())]
+
         config = types.GenerateContentConfig(
             system_instruction=system,
             response_mime_type="application/json",
-        ) if system else types.GenerateContentConfig(
-            response_mime_type="application/json",
+            tools=tools if tools else None,
         )
         response = client.models.generate_content(
             model=model,

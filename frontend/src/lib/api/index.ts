@@ -7,3 +7,4 @@ export * from "./accounts";
 export * from "./alerts";
 export * from "./market-insights";
 export * from "./deployments";
+export * from "./sns-metrics";

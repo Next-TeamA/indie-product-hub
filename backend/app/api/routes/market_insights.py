@@ -86,6 +86,7 @@ Return as JSON array:
             prompt=prompt,
             system=MARKET_SYSTEM_PROMPT,
             model="gemini-2.5-flash",
+            use_search=True,  # Real-time web search for latest competitor/market data
         )
 
         if not isinstance(insights, list):

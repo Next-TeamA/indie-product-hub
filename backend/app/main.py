@@ -17,6 +17,7 @@ from app.api.routes.alerts import router as alerts_router
 from app.api.routes.deployments import router as deployments_router
 from app.api.routes.market_insights import router as market_insights_router
 from app.api.routes.webhooks import router as webhooks_router
+from app.api.routes.sns_metrics import router as sns_metrics_router
 
 
 @asynccontextmanager
@@ -62,3 +63,4 @@ app.include_router(alerts_router, prefix="/api")
 app.include_router(deployments_router, prefix="/api")
 app.include_router(market_insights_router, prefix="/api")
 app.include_router(webhooks_router, prefix="/api")
+app.include_router(sns_metrics_router, prefix="/api")
