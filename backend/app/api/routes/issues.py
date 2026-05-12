@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
-from app.core.auth import get_current_user
+from fastapi import APIRouter, Depends
+
+from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.project_access import verify_project_access
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.supabase import supabase
 from app.models.issue import IssueCreate, IssueUpdate
 
@@ -11,6 +14,7 @@ async def list_issues(
     project_id: str,
     status: str | None = None,
     user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
     query = (
         supabase.table("issues")
@@ -27,10 +31,14 @@ async def list_issues(
 
 @router.post("", status_code=201)
 async def create_issue(
-    project_id: str, body: IssueCreate, user: dict = Depends(get_current_user)
+    project_id: str,
+    body: IssueCreate,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
     data = {
         "project_id": project_id,
+        "user_id": user["id"],
         "title": body.title,
         "description": body.description,
         "severity": body.severity,
@@ -47,10 +55,11 @@ async def update_issue(
     issue_id: str,
     body: IssueUpdate,
     user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
     updates = body.model_dump(exclude_none=True)
     if not updates:
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise ValidationError("No fields to update")
 
     result = (
         supabase.table("issues")
@@ -60,14 +69,23 @@ async def update_issue(
         .execute()
     )
     if not result.data:
-        raise HTTPException(status_code=404, detail="Issue not found")
+        raise NotFoundError("Issue", issue_id)
     return result.data[0]
 
 
 @router.delete("/{issue_id}", status_code=204)
 async def delete_issue(
-    project_id: str, issue_id: str, user: dict = Depends(get_current_user)
+    project_id: str,
+    issue_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
-    supabase.table("issues").delete().eq("id", issue_id).eq(
-        "project_id", project_id
-    ).execute()
+    result = (
+        supabase.table("issues")
+        .delete()
+        .eq("id", issue_id)
+        .eq("project_id", project_id)
+        .execute()
+    )
+    if not result.data:
+        raise NotFoundError("Issue", issue_id)

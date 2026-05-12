@@ -1,0 +1,91 @@
+"""GitHub REST API wrapper."""
+
+from urllib.parse import urlencode
+
+import httpx
+
+from app.core.config import settings
+from app.core.exceptions import ExternalAPIError
+
+
+class GitHubAPIClient:
+    BASE_URL = "https://api.github.com"
+    AUTH_URL = "https://github.com/login/oauth/authorize"
+    TOKEN_URL = "https://github.com/login/oauth/access_token"
+    SCOPES = ["repo", "read:org", "admin:repo_hook"]
+
+    def get_auth_url(self, state: str) -> str:
+        params = {
+            "client_id": settings.github_client_id,
+            "redirect_uri": f"{settings.backend_url}/api/accounts/callback/github",
+            "scope": " ".join(self.SCOPES),
+            "state": state,
+        }
+        return f"{self.AUTH_URL}?{urlencode(params)}"
+
+    async def exchange_code(self, code: str) -> dict:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self.TOKEN_URL,
+                headers={"Accept": "application/json"},
+                data={
+                    "client_id": settings.github_client_id,
+                    "client_secret": settings.github_client_secret,
+                    "code": code,
+                },
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("GitHub", f"Token exchange failed: {response.text}")
+            data = response.json()
+            if "error" in data:
+                raise ExternalAPIError("GitHub", data.get("error_description", data["error"]))
+            return data
+
+    async def _request(self, token: str, method: str, path: str, **kwargs) -> dict | list:
+        async with httpx.AsyncClient() as client:
+            response = await client.request(
+                method,
+                f"{self.BASE_URL}{path}",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                **kwargs,
+            )
+            if response.status_code >= 400:
+                raise ExternalAPIError("GitHub", f"{method} {path} failed: {response.status_code}")
+            return response.json()
+
+    async def get_user(self, token: str) -> dict:
+        return await self._request(token, "GET", "/user")
+
+    async def get_repo(self, token: str, owner: str, repo: str) -> dict:
+        return await self._request(token, "GET", f"/repos/{owner}/{repo}")
+
+    async def list_commits(self, token: str, owner: str, repo: str, per_page: int = 10) -> list:
+        return await self._request(token, "GET", f"/repos/{owner}/{repo}/commits", params={"per_page": per_page})
+
+    async def list_issues(self, token: str, owner: str, repo: str, state: str = "open", per_page: int = 10) -> list:
+        return await self._request(token, "GET", f"/repos/{owner}/{repo}/issues", params={"state": state, "per_page": per_page})
+
+    async def list_pulls(self, token: str, owner: str, repo: str, state: str = "open", per_page: int = 10) -> list:
+        return await self._request(token, "GET", f"/repos/{owner}/{repo}/pulls", params={"state": state, "per_page": per_page})
+
+    async def create_webhook(self, token: str, owner: str, repo: str, webhook_url: str, events: list[str] | None = None) -> dict:
+        return await self._request(
+            token, "POST", f"/repos/{owner}/{repo}/hooks",
+            json={
+                "name": "web",
+                "active": True,
+                "events": events or ["push", "pull_request", "issues", "deployment_status"],
+                "config": {
+                    "url": webhook_url,
+                    "content_type": "json",
+                    "secret": settings.github_webhook_secret,
+                    "insecure_ssl": "0",
+                },
+            },
+        )
+
+
+github_client = GitHubAPIClient()

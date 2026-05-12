@@ -1,5 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
-from app.core.auth import get_current_user
+import calendar as cal
+
+from fastapi import APIRouter, Depends
+
+from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.project_access import verify_project_access
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.supabase import supabase
 from app.models.event import EventCreate, EventUpdate
 
@@ -8,9 +13,11 @@ router = APIRouter(prefix="/projects/{project_id}/events", tags=["events"])
 
 @router.get("")
 async def list_events(
-    project_id: str, month: str | None = None, user: dict = Depends(get_current_user)
+    project_id: str,
+    month: str | None = None,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
-    """이벤트 목록 조회. month=YYYY-MM 으로 필터 가능."""
     query = (
         supabase.table("events")
         .select("*")
@@ -19,7 +26,13 @@ async def list_events(
         .order("time")
     )
     if month:
-        query = query.gte("date", f"{month}-01").lte("date", f"{month}-31")
+        # month = "YYYY-MM" -> 해당 월의 정확한 마지막 날짜 계산
+        try:
+            year, m = int(month[:4]), int(month[5:7])
+            last_day = cal.monthrange(year, m)[1]
+            query = query.gte("date", f"{month}-01").lte("date", f"{month}-{last_day:02d}")
+        except (ValueError, IndexError):
+            raise ValidationError(f"Invalid month format: {month}. Use YYYY-MM.")
 
     result = query.execute()
     return result.data
@@ -27,10 +40,14 @@ async def list_events(
 
 @router.post("", status_code=201)
 async def create_event(
-    project_id: str, body: EventCreate, user: dict = Depends(get_current_user)
+    project_id: str,
+    body: EventCreate,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
     data = {
         "project_id": project_id,
+        "user_id": user["id"],
         "title": body.title,
         "event_type": body.event_type,
         "date": body.date,
@@ -47,10 +64,11 @@ async def update_event(
     event_id: str,
     body: EventUpdate,
     user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
     updates = body.model_dump(exclude_none=True)
     if not updates:
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise ValidationError("No fields to update")
 
     result = (
         supabase.table("events")
@@ -60,14 +78,23 @@ async def update_event(
         .execute()
     )
     if not result.data:
-        raise HTTPException(status_code=404, detail="Event not found")
+        raise NotFoundError("Event", event_id)
     return result.data[0]
 
 
 @router.delete("/{event_id}", status_code=204)
 async def delete_event(
-    project_id: str, event_id: str, user: dict = Depends(get_current_user)
+    project_id: str,
+    event_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
 ):
-    supabase.table("events").delete().eq("id", event_id).eq(
-        "project_id", project_id
-    ).execute()
+    result = (
+        supabase.table("events")
+        .delete()
+        .eq("id", event_id)
+        .eq("project_id", project_id)
+        .execute()
+    )
+    if not result.data:
+        raise NotFoundError("Event", event_id)
