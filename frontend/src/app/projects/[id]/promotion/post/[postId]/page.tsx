@@ -2,8 +2,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "motion/react";
-import { ChevronLeft, Copy, Trash2, Save, Sparkles, Send } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  ChevronLeft,
+  Copy,
+  Trash2,
+  Save,
+  Sparkles,
+  Send,
+  X,
+  Image as ImageIcon,
+  RefreshCw,
+  Bookmark,
+  Star,
+} from "lucide-react";
 import {
   listPromotions,
   updatePromotion,
@@ -18,28 +30,82 @@ import { cn } from "@/lib/utils";
 
 // --- Constants ---
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 const KO_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-const PLATFORM_META: Record<Platform, { name: string; bg: string; text: string; maxChars: number }> = {
-  threads: { name: "Threads", bg: "bg-orange-100", text: "text-orange-700", maxChars: 500 },
-  x:       { name: "X",       bg: "bg-zinc-100",   text: "text-zinc-700",   maxChars: 280 },
-  bluesky: { name: "Bluesky", bg: "bg-sky-100",    text: "text-sky-700",    maxChars: 300 },
-  mastodon:{ name: "Mastodon",bg: "bg-violet-100", text: "text-violet-700", maxChars: 500 },
+// 캘린더 색상과 동일하게 브랜드 컬러 복구
+const PLATFORM_META: Record<
+  Platform,
+  { name: string; bg: string; text: string; maxChars: number }
+> = {
+  threads: {
+    name: "Threads",
+    bg: "bg-orange-50",
+    text: "text-orange-600",
+    maxChars: 500,
+  },
+  x: {
+    name: "X",
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+    maxChars: 280,
+  },
+  bluesky: {
+    name: "Bluesky",
+    bg: "bg-sky-50",
+    text: "text-sky-600",
+    maxChars: 300,
+  },
+  mastodon: {
+    name: "Mastodon",
+    bg: "bg-violet-50",
+    text: "text-violet-600",
+    maxChars: 500,
+  },
 };
 
-const STATUS_META: Record<PromotionStatus, { label: string; bg: string; text: string }> = {
-  draft:     { label: "초안",   bg: "bg-amber-100",   text: "text-amber-700"   },
-  scheduled: { label: "예약됨", bg: "bg-blue-100",    text: "text-blue-700"    },
-  published: { label: "발행됨", bg: "bg-emerald-100", text: "text-emerald-700" },
-  failed:    { label: "실패",   bg: "bg-red-100",     text: "text-red-700"     },
+const STATUS_META: Record<
+  PromotionStatus,
+  { label: string; bg: string; text: string }
+> = {
+  draft: { label: "초안", bg: "bg-slate-100", text: "text-slate-500" },
+  scheduled: { label: "예약됨", bg: "bg-blue-50", text: "text-blue-600" },
+  published: { label: "발행됨", bg: "bg-emerald-50", text: "text-emerald-600" },
+  failed: { label: "실패", bg: "bg-rose-50", text: "text-rose-600" },
 };
 
 const TONES = ["친근한", "전문적", "유머"] as const;
-type Tone = typeof TONES[number];
+type Tone = (typeof TONES)[number];
 
 const CONTENT_TYPES = ["출시", "회고", "업데이트", "Q&A"] as const;
-type ContentType = typeof CONTENT_TYPES[number];
+type ContentType = (typeof CONTENT_TYPES)[number];
+
+const PROMO_TEMPLATES = [
+  {
+    name: "런칭 알림",
+    platform: "전채널",
+    score: 5,
+    tag: "런칭",
+    content:
+      "🚀 [제품명] 정식 출시!\n\n[핵심 가치 요약]\n✅ [기능 1]\n✅ [기능 2]\n\n지금 시작하기 👉 [링크]",
+  },
+  {
+    name: "기능 소개",
+    platform: "Threads / Bluesky",
+    score: 4,
+    tag: "기능",
+    content:
+      "새 기능 출시 🎉 [기능명]\n\n이제 [Before] 대신 [After]가 가능해요.\n\n피드백 환영합니다 🙌",
+  },
+  {
+    name: "성과 공유",
+    platform: "Mastodon",
+    score: 5,
+    tag: "마일스톤",
+    content:
+      "[숫자] 달성 🎯\n📈 지표 1: [수치]\n📈 지표 2: [수치]\n\n응원해주셔서 감사합니다!",
+  },
+];
 
 // --- Helpers ---
 
@@ -48,7 +114,7 @@ function toKoDate(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()} (${KO_DAYS[d.getDay()]})`;
 }
 
-// Mock AI generation — 실제 연동 시 이 함수를 API 호출로 교체
+// Mock AI generation
 function mockGenerate(opts: {
   projectInfo: ProjectPromotionInfo;
   message: string;
@@ -58,24 +124,25 @@ function mockGenerate(opts: {
   platform: Platform;
 }): { hook: string; content: string; hashtags: string[] } {
   const { projectInfo, message, tone, contentType, reference } = opts;
-
   const hooks: Record<Tone, string> = {
-    "친근한": `${projectInfo.service_name}으로 더 가볍게 시작하세요`,
-    "전문적": `${projectInfo.service_name}: ${projectInfo.description}`,
-    "유머":   `복잡한 도구는 이제 그만 👋`,
+    친근한: `${projectInfo.service_name}으로 더 가볍게 시작하세요`,
+    전문적: `${projectInfo.service_name}: ${projectInfo.description}`,
+    유머: `복잡한 도구는 이제 그만 👋`,
   };
-
   const bodies: Record<ContentType, string> = {
-    "출시":    `${projectInfo.service_name}이 출시되었습니다.\n\n${message || projectInfo.description}\n→ ${reference || "지금 바로 시작해보세요"}`,
-    "회고":    `${projectInfo.service_name} 솔직한 회고\n\n${message || projectInfo.key_values.split("\n")[0] || "꾸준한 빌드"}\n\n다음 달엔 더 잘할 수 있을 것 같습니다.`,
-    "업데이트":`새로운 업데이트가 나왔습니다!\n\n${message || projectInfo.key_values}\n\n사용해보고 피드백 남겨주세요 🙏`,
-    "Q&A":     `자주 받는 질문에 답해드립니다.\n\nQ: ${reference || "왜 만들었나요?"}\nA: ${message || projectInfo.description}`,
+    출시: `${projectInfo.service_name}이 출시되었습니다.\n\n${message || projectInfo.description}\n→ ${reference || "지금 바로 시작해보세요"}`,
+    회고: `${projectInfo.service_name} 솔직한 회고\n\n${message || projectInfo.key_values.split("\n")[0] || "꾸준한 빌드"}\n\n다음 달엔 더 잘할 수 있을 것 같습니다.`,
+    업데이트: `새로운 업데이트가 나왔습니다!\n\n${message || projectInfo.key_values}\n\n사용해보고 피드백 남겨주세요 🙏`,
+    "Q&A": `자주 받는 질문에 답해드립니다.\n\nQ: ${reference || "왜 만들었나요?"}\nA: ${message || projectInfo.description}`,
   };
-
   return {
     hook: hooks[tone],
     content: bodies[contentType],
-    hashtags: ["#인디메이커", `#${projectInfo.service_name.replace(/\s/g, "")}`, "#빌드인퍼블릭"],
+    hashtags: [
+      "#인디메이커",
+      `#${projectInfo.service_name.replace(/\s/g, "")}`,
+      "#빌드인퍼블릭",
+    ],
   };
 }
 
@@ -84,34 +151,34 @@ function mockGenerate(opts: {
 export default function PostEditorPage() {
   const { id: projectId, postId } = useParams<{ id: string; postId: string }>();
   const router = useRouter();
-
   const isNew = postId === "new";
 
-  // Loaded data
-  const [promotion,    setPromotion]    = useState<Promotion | null>(null);
-  const [projectInfo,  setProjectInfo]  = useState<ProjectPromotionInfo | null>(null);
-  const [loading,      setLoading]      = useState(!isNew);
+  const [promotion, setPromotion] = useState<Promotion | null>(null);
+  const [projectInfo, setProjectInfo] = useState<ProjectPromotionInfo | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(!isNew);
 
-  // Editable right-side state
-  const [editHook,       setEditHook]       = useState("");
-  const [editContent,    setEditContent]    = useState("");
-  const [editHashtags,   setEditHashtags]   = useState<string[]>([]);
-  const [editStatus,     setEditStatus]     = useState<PromotionStatus>("draft");
+  const [editHook, setEditHook] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editHashtags, setEditHashtags] = useState<string[]>([]);
+  const [editStatus, setEditStatus] = useState<PromotionStatus>("draft");
   const [activePlatform, setActivePlatform] = useState<Platform>("threads");
 
-  // Left-side: 홍보 방향 입력
-  const [message,           setMessage]           = useState("");   // 이번 포스트 핵심 메시지
-  const [tone,              setTone]              = useState<Tone>("친근한");
-  const [contentType,       setContentType]       = useState<ContentType>("출시");
-  const [reference,         setReference]         = useState("");
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(["threads"]);
+  const [message, setMessage] = useState("");
+  const [tone, setTone] = useState<Tone>("친근한");
+  const [contentType, setContentType] = useState<ContentType>("출시");
+  const [reference, setReference] = useState("");
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([
+    "threads",
+  ]);
 
-  // UI state
   const [generating, setGenerating] = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [deleting,   setDeleting]   = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Fetch promotion post + project info
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
@@ -122,7 +189,7 @@ export default function PostEditorPage() {
         ]);
         setProjectInfo(info);
         if (!isNew) {
-          const found = (list as Promotion[]).find(p => p.id === postId);
+          const found = (list as Promotion[]).find((p) => p.id === postId);
           if (found) {
             setPromotion(found);
             setEditHook(found.hook);
@@ -147,7 +214,11 @@ export default function PostEditorPage() {
     setGenerating(true);
     setTimeout(() => {
       const result = mockGenerate({
-        projectInfo, message, tone, contentType, reference,
+        projectInfo,
+        message,
+        tone,
+        contentType,
+        reference,
         platform: activePlatform,
       });
       setEditHook(result.hook);
@@ -160,17 +231,15 @@ export default function PostEditorPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (isNew) {
-        router.push(`/projects/${projectId}/promotion`);
-        return;
+      if (!isNew) {
+        await updatePromotion(promotion!.id, {
+          hook: editHook,
+          content: editContent,
+          hashtags: editHashtags,
+          status: editStatus,
+          platform: activePlatform,
+        });
       }
-      await updatePromotion(promotion!.id, {
-        hook: editHook,
-        content: editContent,
-        hashtags: editHashtags,
-        status: editStatus,
-        platform: activePlatform,
-      });
       router.push(`/projects/${projectId}/promotion`);
     } catch (e) {
       console.error(e);
@@ -181,7 +250,6 @@ export default function PostEditorPage() {
 
   const handleDelete = async () => {
     if (!promotion) return;
-    if (!confirm("이 홍보 글을 삭제하시겠습니까?")) return;
     setDeleting(true);
     try {
       await deletePromotion(promotion.id);
@@ -196,127 +264,117 @@ export default function PostEditorPage() {
   const handleCopy = () => {
     const siteUrl = projectInfo?.site_url ?? "";
     const text = `${editHook}\n\n${editContent}\n\n${editHashtags.join(" ")}${siteUrl ? `\n↗ ${siteUrl}` : ""}`;
-    navigator.clipboard.writeText(text).catch(console.error);
+    navigator.clipboard.writeText(text);
   };
 
   const togglePlatform = (p: Platform) => {
-    setSelectedPlatforms(prev =>
-      prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+    setSelectedPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
     );
   };
 
-  const pm         = PLATFORM_META[activePlatform];
-  const charCount  = editContent.length;
-  const charLimit  = pm.maxChars;
+  const pm = PLATFORM_META[activePlatform];
+  const charCount = editContent.length;
 
-  if (loading) {
-    return (
-      <div className="w-full flex items-center justify-center h-dvh">
-        <div className="text-sm text-muted-foreground">불러오는 중...</div>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   return (
-    <div className="w-full flex flex-col h-dvh">
+    <div className="w-full flex flex-col h-dvh bg-white selection:bg-slate-800 selection:text-white relative">
       {/* Header */}
       <motion.div
-        className="border-b border-border px-8 py-4 flex items-center justify-between shrink-0"
+        className="px-8 py-5 flex items-center justify-between shrink-0 border-b border-slate-50"
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: EASE }}
+        transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
       >
-        <div>
-          <p className="h-eyebrow mb-0.5">PROMOTION &rsaquo; POST</p>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tight">홍보글 만들기</h1>
-            {promotion && (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
-                {toKoDate(promotion.date)} 대상
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push(`/projects/${projectId}/promotion`)}
+            className="p-2 -ml-2 rounded-full hover:bg-slate-50 transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5 text-slate-400" />
+          </button>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-0.5">
+              PROMOTION &rsaquo; POST
+            </p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-[20px] font-bold tracking-tight text-slate-800">
+                홍보글 만들기
+              </h1>
+              <span
+                className={cn(
+                  "text-[11px] font-bold px-2 py-0.5 rounded-md",
+                  STATUS_META[editStatus].bg,
+                  STATUS_META[editStatus].text,
+                )}
+              >
+                {STATUS_META[editStatus].label}
               </span>
-            )}
-            <span className={cn(
-              "text-xs font-medium px-2.5 py-1 rounded-full",
-              STATUS_META[editStatus].bg, STATUS_META[editStatus].text
-            )}>
-              {STATUS_META[editStatus].label}
-            </span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push(`/projects/${projectId}/promotion`)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            목록
-          </button>
-          <button
             onClick={handleCopy}
-            className="h-8 w-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted transition-colors"
+            className="w-9 h-9 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors"
             title="복사"
           >
-            <Copy className="w-3.5 h-3.5" />
+            <Copy className="w-4 h-4" />
           </button>
           <button
             onClick={handleDelete}
-            disabled={deleting || !promotion}
-            className="h-8 w-8 rounded-lg border border-border flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors disabled:opacity-40"
-            title="삭제"
+            disabled={!promotion}
+            className="w-9 h-9 rounded-xl border border-slate-100 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors disabled:opacity-30"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-1.5 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors"
           >
-            <Save className="w-3.5 h-3.5" />
-            {saving ? "저장 중..." : "저장"}
+            <Save className="w-4 h-4" /> {saving ? "저장 중..." : "저장"}
           </button>
         </div>
       </motion.div>
 
-      {/* Split editor */}
       <div className="flex-1 flex overflow-hidden">
-
-        {/* ── Left: 홍보 방향 입력 ── */}
-        <div className="w-[400px] shrink-0 border-r border-border overflow-y-auto">
-          <div className="p-6 flex flex-col gap-4">
-
-            {/* 프로젝트 정보 요약 (읽기 전용) */}
-            {projectInfo && (
-              <div className="rounded-xl bg-muted/50 border border-border px-4 py-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
-                  프로젝트 정보 (자동 반영)
-                </p>
-                <p className="text-sm font-semibold">{projectInfo.service_name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{projectInfo.description}</p>
-              </div>
-            )}
-
-            <Field label="이번 포스트 핵심 메시지">
+        {/* Left Form: Input */}
+        <div className="w-[400px] shrink-0 border-r border-slate-50 overflow-y-auto bg-slate-50/20">
+          <div className="p-8 flex flex-col gap-8">
+            <Field
+              label="이번 포스트 핵심 메시지"
+              action={
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md"
+                >
+                  <Bookmark className="w-3 h-3" />
+                  템플릿 보기
+                </button>
+              }
+            >
               <textarea
                 value={message}
-                onChange={e => setMessage(e.target.value)}
-                className="input-hero w-full px-3 py-2.5 text-sm resize-none"
-                placeholder={"이번 글에서 무엇을 전달하고 싶으신가요?\n예) v0.3 출시, 반복 일정 기능 추가됨"}
-                rows={3}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full px-4 py-3 text-[14px] font-medium rounded-2xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none shadow-sm placeholder:text-slate-300"
+                placeholder={"전달하고 싶은 내용을 입력하세요."}
+                rows={4}
               />
             </Field>
 
-            <div className="flex gap-4">
-              <Field label="말투" className="flex-1">
-                <div className="flex gap-1.5 flex-wrap">
-                  {TONES.map(t => (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="말투">
+                <div className="flex flex-wrap gap-2">
+                  {TONES.map((t) => (
                     <button
                       key={t}
                       onClick={() => setTone(t)}
                       className={cn(
-                        "h-7 px-3 rounded-full text-xs font-medium transition-colors",
+                        "px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all",
                         tone === t
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:text-foreground"
+                          ? "bg-slate-800 text-white shadow-md"
+                          : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600",
                       )}
                     >
                       {t}
@@ -324,18 +382,17 @@ export default function PostEditorPage() {
                   ))}
                 </div>
               </Field>
-
-              <Field label="콘텐츠 유형" className="flex-1">
-                <div className="flex gap-1.5 flex-wrap">
-                  {CONTENT_TYPES.map(ct => (
+              <Field label="유형">
+                <div className="flex flex-wrap gap-2">
+                  {CONTENT_TYPES.map((ct) => (
                     <button
                       key={ct}
                       onClick={() => setContentType(ct)}
                       className={cn(
-                        "h-7 px-3 rounded-full text-xs font-medium transition-colors",
+                        "px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all",
                         contentType === ct
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:text-foreground"
+                          ? "bg-slate-800 text-white shadow-md"
+                          : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600",
                       )}
                     >
                       {ct}
@@ -348,24 +405,26 @@ export default function PostEditorPage() {
             <Field label="레퍼런스">
               <input
                 value={reference}
-                onChange={e => setReference(e.target.value)}
-                className="input-hero w-full h-10 px-3 text-sm"
-                placeholder="참고할 링크나 내용을 입력해주세요"
+                onChange={(e) => setReference(e.target.value)}
+                className="w-full h-11 px-4 text-[14px] font-medium rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm placeholder:text-slate-300"
+                placeholder="링크나 참고 내용을 입력하세요"
               />
             </Field>
 
-            <Field label="플랫폼">
+            <Field label="플랫폼 선택">
               <div className="flex gap-2 flex-wrap">
-                {(Object.keys(PLATFORM_META) as Platform[]).map(p => {
+                {(Object.keys(PLATFORM_META) as Platform[]).map((p) => {
                   const meta = PLATFORM_META[p];
-                  const on   = selectedPlatforms.includes(p);
+                  const on = selectedPlatforms.includes(p);
                   return (
                     <button
                       key={p}
                       onClick={() => togglePlatform(p)}
                       className={cn(
-                        "h-8 px-3 rounded-full text-xs font-semibold transition-colors",
-                        on ? `${meta.bg} ${meta.text}` : "bg-muted text-muted-foreground hover:text-foreground"
+                        "px-4 py-2 rounded-xl text-[12px] font-bold transition-all shadow-sm border",
+                        on
+                          ? `${meta.bg} ${meta.text} border-transparent`
+                          : "bg-white border-slate-100 text-slate-300",
                       )}
                     >
                       {meta.name}
@@ -376,197 +435,309 @@ export default function PostEditorPage() {
             </Field>
 
             <Field label="스크린샷">
-              <div className="w-full h-28 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-sm text-muted-foreground cursor-pointer hover:bg-muted/30 transition-colors">
-                이미지를 드래그하거나 클릭해서 업로드
+              <div className="w-full h-32 rounded-2xl border-2 border-dashed border-slate-100 bg-white flex flex-col items-center justify-center gap-2 text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
+                <ImageIcon className="w-6 h-6 opacity-30" />
+                <span className="text-[12px] font-medium">이미지 업로드</span>
               </div>
             </Field>
 
-            {/* Generate CTA */}
-            <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">입력한 내용으로 홍보글 만들기</p>
-                <p className="text-xs text-muted-foreground mt-0.5">AI가 프로젝트 정보를 참고해 생성합니다 →</p>
-              </div>
+            <div className="mt-4 p-6 rounded-[24px] bg-blue-50/50 border border-blue-100/50 shadow-inner">
+              <p className="text-[14px] font-bold text-blue-900 mb-1">
+                AI 홍보글 생성
+              </p>
+              <p className="text-[12px] font-medium text-blue-600/70 mb-4">
+                프로젝트 정보를 분석해 글을 작성합니다
+              </p>
               <button
                 onClick={handleGenerate}
-                disabled={generating || !projectInfo}
-                className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
+                disabled={generating}
+                className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl bg-blue-600 text-white text-[13px] font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
               >
                 {generating ? (
-                  <>
-                    <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
-                    생성 중
-                  </>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                 ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    생성하기
-                  </>
-                )}
+                  <Sparkles className="w-4 h-4" />
+                )}{" "}
+                생성하기
               </button>
             </div>
           </div>
         </div>
 
-        {/* ── Right: Editable preview ── */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-muted/20">
-          {/* Preview header */}
-          <div className="border-b border-border px-6 py-3 flex items-center justify-between shrink-0 bg-card">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                AI 생성 결과
+        {/* Right Preview */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/30">
+          <div className="px-8 py-4 border-b border-slate-100 flex items-center justify-between bg-white/60 backdrop-blur-md shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                Preview
               </span>
-              <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", pm.bg, pm.text)}>
-                {pm.name.toUpperCase()}
+              <span
+                className={cn(
+                  "text-[11px] font-bold px-3 py-1 rounded-full uppercase",
+                  pm.bg,
+                  pm.text,
+                )}
+              >
+                {activePlatform}
               </span>
             </div>
-            {/* Platform tabs */}
-            <div className="flex items-center gap-1">
+            <div className="flex bg-slate-100 p-1 rounded-xl">
               {(Object.keys(PLATFORM_META) as Platform[])
-                .filter(p => selectedPlatforms.includes(p))
-                .map(p => {
-                  const meta = PLATFORM_META[p];
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setActivePlatform(p)}
-                      className={cn(
-                        "h-7 px-3 rounded-md text-xs font-medium transition-colors",
-                        activePlatform === p
-                          ? `${meta.bg} ${meta.text}`
-                          : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {meta.name}
-                    </button>
-                  );
-                })}
+                .filter((p) => selectedPlatforms.includes(p))
+                .map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setActivePlatform(p)}
+                    className={cn(
+                      "px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all",
+                      activePlatform === p
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-slate-400",
+                    )}
+                  >
+                    {PLATFORM_META[p].name}
+                  </button>
+                ))}
             </div>
           </div>
 
-          {/* Preview card */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-            <div className="max-w-lg mx-auto w-full bg-card border border-border rounded-2xl shadow-sm p-5 flex flex-col gap-4">
-              {/* Profile row */}
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                  {projectInfo?.service_name.charAt(0) ?? "A"}
+          <div className="flex-1 overflow-y-auto p-10 flex flex-col items-center">
+            <motion.div
+              className="w-full max-w-lg bg-white border border-slate-100 rounded-[32px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.06)] overflow-hidden"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+            >
+              <div className="p-8 flex flex-col gap-5">
+                <div className="flex items-center gap-3.5 mb-2.5">
+                  <div className="w-11 h-11 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-[16px]">
+                    {projectInfo?.service_name.charAt(0)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[16px] font-bold text-slate-900">
+                      @
+                      {projectInfo?.service_name
+                        .toLowerCase()
+                        .replace(/\s/g, "")}
+                    </p>
+                    <p className="text-[13px] font-medium text-slate-400 uppercase tracking-wider">
+                      {activePlatform}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-slate-50 text-slate-400 border border-slate-100">
+                    AI ASSISTED
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">
-                    @{(projectInfo?.service_name ?? "app").toLowerCase().replace(/\s/g, "")}_app
-                  </p>
-                  <p className="text-xs text-muted-foreground">{pm.name}</p>
+
+                <textarea
+                  value={editHook}
+                  onChange={(e) => setEditHook(e.target.value)}
+                  className="w-full text-[20px] font-extrabold leading-snug text-slate-900 bg-transparent border-none outline-none resize-none placeholder:text-slate-200"
+                  rows={2}
+                  placeholder="훅 문구를 입력하세요..."
+                />
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full text-[15px] font-medium text-slate-700 leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-slate-200"
+                  rows={7}
+                  placeholder="본문 내용을 입력하세요..."
+                />
+
+                <div className="aspect-[1.91/1] w-full rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-2.5">
+                  <ImageIcon className="w-7 h-7 text-slate-200" />
+                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">
+                    Media Placeholder
+                  </span>
                 </div>
-                <span className={cn("ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full", pm.bg, pm.text)}>
-                  AI
-                </span>
-              </div>
 
-              {/* Hook (editable) */}
-              <textarea
-                value={editHook}
-                onChange={e => setEditHook(e.target.value)}
-                className="w-full text-sm font-semibold leading-snug bg-transparent border-none outline-none resize-none"
-                rows={2}
-                placeholder="훅 문구를 입력하거나 생성하기를 눌러보세요..."
-              />
-
-              {/* Content (editable) */}
-              <textarea
-                value={editContent}
-                onChange={e => setEditContent(e.target.value)}
-                className="w-full text-sm leading-relaxed bg-transparent border-none outline-none resize-none text-muted-foreground"
-                rows={6}
-                placeholder="본문을 입력하거나 생성하기를 눌러보세요..."
-              />
-
-              {/* Image placeholder */}
-              <div className="w-full h-36 rounded-xl bg-muted flex items-center justify-center">
-                <span className="text-xs text-muted-foreground/60">hero shot · 1280×630</span>
-              </div>
-
-              {/* Hashtags */}
-              {editHashtags.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {editHashtags.map(tag => (
-                    <span key={tag} className="text-xs text-primary font-medium">{tag}</span>
+                <div className="flex flex-wrap gap-2.5">
+                  {editHashtags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[14px] font-bold text-slate-400"
+                    >
+                      #{tag.replace("#", "")}
+                    </span>
                   ))}
                 </div>
-              )}
 
-              {/* Link */}
-              {projectInfo?.site_url && (
-                <p className="text-xs text-muted-foreground">
-                  ↗ {projectInfo.site_url.replace("https://", "")}
-                </p>
-              )}
-
-              {/* Char count */}
-              <p className={cn(
-                "text-[11px] text-right",
-                charCount > charLimit ? "text-red-500 font-medium" : "text-muted-foreground"
-              )}>
-                {charCount} / {charLimit}자
-              </p>
-            </div>
-
-            <p className="text-center text-xs text-muted-foreground/60">
-              직접 수정 — 위에서 바로 글을 수정할 수 있습니다.
+                <div className="pt-5 border-t border-slate-50 flex items-center justify-between">
+                  <p className="text-[13px] font-semibold text-slate-400 underline underline-offset-4">
+                    ↗ {projectInfo?.site_url.replace("https://", "")}
+                  </p>
+                  <p
+                    className={cn(
+                      "text-[11px] font-bold",
+                      charCount > pm.maxChars
+                        ? "text-rose-500"
+                        : "text-slate-300",
+                    )}
+                  >
+                    {charCount} / {pm.maxChars}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+            <p className="mt-6 text-[12px] font-semibold text-slate-300 uppercase tracking-widest">
+              Direct Edit Mode
             </p>
           </div>
 
-          {/* Action bar */}
-          <div className="border-t border-border px-6 py-4 flex items-center gap-3 bg-card shrink-0">
-            <div className="flex gap-2 mr-auto">
-              {(["draft", "scheduled", "published"] as PromotionStatus[]).map(s => (
-                <button
-                  key={s}
-                  onClick={() => setEditStatus(s)}
-                  className={cn(
-                    "h-7 px-3 rounded-full text-xs font-medium transition-colors",
-                    editStatus === s
-                      ? `${STATUS_META[s].bg} ${STATUS_META[s].text}`
-                      : "bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {STATUS_META[s].label}
-                </button>
-              ))}
+          {/* Bottom Bar */}
+          <div className="px-8 py-5 border-t border-slate-50 bg-white flex items-center justify-between shrink-0">
+            <div className="flex gap-2">
+              {(["draft", "scheduled", "published"] as PromotionStatus[]).map(
+                (s) => (
+                  <button
+                    key={s}
+                    onClick={() => setEditStatus(s)}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-[12px] font-bold transition-all",
+                      editStatus === s
+                        ? `${STATUS_META[s].bg} ${STATUS_META[s].text}`
+                        : "bg-slate-50 text-slate-400 hover:bg-slate-100",
+                    )}
+                  >
+                    {STATUS_META[s].label}
+                  </button>
+                ),
+              )}
             </div>
-            <button
-              onClick={() => { setEditStatus("scheduled"); handleSave(); }}
-              className="h-8 px-4 rounded-lg bg-muted text-sm font-medium hover:bg-muted/70 transition-colors"
-            >
-              예약하기
-            </button>
-            <button
-              onClick={() => { setEditStatus("published"); handleSave(); }}
-              className="flex items-center gap-1.5 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              <Send className="w-3.5 h-3.5" />
-              지금 발행
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setEditStatus("scheduled");
+                  handleSave();
+                }}
+                className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                예약하기
+              </button>
+              <button
+                onClick={() => {
+                  setEditStatus("published");
+                  handleSave();
+                }}
+                className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+              >
+                <Send className="w-4 h-4" /> 지금 발행
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* ── 템플릿 모달 창 ── */}
+      <AnimatePresence>
+        {showTemplateModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
+              onClick={() => setShowTemplateModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+              className="relative z-10 w-full max-w-4xl bg-white rounded-[24px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.12)] border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden"
+            >
+              <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between shrink-0 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-50 rounded-xl">
+                    <Bookmark className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-[18px] font-bold text-slate-800">
+                      효과적인 홍보 템플릿
+                    </h2>
+                    <p className="text-[12px] font-medium text-slate-400 mt-0.5">
+                      원하는 템플릿을 클릭하면 자동으로 내용이 입력됩니다.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowTemplateModal(false)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {PROMO_TEMPLATES.map((tpl) => (
+                    <div
+                      key={tpl.name}
+                      className="bg-white rounded-[20px] p-5 border border-slate-100 shadow-sm flex flex-col gap-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
+                      onClick={() => {
+                        setMessage(tpl.content);
+                        setShowTemplateModal(false);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-50 border border-slate-100 text-slate-500 uppercase tracking-widest">
+                          {tpl.tag}
+                        </span>
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={cn(
+                                "w-2.5 h-2.5",
+                                i < tpl.score
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-slate-100",
+                              )}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-bold text-slate-800 mb-0.5 group-hover:text-blue-600 transition-colors">
+                          {tpl.name}
+                        </p>
+                        <p className="text-[11px] font-semibold text-slate-400">
+                          {tpl.platform}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50/50 rounded-xl p-3.5 border border-slate-50 text-[11px] text-slate-500 leading-relaxed font-mono whitespace-pre-wrap line-clamp-[8]">
+                        {tpl.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-// Small helper component
 function Field({
   label,
   children,
   className,
+  action,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
+  action?: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+    <div className={cn("flex flex-col gap-2.5", className)}>
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          {label}
+        </label>
+        {action}
+      </div>
       {children}
     </div>
   );
