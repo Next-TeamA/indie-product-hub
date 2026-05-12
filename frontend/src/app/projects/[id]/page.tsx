@@ -257,8 +257,8 @@ const SERVICES = [
 
 const SERVICE_CFG = {
   healthy: { dot: "bg-[#5FCC7D]", label: "OK" },
-  degraded: { dot: "bg-[#D97B78] animate-pulse", label: "Slow" },
-  down: { dot: "bg-[#D97B78] animate-pulse", label: "Down" },
+  degraded: { dot: "bg-[#D97B78]", label: "Slow" },
+  down: { dot: "bg-[#D97B78]", label: "Down" },
 };
 
 const DEPLOYS = [
@@ -318,7 +318,7 @@ export default function DashboardPage() {
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
               style={{ background: "rgba(217,123,120,0.12)", color: COLORS.negative }}
             >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: COLORS.negative }} />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: COLORS.negative }} />
               {ISSUES.filter(i => i.severity === "critical").length} critical
             </Link>
           )}

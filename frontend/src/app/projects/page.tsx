@@ -132,7 +132,7 @@ function Skeleton() {
   return (
     <div className="grid gap-1.5 grid-cols-2 lg:grid-cols-3">
       {[0, 1, 2].map(i => (
-        <div key={i} className="rounded-3xl bg-card p-5 animate-pulse">
+        <div key={i} className="rounded-3xl bg-card p-5">
           <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-secondary" /><div className="space-y-2 flex-1"><div className="h-4 w-24 bg-secondary rounded-lg" /><div className="h-3 w-36 bg-secondary rounded-lg" /></div></div>
           <div className="h-7 bg-secondary rounded-lg mb-3 w-3/4" />
           <div className="flex justify-between"><div className="h-3 w-14 bg-secondary rounded-lg" /><div className="h-3 w-10 bg-secondary rounded-lg" /></div>

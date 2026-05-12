@@ -106,7 +106,7 @@ export default function IssuesPage() {
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
               style={{ background: "rgba(217,123,120,0.12)", color: COLORS.negative }}
             >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: COLORS.negative }} />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: COLORS.negative }} />
               {criticalCount} critical
             </span>
           )}

@@ -22,6 +22,7 @@ import Link from "next/link";
 import { setLocale } from "@/i18n/actions";
 import { Logo } from "@/components/logo";
 import { createClient } from "@/lib/supabase/client";
+import { listAccounts, connectAccount, disconnectAccount, type ConnectedAccount } from "@/lib/api/accounts";
 
 const EASE_OUT = [0.0, 0.0, 0.2, 1.0] as const;
 
@@ -50,6 +51,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -62,6 +64,7 @@ export default function SettingsPage() {
         });
       }
     });
+    listAccounts().then(setAccounts).catch(() => {});
   }, []);
 
   function handleLocaleChange(newLocale: string) {
@@ -209,19 +212,47 @@ export default function SettingsPage() {
             </div>
             <div className="flex flex-col gap-2">
               {[
-                { name: "X (Twitter)", connected: false },
-                { name: "Threads", connected: false },
-                { name: "GitHub", connected: false },
-                { name: "Vercel", connected: false },
-                { name: "Railway", connected: false },
-              ].map((svc) => (
-                <div key={svc.name} className="flex items-center justify-between px-4 py-3 rounded-xl bg-secondary">
-                  <span className="text-sm">{svc.name}</span>
-                  <button className="text-xs text-primary font-medium hover:underline cursor-pointer">
-                    Connect
-                  </button>
-                </div>
-              ))}
+                { id: "x", name: "X (Twitter)" },
+                { id: "threads", name: "Threads" },
+                { id: "github", name: "GitHub" },
+                { id: "vercel", name: "Vercel" },
+                { id: "railway", name: "Railway" },
+              ].map((svc) => {
+                const connected = accounts.find(a => a.provider === svc.id);
+                return (
+                  <div key={svc.id} className="flex items-center justify-between px-4 py-3 rounded-xl bg-secondary">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm">{svc.name}</span>
+                      {connected && (
+                        <span className="text-xs text-muted-foreground">@{connected.provider_username}</span>
+                      )}
+                    </div>
+                    {connected ? (
+                      <button
+                        onClick={async () => {
+                          await disconnectAccount(connected.id);
+                          setAccounts(prev => prev.filter(a => a.id !== connected.id));
+                        }}
+                        className="text-xs text-muted-foreground hover:text-destructive cursor-pointer"
+                      >
+                        Disconnect
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { auth_url } = await connectAccount(svc.id);
+                            window.location.href = auth_url;
+                          } catch {}
+                        }}
+                        className="text-xs text-primary font-medium hover:underline cursor-pointer"
+                      >
+                        Connect
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
 
