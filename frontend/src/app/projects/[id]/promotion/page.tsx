@@ -1,204 +1,210 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Plus, Send, Sparkles, Clock, Check, X as XIcon } from "lucide-react";
-import { useParams } from "next/navigation";
-import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { motion } from "motion/react";
+import {
+  Send,
+  Paperclip,
+  Image,
+  Video,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
-const EASE_OUT = [0.0, 0.0, 0.2, 1.0] as const;
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+
 const fadeUp = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT } },
-};
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
-};
-
-const COLORS = {
-  primary: "#EFFF00",
-  secondary: "#6B7D8F",
-  positive: "#5FCC7D",
-  negative: "#D97B78",
+  hidden: { opacity: 0, y: 16, filter: "blur(4px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.45, ease: EASE_OUT_EXPO },
+  },
 };
 
-const PLATFORMS = [
-  { id: "x", label: "X", color: COLORS.secondary },
-  { id: "threads", label: "Threads", color: COLORS.primary },
-  { id: "bluesky", label: "Bluesky", color: "#5A6B7B" },
-] as const;
-
-const STATUS_CFG = {
-  draft: { label: "Draft", color: COLORS.secondary },
-  scheduled: { label: "Scheduled", color: COLORS.primary },
-  published: { label: "Published", color: COLORS.positive },
-  failed: { label: "Failed", color: COLORS.negative },
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
 };
 
-// Mock posts (will be replaced with real API in Phase 4)
-const MOCK_POSTS = [
+const INITIAL_MESSAGES: Message[] = [
   {
     id: "1",
-    platform: "threads",
-    hook: "Just shipped the biggest update to TaskFlow yet",
-    content: "After 3 weeks of heads-down building, v2.0 is live. New dashboard, real-time alerts, and AI-powered insights.",
-    hashtags: ["indiedev", "buildinpublic", "saas"],
-    status: "published" as const,
-    published_at: "2026-05-10T10:00:00Z",
-  },
-  {
-    id: "2",
-    platform: "x",
-    hook: "The indie hacker stack I wish I had 2 years ago",
-    content: "Deploy monitoring + market insights + AI promotion in one dashboard. No more tab-switching between 10 tools.",
-    hashtags: ["indiehacker", "devtools"],
-    status: "scheduled" as const,
-    scheduled_at: "2026-05-14T14:00:00Z",
-  },
-  {
-    id: "3",
-    platform: "bluesky",
-    hook: "Building in public update #12",
-    content: "This week: connected X and Threads APIs, added scheduled posting. Next: market intelligence with Gemini.",
-    hashtags: ["buildinpublic"],
-    status: "draft" as const,
+    role: "assistant",
+    content:
+      "어떤 홍보 콘텐츠를 만들어볼까요? 레퍼런스 링크나 이미지를 공유하면 더 정확한 결과물을 만들 수 있어요.",
   },
 ];
 
-export default function PromotionPage() {
-  const { id } = useParams<{ id: string }>();
-  const t = useTranslations("promotion");
-  const [filter, setFilter] = useState<string>("all");
+const TEMPLATES = [
+  { label: "Threads 런칭 포스트", emoji: "TH" },
+  { label: "Bluesky 소개글", emoji: "BS" },
+  { label: "Mastodon 공유 글", emoji: "MT" },
+  { label: "블로그 포스트 초안", emoji: "B" },
+];
 
-  const filtered = filter === "all" ? MOCK_POSTS : MOCK_POSTS.filter(p => p.status === filter);
+export default function PromotionPage() {
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+
+    // Mock AI 응답
+    setTimeout(() => {
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `"${input}"에 맞는 홍보 콘텐츠를 준비하고 있어요. 잠시만 기다려주세요...`,
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    }, 800);
+  };
 
   return (
-    <div className="w-full">
-      <motion.div variants={stagger} initial="hidden" animate="show" className="flex flex-col gap-1.5">
+    <div className="flex flex-col h-dvh">
+      {/* 헤더 */}
+      <motion.div
+        className="border-b border-border px-8 py-5"
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
+      >
+        <p className="h-eyebrow mb-1">PROMOTION</p>
+        <h1 className="text-2xl font-bold tracking-tight">홍보</h1>
+      </motion.div>
 
-        {/* Header */}
-        <motion.div variants={fadeUp} className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-          <div className="flex items-center gap-2">
-            <button className="btn-secondary flex items-center gap-2 text-sm cursor-pointer">
-              <Sparkles className="w-4 h-4" />
-              {t("generate")}
-            </button>
-            <Link
-              href={`/projects/${id}/promotion/post/new`}
-              className="btn-primary flex items-center gap-2 text-sm"
+      <div className="flex-1 flex overflow-hidden">
+        {/* 채팅 영역 */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            <motion.div
+              className="max-w-2xl mx-auto flex flex-col gap-4"
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.08 } },
+              }}
             >
-              <Plus className="w-4 h-4" />
-              {t("newPost")}
-            </Link>
+              {messages.map((msg) => (
+                <motion.div
+                  key={msg.id}
+                  variants={fadeUp}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-muted rounded-bl-md"
+                    }`}
+                  >
+                    {msg.role === "assistant" && (
+                      <Sparkles className="w-3.5 h-3.5 inline-block mr-1.5 opacity-50" />
+                    )}
+                    {msg.content}
+                  </div>
+                </motion.div>
+              ))}
+              <div ref={bottomRef} />
+            </motion.div>
           </div>
-        </motion.div>
 
-        {/* Stats row */}
-        <motion.div variants={fadeUp} className="grid grid-cols-4 gap-1.5">
-          {[
-            { label: "Total Posts", value: MOCK_POSTS.length, sub: "all time" },
-            { label: "Published", value: MOCK_POSTS.filter(p => p.status === "published").length, sub: "live now" },
-            { label: "Scheduled", value: MOCK_POSTS.filter(p => p.status === "scheduled").length, sub: "upcoming" },
-            { label: "Drafts", value: MOCK_POSTS.filter(p => p.status === "draft").length, sub: "in progress" },
-          ].map(s => (
-            <div key={s.label} className="rounded-3xl bg-card p-5">
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className="text-2xl font-bold tabular-nums mt-1">{s.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.sub}</p>
+          {/* 입력 영역 */}
+          <div className="border-t border-border px-8 py-4">
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-end gap-3">
+                <div className="flex-1 relative">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder="홍보 콘텐츠에 대해 설명해주세요..."
+                    rows={1}
+                    className="input-hero w-full h-auto! min-h-13 py-3.5 pr-24 resize-none"
+                  />
+                  <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
+                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors cursor-pointer">
+                      <Image className="w-4 h-4" />
+                    </button>
+                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors cursor-pointer">
+                      <Video className="w-4 h-4" />
+                    </button>
+                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors cursor-pointer">
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <motion.button
+                  onClick={handleSend}
+                  className="w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 cursor-pointer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Send className="w-4.5 h-4.5" />
+                </motion.button>
+              </div>
             </div>
-          ))}
-        </motion.div>
+          </div>
+        </div>
 
-        {/* Filter + posts */}
-        <motion.div variants={fadeUp} className="rounded-3xl bg-card p-5">
-          {/* Filter tabs */}
-          <div className="flex items-center gap-0.5 p-0.5 bg-secondary/30 rounded-xl w-fit mb-5">
-            {[
-              { id: "all", label: "All" },
-              { id: "published", label: "Published" },
-              { id: "scheduled", label: "Scheduled" },
-              { id: "draft", label: "Drafts" },
-            ].map(f => (
+        {/* 템플릿 사이드 패널 */}
+        <motion.div
+          className="w-64 p-5 hidden lg:block"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.45, ease: EASE_OUT_EXPO }}
+        >
+          <h3 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wide">
+            빠른 템플릿
+          </h3>
+          <div className="flex flex-col gap-2">
+            {TEMPLATES.map((t) => (
               <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  filter === f.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                }`}
+                key={t.label}
+                onClick={() => setInput(`${t.label} 작성해줘`)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl
+                           text-sm text-left hover:bg-muted transition-colors cursor-pointer"
               >
-                {f.label}
+                <span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-[10px] font-bold shrink-0">
+                  {t.emoji}
+                </span>
+                {t.label}
               </button>
             ))}
           </div>
 
-          {/* Post list */}
-          <div className="flex flex-col gap-1.5">
-            {filtered.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-sm text-muted-foreground">No posts found</p>
-              </div>
-            ) : (
-              filtered.map((post, i) => {
-                const platform = PLATFORMS.find(p => p.id === post.platform);
-                const status = STATUS_CFG[post.status];
-                return (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04, duration: 0.3, ease: EASE_OUT }}
-                  >
-                    <Link
-                      href={`/projects/${id}/promotion/post/${post.id}`}
-                      className="flex items-start gap-4 px-4 py-4 rounded-2xl hover:bg-secondary/30 transition-colors group"
-                    >
-                      {/* Platform badge */}
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
-                        style={{ background: `${platform?.color}15`, color: platform?.color }}
-                      >
-                        {platform?.label?.[0]}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-snug">{post.hook}</p>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{post.content}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {post.hashtags.slice(0, 3).map(tag => (
-                            <span key={tag} className="text-[10px] text-muted-foreground">#{tag}</span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Status */}
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: status.color }} />
-                          <span className="text-xs text-muted-foreground">{status.label}</span>
-                        </div>
-                        {post.published_at && (
-                          <span className="text-[10px] text-muted-foreground tabular-nums">
-                            {new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </span>
-                        )}
-                        {post.scheduled_at && (
-                          <span className="text-[10px] tabular-nums" style={{ color: COLORS.primary }}>
-                            {new Date(post.scheduled_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                  </motion.div>
-                );
-              })
-            )}
+          <div className="mt-6 pt-5">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+              레퍼런스
+            </h3>
+            <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+              <ExternalLink className="w-3.5 h-3.5" />
+              레퍼런스 추가하기
+            </button>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 }

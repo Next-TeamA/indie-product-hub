@@ -2,219 +2,182 @@
 
 import { motion } from "motion/react";
 import {
-  AlertTriangle, Clock, CheckCircle2, XCircle,
-  Server, Shield, Zap, Database, Globe,
-  RefreshCw, Loader2,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Server,
+  Shield,
+  Zap,
 } from "lucide-react";
-import { useParams } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { useIssues } from "@/hooks/use-issues";
 
-const EASE_OUT = [0.0, 0.0, 0.2, 1.0] as const;
-const fadeUp = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT } },
-};
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+
 const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
 };
 
-const COLORS = {
-  positive: "#5FCC7D",
-  negative: "#D97B78",
-  warning: "#D4A84B",
-  secondary: "#6B7D8F",
-  neutral: "#4A4A4A",
+const fadeUp = {
+  hidden: { opacity: 0, y: 16, filter: "blur(4px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.45, ease: EASE_OUT_EXPO },
+  },
 };
 
-type IssueSeverity = "critical" | "warning" | "info";
-type IssueStatus = "open" | "resolved" | "investigating";
-
-const SEVERITY_COLOR: Record<IssueSeverity, string> = {
-  critical: COLORS.negative,
-  warning: COLORS.warning,
-  info: COLORS.secondary,
+type Issue = {
+  id: string;
+  title: string;
+  severity: "critical" | "warning" | "info";
+  category: string;
+  icon: React.ElementType;
+  time: string;
+  status: "open" | "resolved" | "investigating";
 };
 
-const STATUS_ICON: Record<IssueStatus, React.ElementType> = {
+const MOCK_ISSUES: Issue[] = [
+  {
+    id: "1",
+    title: "SSL 인증서 만료 예정 (5/15)",
+    severity: "critical",
+    category: "보안",
+    icon: Shield,
+    time: "2시간 전",
+    status: "open",
+  },
+  {
+    id: "2",
+    title: "API 응답 시간 평균 2.3s (기준: 1s 이하)",
+    severity: "warning",
+    category: "성능",
+    icon: Zap,
+    time: "6시간 전",
+    status: "investigating",
+  },
+  {
+    id: "3",
+    title: "배포 실패: main@a3f2d1c (build timeout)",
+    severity: "warning",
+    category: "배포",
+    icon: Server,
+    time: "12시간 전",
+    status: "resolved",
+  },
+  {
+    id: "4",
+    title: "Error rate 증가: /api/checkout (0.3% → 1.2%)",
+    severity: "critical",
+    category: "에러",
+    icon: AlertTriangle,
+    time: "1일 전",
+    status: "open",
+  },
+];
+
+const statusIcon = {
   open: XCircle,
   resolved: CheckCircle2,
   investigating: Clock,
 };
 
-const STATUS_LABEL: Record<IssueStatus, string> = {
-  open: "Open",
-  resolved: "Resolved",
-  investigating: "Investigating",
-};
-
-const CATEGORY_ICON: Record<string, React.ElementType> = {
-  security: Shield,
-  performance: Zap,
-  deployment: Server,
-  error: AlertTriangle,
-  general: AlertTriangle,
-};
-
-const MOCK_DEPLOYS = [
-  { commit: "f7a3b2e", msg: "feat: payment UX improvement", time: "14m", status: "running" as const },
-  { commit: "c9e1d4a", msg: "fix: session expiry bug", time: "3h", status: "success" as const },
-  { commit: "a3f2d1c", msg: "refactor: image optimization", time: "12h", status: "failed" as const },
-  { commit: "b8c5f9d", msg: "chore: dependency update", time: "1d", status: "success" as const },
-  { commit: "e2a7c3f", msg: "feat: dashboard chart", time: "2d", status: "success" as const },
-];
-
-const DEPLOY_CFG = {
-  success: { text: "text-[#5FCC7D]", Icon: CheckCircle2 },
-  failed: { text: "text-[#D97B78]", Icon: XCircle },
-  running: { text: "text-[#6B7D8F]", Icon: RefreshCw },
-  cancelled: { text: "text-[#4A4A4A]", Icon: XCircle },
-};
-
-const SERVICES = [
-  { name: "API", icon: Server, status: "degraded" as const, latency: "2.3s" },
-  { name: "Database", icon: Database, status: "healthy" as const, latency: "12ms" },
-  { name: "CDN", icon: Globe, status: "healthy" as const, latency: "48ms" },
-  { name: "Auth", icon: Shield, status: "healthy" as const, latency: "130ms" },
-];
-
-const SERVICE_CFG = {
-  healthy: { color: COLORS.positive, label: "OK" },
-  degraded: { color: COLORS.warning, label: "Slow" },
-  down: { color: COLORS.negative, label: "Down" },
+const statusLabel = {
+  open: "미해결",
+  resolved: "해결됨",
+  investigating: "조사 중",
 };
 
 export default function IssuesPage() {
-  const { id: projectId } = useParams<{ id: string }>();
-  const { issues, isLoading } = useIssues(projectId);
-  const t = useTranslations("issues");
-
-  const criticalCount = issues.filter(i => i.severity === "critical" && i.status !== "resolved").length;
-  const warningCount = issues.filter(i => i.severity === "warning" && i.status !== "resolved").length;
-  const resolvedCount = issues.filter(i => i.status === "resolved").length;
+  const openCount = MOCK_ISSUES.filter((i) => i.status !== "resolved").length;
 
   return (
-    <div className="w-full">
-      <motion.div variants={stagger} initial="hidden" animate="show" className="flex flex-col gap-1.5">
-
-        {/* Header */}
-        <motion.div variants={fadeUp} className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-          {criticalCount > 0 && (
-            <span
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
-              style={{ background: "rgba(217,123,120,0.12)", color: COLORS.negative }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: COLORS.negative }} />
-              {criticalCount} critical
+    <div className="p-8 w-full max-w-4xl">
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+        className="flex flex-col gap-10"
+      >
+        <motion.div variants={fadeUp} className="flex items-center justify-between">
+          <div>
+            <p className="h-eyebrow mb-1">ISSUES</p>
+            <h1 className="text-2xl font-bold tracking-tight">운영 이슈</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              미해결 {openCount}건
             </span>
-          )}
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          </div>
         </motion.div>
 
-        {/* Stats */}
-        <motion.div variants={fadeUp} className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-0 divide-x divide-border">
           {[
-            { label: t("critical"), count: criticalCount, color: COLORS.negative, sub: t("needsAction") },
-            { label: t("warning"), count: warningCount, color: COLORS.warning, sub: t("monitoring") },
-            { label: t("resolved"), count: resolvedCount, color: COLORS.positive, sub: t("allResolved") },
-          ].map(s => (
-            <div key={s.label} className="rounded-3xl bg-card p-5">
-              <p className="text-xs text-muted-foreground mb-2">{s.label}</p>
-              <p className="text-3xl font-bold tabular-nums" style={{ color: s.color }}>{s.count}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.sub}</p>
-            </div>
+            {
+              label: "Critical",
+              count: MOCK_ISSUES.filter((i) => i.severity === "critical" && i.status !== "resolved").length,
+              color: "text-red-600 dark:text-red-400",
+            },
+            {
+              label: "Warning",
+              count: MOCK_ISSUES.filter((i) => i.severity === "warning" && i.status !== "resolved").length,
+              color: "text-amber-600 dark:text-amber-400",
+            },
+            {
+              label: "Resolved",
+              count: MOCK_ISSUES.filter((i) => i.status === "resolved").length,
+              color: "text-emerald-600 dark:text-emerald-400",
+            },
+          ].map((s) => (
+            <motion.div key={s.label} variants={fadeUp} className="text-center py-4">
+              <p className={`text-3xl font-bold ${s.color}`}>{s.count}</p>
+              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+            </motion.div>
           ))}
-        </motion.div>
+        </div>
 
-        {/* Services */}
-        <motion.div variants={fadeUp} className="rounded-3xl bg-card p-5">
-          <p className="text-sm font-semibold mb-4">{t("serviceStatus")}</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {SERVICES.map(svc => {
-              const cfg = SERVICE_CFG[svc.status];
+        <hr className="border-border" />
+
+        <motion.div variants={fadeUp}>
+          <div className="divide-y divide-border">
+            {MOCK_ISSUES.map((issue) => {
+              const StatusIcon = statusIcon[issue.status];
               return (
-                <div key={svc.name} className="rounded-2xl bg-secondary/30 p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <svc.icon className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.color }} />
-                      <span className="text-xs text-muted-foreground">{cfg.label}</span>
+                <div
+                  key={issue.id}
+                  className="flex items-center gap-4 py-4 cursor-pointer hover:bg-muted/40 transition-colors -mx-2 px-2 rounded-lg"
+                >
+                  <issue.icon className="w-4 h-4 text-muted-foreground shrink-0" />
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{issue.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-muted-foreground">{issue.category}</span>
+                      <span className="text-xs text-muted-foreground">{issue.time}</span>
                     </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">{svc.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{svc.latency}</p>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <StatusIcon
+                      className={`w-3.5 h-3.5 ${
+                        issue.status === "resolved"
+                          ? "text-emerald-500"
+                          : issue.status === "investigating"
+                            ? "text-amber-500"
+                            : "text-red-500"
+                      }`}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {statusLabel[issue.status]}
+                    </span>
                   </div>
                 </div>
               );
             })}
           </div>
         </motion.div>
-
-        {/* Deploys + Issues */}
-        <div className="grid grid-cols-5 gap-1.5">
-
-          {/* Deploy log */}
-          <motion.div variants={fadeUp} className="col-span-3 rounded-3xl bg-card p-5">
-            <p className="text-sm font-semibold mb-4">{t("deployLog")}</p>
-            <div className="flex flex-col gap-1">
-              {MOCK_DEPLOYS.map(d => {
-                const cfg = DEPLOY_CFG[d.status];
-                return (
-                  <div key={d.commit} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/30 transition-colors">
-                    <span className="font-mono text-[11px] text-muted-foreground w-16 shrink-0">{d.commit}</span>
-                    <span className="text-xs flex-1 truncate">{d.msg}</span>
-                    <span className="text-xs text-muted-foreground tabular-nums w-8 text-right shrink-0">{d.time}</span>
-                    <cfg.Icon className={`w-3.5 h-3.5 ${cfg.text} ${d.status === "running" ? "animate-spin" : ""} shrink-0`} />
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-
-          {/* Issue list */}
-          <motion.div variants={fadeUp} className="col-span-2 rounded-3xl bg-card p-5">
-            <p className="text-sm font-semibold mb-4">{t("issueList")}</p>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : issues.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-xs text-muted-foreground">{t("noIssues")}</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {issues.map(issue => {
-                  const sev = (issue.severity as IssueSeverity) || "info";
-                  const st = (issue.status as IssueStatus) || "open";
-                  const StatusIcon = STATUS_ICON[st] ?? XCircle;
-                  const CategoryIcon = CATEGORY_ICON[issue.category] ?? AlertTriangle;
-                  const color = SEVERITY_COLOR[sev] ?? COLORS.secondary;
-
-                  return (
-                    <div
-                      key={issue.id}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/30 transition-colors"
-                    >
-                      <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ background: color }} />
-                      <CategoryIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{issue.title}</p>
-                        <span className="text-[10px] text-muted-foreground">{issue.category}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <StatusIcon className="w-3 h-3" style={{ color }} />
-                        <span className="text-[10px] text-muted-foreground">{STATUS_LABEL[st]}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
-        </div>
       </motion.div>
     </div>
   );

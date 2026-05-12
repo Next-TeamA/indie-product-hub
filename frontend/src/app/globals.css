@@ -4,11 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ================================================================
-   Indie Product Hub -- Acid Yellow x Dark Gray Design System
-   Dark-first. Single accent. Zero dividers. Tight gaps.
-   ================================================================ */
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -44,212 +39,97 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 1.75rem;
-  --radius-4xl: 2rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ================================================================
-   DARK MODE (Default / Primary)
-   Canvas: #1C1C1C | Accent: #EFFF00 (Acid Yellow)
-   ================================================================ */
 :root {
-  /* Canvas & Surfaces */
-  --background: #1C1C1C;
-  --foreground: #F0F0F0;
-  --card: #252525;
-  --card-foreground: #F0F0F0;
-  --popover: #252525;
-  --popover-foreground: #F0F0F0;
-
-  /* Accent: Acid Yellow */
-  --primary: #EFFF00;
-  --primary-foreground: #1C1C1C;
-
-  /* Secondary surfaces */
-  --secondary: #2E2E2E;
-  --secondary-foreground: #F0F0F0;
-  --muted: #2E2E2E;
-  --muted-foreground: #8A8A8A;
-  --accent: #383838;
-  --accent-foreground: #F0F0F0;
-
-  /* Destructive */
-  --destructive: #F87171;
-
-  /* Borders -- subtle, used sparingly */
-  --border: #333333;
-  --input: #2E2E2E;
-  --ring: rgba(239, 255, 0, 0.3);
-
-  /* Charts -- yellow scale */
-  --chart-1: #EFFF00;
-  --chart-2: #D4E300;
-  --chart-3: #34D399;
-  --chart-4: #60A5FA;
-  --chart-5: #A78BFA;
-
-  /* Radius -- Apple-level generous rounding */
-  --radius: 1.25rem;
-
-  /* Sidebar */
-  --sidebar: #252525;
-  --sidebar-foreground: #A0A0A0;
-  --sidebar-primary: #EFFF00;
-  --sidebar-primary-foreground: #1C1C1C;
-  --sidebar-accent: rgba(239, 255, 0, 0.08);
-  --sidebar-accent-foreground: #F0F0F0;
-  --sidebar-border: transparent;
-  --sidebar-ring: rgba(239, 255, 0, 0.3);
-
-  color-scheme: dark;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* ================================================================
-   LIGHT MODE (Secondary)
-   Canvas: #FAFAFA | Accent: #EFFF00 (on bg only, never as text)
-   ================================================================ */
-.light {
-  --background: #FAFAFA;
-  --foreground: #1C1C1C;
-  --card: #FFFFFF;
-  --card-foreground: #1C1C1C;
-  --popover: #FFFFFF;
-  --popover-foreground: #1C1C1C;
-
-  --primary: #EFFF00;
-  --primary-foreground: #1C1C1C;
-
-  --secondary: #F5F5F5;
-  --secondary-foreground: #1C1C1C;
-  --muted: #F0F0F0;
-  --muted-foreground: #6B6B6B;
-  --accent: #EEEEEE;
-  --accent-foreground: #1C1C1C;
-
-  --destructive: #DC2626;
-
-  --border: #E5E5E5;
-  --input: #F5F5F5;
-  --ring: rgba(239, 255, 0, 0.4);
-
-  --chart-1: #EFFF00;
-  --chart-2: #D4E300;
-  --chart-3: #059669;
-  --chart-4: #2563EB;
-  --chart-5: #7C3AED;
-
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #525252;
-  --sidebar-primary: #EFFF00;
-  --sidebar-primary-foreground: #1C1C1C;
-  --sidebar-accent: rgba(239, 255, 0, 0.08);
-  --sidebar-accent-foreground: #1C1C1C;
-  --sidebar-border: transparent;
-  --sidebar-ring: rgba(239, 255, 0, 0.4);
-
-  color-scheme: light;
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* ================================================================
-   BASE LAYER
-   ================================================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  html {
-    @apply font-sans antialiased;
-    overscroll-behavior: none;
-  }
   body {
     @apply bg-background text-foreground;
-    overscroll-behavior: none;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-/* ================================================================
-   LOGO
-   Space Grotesk 700, wide letter-spacing, Acid Yellow dot accent
-   ================================================================ */
-.logo {
-  font-family: var(--font-logo), sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--foreground);
-}
-
-.logo-dot {
-  color: var(--primary);
-}
-
-/* ================================================================
-   TYPOGRAPHY
-   Strong size contrast: Metric 36px vs Caption 11px = 3.3:1
-   ================================================================ */
-.t-metric {
-  font-size: 36px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.h-display {
-  font-size: clamp(24px, 4vw, 32px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  word-break: keep-all;
-  text-wrap: balance;
-}
-
-.h-title {
-  font-size: clamp(18px, 3vw, 24px);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-  word-break: keep-all;
-}
-
-.h-heading {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.h-eyebrow {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-}
-
-.t-caption {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-}
-
-.text-lede {
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--muted-foreground);
-  max-width: 40ch;
-}
-
-/* ================================================================
-   ONBOARDING SHELL
-   ================================================================ */
+/* ===== Onboarding Shell ===== */
 .onboard-shell {
   position: fixed;
   inset: 0;
@@ -265,19 +145,26 @@
   inset: -40%;
   z-index: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(239, 255, 0, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 60% at 75% 60%, rgba(239, 255, 0, 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 70% 40% at 50% 80%, rgba(239, 255, 0, 0.03) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 50% at 20% 30%, oklch(0.65 0.18 250 / 0.14) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 75% 60%, oklch(0.60 0.15 320 / 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 40% at 50% 80%, oklch(0.70 0.12 180 / 0.08) 0%, transparent 70%);
   background-blend-mode: screen;
-  filter: blur(60px);
+  filter: blur(50px);
   animation: mesh-drift 40s ease-in-out infinite alternate;
+}
+
+.dark .onboard-mesh {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, oklch(0.45 0.20 250 / 0.20) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 75% 60%, oklch(0.40 0.18 320 / 0.16) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 40% at 50% 80%, oklch(0.50 0.14 180 / 0.12) 0%, transparent 70%);
 }
 
 .onboard-grain {
   position: fixed;
   inset: 0;
   z-index: 1;
-  opacity: 0.3;
+  opacity: 0.4;
   mix-blend-mode: overlay;
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg width='3' height='3' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1' height='1' fill='%23888'/%3E%3C/svg%3E");
@@ -291,74 +178,56 @@
   100% { transform: translate(1%, -1%) rotate(0.2deg); }
 }
 
-/* ================================================================
-   BUTTONS
-   ================================================================ */
-.btn-primary {
-  height: 40px;
-  padding: 0 20px;
-  border-radius: 12px;
+/* ===== Typography ===== */
+.h-display {
+  font-size: clamp(28px, 5vw, 56px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  word-break: keep-all;
+  text-wrap: balance;
+}
+
+.h-title {
+  font-size: clamp(22px, 3.5vw, 36px);
   font-weight: 600;
-  font-size: 14px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  transition: background 0.15s ease, transform 0.1s ease;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  word-break: keep-all;
 }
-.btn-primary:hover { background: #D4E300; }
-.btn-primary:active { transform: scale(0.98); }
 
-.btn-secondary {
-  height: 40px;
-  padding: 0 20px;
-  border-radius: 12px;
+.h-eyebrow {
+  font-size: 11px;
   font-weight: 500;
-  font-size: 14px;
-  background: var(--secondary);
-  color: var(--foreground);
-  transition: background 0.15s ease;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: oklch(from var(--foreground) l c h / 0.45);
 }
-.btn-secondary:hover { background: var(--accent); }
 
-.btn-ghost {
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-weight: 500;
-  font-size: 14px;
-  color: var(--muted-foreground);
-  transition: background 0.15s ease, color 0.15s ease;
+.text-lede {
+  font-size: 16px;
+  line-height: 1.6;
+  color: oklch(from var(--foreground) l c h / 0.65);
+  max-width: 40ch;
 }
-.btn-ghost:hover { background: var(--secondary); color: var(--foreground); }
 
-/* Onboarding hero button (pill shape) */
+/* ===== Onboarding Components ===== */
 .btn-hero {
   height: 48px;
   padding: 0 28px;
   border-radius: 999px;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 15px;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease;
 }
-.btn-hero:hover { transform: translateY(-1px); }
-.btn-hero:active { transform: translateY(0); }
 
-/* ================================================================
-   INPUTS
-   ================================================================ */
-.input-base {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  font-size: 14px;
-  background: var(--secondary);
-  color: var(--foreground);
-  border: none;
-  transition: box-shadow 0.15s ease;
+.btn-hero:hover {
+  transform: translateY(-1px);
 }
-.input-base::placeholder { color: var(--muted-foreground); }
-.input-base:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(239, 255, 0, 0.3);
+
+.btn-hero:active {
+  transform: translateY(0);
 }
 
 .input-hero {
@@ -366,55 +235,19 @@
   border-radius: 14px;
   font-size: 16px;
   padding: 0 18px;
-  background: rgba(37, 37, 37, 0.7);
+  background: oklch(from var(--background) l c h / 0.7);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: var(--foreground);
+  border: 1px solid oklch(from var(--foreground) l c h / 0.08);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
 .input-hero:focus {
   outline: none;
-  border-color: rgba(239, 255, 0, 0.3);
-  box-shadow: 0 0 0 3px rgba(239, 255, 0, 0.1);
+  border-color: oklch(from var(--foreground) l c h / 0.2);
+  box-shadow: 0 0 0 3px oklch(from var(--foreground) l c h / 0.06);
 }
 
-/* ================================================================
-   BADGES
-   ================================================================ */
-.badge-accent {
-  background: rgba(239, 255, 0, 0.15);
-  color: #EFFF00;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.badge-success {
-  background: rgba(52, 211, 153, 0.15);
-  color: #34D399;
-}
-
-.badge-warning {
-  background: rgba(251, 191, 36, 0.15);
-  color: #FBBF24;
-}
-
-.badge-error {
-  background: rgba(248, 113, 113, 0.15);
-  color: #F87171;
-}
-
-.badge-neutral {
-  background: var(--secondary);
-  color: var(--muted-foreground);
-}
-
-/* ================================================================
-   STEPPER DOTS
-   ================================================================ */
+/* ===== Stepper Dots ===== */
 .stepper-dot {
   height: 6px;
   border-radius: 999px;
@@ -424,10 +257,10 @@
 
 .stepper-dot--active {
   width: 32px;
-  background: var(--primary);
+  background: var(--foreground);
 }
 
 .stepper-dot--inactive {
   width: 12px;
-  background: rgba(255, 255, 255, 0.12);
+  background: oklch(from var(--foreground) l c h / 0.15);
 }
