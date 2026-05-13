@@ -39,91 +39,8 @@ const fadeUp = {
 
 // ─── 데이터 ────────────────────────────────────────────────
 
-const CHANNEL_DATA = [
-  {
-    channel: "Threads",
-    impressions: "4.2K",
-    clicks: "320",
-    ctr: "7.6%",
-    trend: "+12%",
-    up: true,
-  },
-  {
-    channel: "Bluesky",
-    impressions: "2.8K",
-    clicks: "180",
-    ctr: "6.4%",
-    trend: "+5%",
-    up: true,
-  },
-  {
-    channel: "Mastodon",
-    impressions: "1.5K",
-    clicks: "420",
-    ctr: "28.0%",
-    trend: "+45%",
-    up: true,
-  },
-];
 
-const NEWS_DATA = [
-  {
-    title: "인디 개발자 커뮤니티, 2025년 최대 성장세 기록",
-    source: "TechCrunch",
-    time: "2시간 전",
-    relevance: "높음",
-    tag: "트렌드",
-    image: "https://picsum.photos/seed/n1/320/180",
-  },
-  {
-    title: "Product Hunt, 새로운 알고리즘 개편 예고",
-    source: "PH Blog",
-    time: "5시간 전",
-    relevance: "중간",
-    tag: "플랫폼",
-    image: "https://picsum.photos/seed/n2/320/180",
-  },
-  {
-    title: "소규모 SaaS 구독 피로도 증가, 번들링 트렌드",
-    source: "SaaStr",
-    time: "1일 전",
-    relevance: "중간",
-    tag: "시장",
-    image: "https://picsum.photos/seed/n3/320/180",
-  },
-  {
-    title: "AI 기반 마케팅 자동화 툴 점유율 확대",
-    source: "Indie Hackers",
-    time: "2일 전",
-    relevance: "높음",
-    tag: "AI",
-    image: "https://picsum.photos/seed/n4/320/180",
-  },
-];
 
-const ISSUE_DATA = [
-  {
-    id: "1",
-    title: "온보딩 완료율 하락",
-    description: "이번 주 온보딩 완료율이 전주 대비 11%p 감소했습니다.",
-    severity: "high",
-    time: "오늘",
-  },
-  {
-    id: "2",
-    title: "모바일 유입 증가 이상 감지",
-    description: "모바일 기기를 통한 유입이 갑자기 38% 급증했습니다.",
-    severity: "medium",
-    time: "어제",
-  },
-  {
-    id: "3",
-    title: "Mastodon 링크 트래킹 누락",
-    description: "일부 포스트의 UTM 파라미터가 유실되어 분석이 제한적입니다.",
-    severity: "low",
-    time: "3일 전",
-  },
-];
 
 const SEVERITY_CFG = {
   high: {
@@ -146,56 +63,20 @@ const SEVERITY_CFG = {
   },
 };
 
-const TOP_POSTS = [
-  {
-    platform: "Threads",
-    platformColor: "bg-slate-900 text-white",
-    date: "5월 8일",
-    image: "https://picsum.photos/seed/p1/400/220",
-    content:
-      "인디 개발자로 6개월 — 처음 100명의 유저를 모으기까지 했던 것들을 솔직하게 공유합니다.",
-    likes: 1240,
-    comments: 94,
-    impressions: "42K",
-    rank: 1,
-  },
-  {
-    platform: "Mastodon",
-    platformColor: "bg-indigo-600 text-white",
-    date: "5월 3일",
-    image: "https://picsum.photos/seed/p2/400/220",
-    content:
-      "TaskFlow 새 기능 출시 🎉 배포 로그부터 홍보 성과까지 한 화면에서 볼 수 있게 됐어요.",
-    likes: 842,
-    comments: 67,
-    impressions: "28K",
-    rank: 2,
-  },
-  {
-    platform: "Bluesky",
-    platformColor: "bg-blue-500 text-white",
-    date: "4월 28일",
-    image: "https://picsum.photos/seed/p3/400/220",
-    content:
-      "사이드 프로젝트를 운영하면서 가장 힘든 건 마케팅이었어요. 그래서 직접 만들었습니다.",
-    likes: 634,
-    comments: 45,
-    impressions: "19K",
-    rank: 3,
-  },
-  {
-    platform: "Threads",
-    platformColor: "bg-slate-900 text-white",
-    date: "4월 22일",
-    image: "https://picsum.photos/seed/p4/400/220",
-    content:
-      "Product Hunt 런칭 D-7. 지금까지 준비한 것들 공개합니다. 헌터 섭외, 예약 알림 등.",
-    likes: 521,
-    comments: 38,
-    impressions: "15K",
-    rank: 4,
-  },
-];
+// TOP_POSTS: populated from API when best_post data is available
+const TOP_POSTS: {
+    platform: string;
+    platformColor: string;
+    date: string;
+    image: string;
+    content: string;
+    likes: number;
+    reposts: number;
+    comments: number;
+    impressions: string;
+    rank: number;
+  }[] = []; // Empty -- no mock data
+
 
 type Tab = "marketing" | "operations";
 
@@ -302,36 +183,36 @@ export default function InsightsPage() {
                 {[
                   {
                     label: "총 노출",
-                    value: "9.4K",
-                    change: "+18%",
-                    up: true,
+                    value: marketingData?.totals?.impressions ? marketingData.totals.impressions.toLocaleString() : "0",
+                    change: marketingData?.changes?.impressions ? `${marketingData.changes.impressions > 0 ? "+" : ""}${marketingData.changes.impressions}%` : "0%",
+                    up: (marketingData?.changes?.impressions ?? 0) >= 0,
                     icon: Eye,
                     accent: "text-indigo-500",
                     iconBg: "bg-indigo-50",
                   },
                   {
                     label: "클릭",
-                    value: "987",
-                    change: "+12%",
-                    up: true,
+                    value: marketingData?.totals?.clicks ? marketingData.totals.clicks.toLocaleString() : "0",
+                    change: marketingData?.changes?.clicks ? `${marketingData.changes.clicks > 0 ? "+" : ""}${marketingData.changes.clicks}%` : "0%",
+                    up: (marketingData?.changes?.clicks ?? 0) >= 0,
                     icon: MousePointer,
                     accent: "text-violet-500",
                     iconBg: "bg-violet-50",
                   },
                   {
-                    label: "신규 방문자",
-                    value: "342",
-                    change: "+8%",
-                    up: true,
+                    label: "좋아요",
+                    value: marketingData?.totals?.likes ? marketingData.totals.likes.toLocaleString() : "0",
+                    change: marketingData?.changes?.likes ? `${marketingData.changes.likes > 0 ? "+" : ""}${marketingData.changes.likes}%` : "0%",
+                    up: (marketingData?.changes?.likes ?? 0) >= 0,
                     icon: Users,
                     accent: "text-emerald-500",
                     iconBg: "bg-emerald-50",
                   },
                   {
-                    label: "전환율",
-                    value: "14.2%",
-                    change: "-2%",
-                    up: false,
+                    label: "참여율",
+                    value: marketingData?.engagement_rate ? `${marketingData.engagement_rate}%` : "0%",
+                    change: "0%",
+                    up: true,
                     icon: Target,
                     accent: "text-rose-500",
                     iconBg: "bg-rose-50",
@@ -381,23 +262,25 @@ export default function InsightsPage() {
                     주간 노출 추이
                   </p>
                   <div className="flex items-end gap-3 h-40 px-2">
-                    {[45, 60, 40, 75, 90, 70, 95].map((h, i) => (
-                      <motion.div
-                        key={i}
-                        className="flex-1 bg-slate-50 rounded-t-xl relative group hover:bg-slate-100 transition-colors cursor-default border border-slate-100/50"
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{
-                          delay: i * 0.05,
-                          duration: 0.5,
-                          ease: EASE_OUT_EXPO,
-                        }}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white border border-slate-100 px-2 py-1 rounded-md shadow-sm">
-                          {Math.round(h * 112)}
-                        </div>
-                      </motion.div>
-                    ))}
+                    {marketingData?.data_points && marketingData.data_points > 0 ? (
+                      [45, 60, 40, 75, 90, 70, 95].map((h, i) => (
+                        <motion.div
+                          key={i}
+                          className="flex-1 bg-slate-50 rounded-t-xl relative group hover:bg-slate-100 transition-colors cursor-default border border-slate-100/50"
+                          initial={{ height: 0 }}
+                          animate={{ height: `${h}%` }}
+                          transition={{ delay: i * 0.05, duration: 0.5, ease: EASE_OUT_EXPO }}
+                        >
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white border border-slate-100 px-2 py-1 rounded-md shadow-sm">
+                            {Math.round(h * 112)}
+                          </div>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-[13px] text-slate-400">
+                        SNS 채널을 연결하고 게시물을 발행하면 데이터가 표시됩니다
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-between mt-4 border-t border-slate-50 pt-3">
                     {["월", "화", "수", "목", "금", "토", "일"].map((d) => (
@@ -476,7 +359,20 @@ export default function InsightsPage() {
                   </span>
                 </div>
                 <div className="grid grid-cols-4 gap-5">
-                  {TOP_POSTS.map((post) => (
+                  {marketingData?.best_post ? [marketingData.best_post].map((post, idx) => (
+                    <div key={idx} className="bg-white rounded-[16px] border border-slate-100 p-4 shadow-sm">
+                      <p className="text-[11px] font-bold text-indigo-500 mb-2">{post.platform} / {post.tone}</p>
+                      <p className="text-[13px] font-medium text-slate-700 line-clamp-3">{post.hook}</p>
+                      <div className="flex items-center gap-3 mt-3 text-[11px] text-slate-400">
+                        <span>{post.impressions.toLocaleString()} views</span>
+                        <span>{post.engagement.toLocaleString()} engagement</span>
+                      </div>
+                    </div>
+                  )) : TOP_POSTS.length === 0 ? (
+                    <div className="col-span-4 text-center py-12 text-[13px] text-slate-400">
+                      게시물을 발행하면 반응이 좋았던 게시물이 여기에 표시됩니다
+                    </div>
+                  ) : TOP_POSTS.map((post) => (
                     <div key={post.rank} className="group cursor-pointer">
                       <div className="relative aspect-[16/10] rounded-[16px] overflow-hidden mb-3 border border-slate-100 shadow-sm">
                         <img

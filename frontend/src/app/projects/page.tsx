@@ -54,28 +54,6 @@ const GLOBAL_GUIDELINES = [
   },
 ];
 
-const MOCK_PROJECTS = [
-  {
-    id: "1",
-    name: "TaskFlow",
-    handle: "@idididid",
-    description: "팀 업무 관리 SaaS",
-    status: "운영중",
-    lastActivity: "2일 전",
-    promotionCount: 12,
-    issueCount: 3,
-  },
-  {
-    id: "2",
-    name: "PixelSnap",
-    handle: "@pixelsnap_official",
-    description: "디자인 에셋 생성기",
-    status: "준비중",
-    lastActivity: "5일 전",
-    promotionCount: 4,
-    issueCount: 0,
-  },
-];
 
 const EVENT_TYPES = [
   {
