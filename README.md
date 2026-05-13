@@ -319,7 +319,7 @@ indie-product-hub/
         <img src="https://github.com/kkum2.png" width="80" style="border-radius:50%" /><br />
         <sub><b>Park Bogyeom</b></sub>
       </a><br />
-      <sub>Frontend / Design</sub>
+      <sub>Frontend / Backend (Promotion)</sub>
     </td>
     <td align="center">
       <a href="https://github.com/hyeongsigjo40-jpg">
@@ -333,7 +333,7 @@ indie-product-hub/
         <img src="https://github.com/kwakminji.png" width="80" style="border-radius:50%" /><br />
         <sub><b>Kwak Minji</b></sub>
       </a><br />
-      <sub>Frontend</sub>
+      <sub>Design / Frontend</sub>
     </td>
   </tr>
 </table>
