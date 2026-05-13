@@ -21,6 +21,7 @@ from app.api.routes.market_insights import router as market_insights_router
 from app.api.routes.webhooks import router as webhooks_router
 from app.api.routes.sns_metrics import router as sns_metrics_router
 from app.api.routes.automation import router as automation_router
+from app.api.routes.log_drain import router as log_drain_router
 
 
 @asynccontextmanager
@@ -70,3 +71,4 @@ app.include_router(market_insights_router, prefix="/api")
 app.include_router(webhooks_router, prefix="/api")
 app.include_router(sns_metrics_router, prefix="/api")
 app.include_router(automation_router, prefix="/api")
+app.include_router(log_drain_router, prefix="/api")
