@@ -1,67 +1,95 @@
 import { apiFetch } from "./client";
 
-// --- Types ---
+// --- Types (matching backend promotion_posts table) ---
 
 export type Platform = "threads" | "x" | "bluesky" | "mastodon";
-export type PromotionStatus = "draft" | "scheduled" | "published" | "failed";
+export type PromotionStatus = "draft" | "scheduled" | "publishing" | "published" | "failed";
 
 export type Promotion = {
   id: string;
   project_id: string;
-  date: string;         // "YYYY-MM-DD"
-  time: string;         // "HH:mm"
+  user_id: string;
   platform: Platform;
   hook: string;
   content: string;
   hashtags: string[];
   link: string | null;
   images: string[];
+  ai_prompt: string | null;
+  ai_model: string | null;
+  tone: string | null;
+  content_type: string | null;
   status: PromotionStatus;
+  scheduled_at: string | null;
+  published_at: string | null;
+  external_post_id: string | null;
+  publish_error: string | null;
   created_at: string;
   updated_at: string;
+  // Computed for calendar view
+  date: string;
+  time: string;
 };
 
 export type PromotionCreateInput = {
-  project_id: string;
-  date: string;
-  time: string;
   platform: Platform;
-  hook: string;
+  hook?: string;
   content: string;
   hashtags?: string[];
   link?: string | null;
-  images?: string[];
-  status?: PromotionStatus;
+  tone?: string;
+  content_type?: string;
 };
 
-export type PromotionUpdateInput = Partial<
-  Pick<Promotion, "date" | "time" | "platform" | "hook" | "content" | "hashtags" | "link" | "images" | "status">
->;
+export type PromotionGenerateInput = {
+  message: string;
+  template?: string;
+};
 
-// --- API ---
+// --- Promotion Posts API ---
 
 export async function listPromotions(projectId: string): Promise<Promotion[]> {
-  return apiFetch<Promotion[]>("/api/promotions", {
-    params: { project_id: projectId },
-  });
+  const posts = await apiFetch<Promotion[]>(`/api/projects/${projectId}/promotion/posts`);
+  // Add date/time fields for calendar compatibility
+  return posts.map(p => ({
+    ...p,
+    date: p.created_at?.split("T")[0] ?? "",
+    time: p.created_at?.split("T")[1]?.slice(0, 5) ?? "",
+  }));
 }
 
-export async function createPromotion(data: PromotionCreateInput): Promise<Promotion> {
-  return apiFetch<Promotion>("/api/promotions", {
+export async function createPromotion(projectId: string, data: PromotionCreateInput): Promise<Promotion> {
+  return apiFetch<Promotion>(`/api/projects/${projectId}/promotion/posts`, {
     method: "POST",
     body: data,
   });
 }
 
-export async function updatePromotion(id: string, data: PromotionUpdateInput): Promise<Promotion> {
-  return apiFetch<Promotion>(`/api/promotions/${id}`, {
-    method: "PATCH",
+export async function publishPromotion(projectId: string, postId: string): Promise<{ status: string; post_id: string }> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts/${postId}/publish`, {
+    method: "POST",
+  });
+}
+
+// --- AI Generation ---
+
+export async function generatePromotion(projectId: string, data: PromotionGenerateInput): Promise<{
+  message: { id: string; role: string; content: string; created_at: string };
+  generated: { hook: string; content: string; hashtags: string[] };
+}> {
+  return apiFetch(`/api/projects/${projectId}/promotion/generate`, {
+    method: "POST",
     body: data,
   });
 }
 
-export async function deletePromotion(id: string): Promise<void> {
-  return apiFetch(`/api/promotions/${id}`, { method: "DELETE" });
+export async function getPromotionHistory(projectId: string): Promise<{
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}[]> {
+  return apiFetch(`/api/projects/${projectId}/promotion/history`);
 }
 
 // --- Project Promotion Info ---
@@ -74,6 +102,7 @@ export type ProjectPromotionInfo = {
   key_values: string;
   site_url: string;
   default_hashtags: string[];
+  tone_preference: string;
   logo_url: string | null;
   updated_at: string;
 };
@@ -83,15 +112,15 @@ export type ProjectPromotionInfoUpdateInput = Partial<
 >;
 
 export async function getProjectPromotionInfo(projectId: string): Promise<ProjectPromotionInfo> {
-  return apiFetch<ProjectPromotionInfo>(`/api/projects/${projectId}/promotion-info`);
+  return apiFetch<ProjectPromotionInfo>(`/api/projects/${projectId}/promotion/info`);
 }
 
 export async function updateProjectPromotionInfo(
   projectId: string,
   data: ProjectPromotionInfoUpdateInput
 ): Promise<ProjectPromotionInfo> {
-  return apiFetch<ProjectPromotionInfo>(`/api/projects/${projectId}/promotion-info`, {
-    method: "PATCH",
+  return apiFetch<ProjectPromotionInfo>(`/api/projects/${projectId}/promotion/info`, {
+    method: "PUT",
     body: data,
   });
 }

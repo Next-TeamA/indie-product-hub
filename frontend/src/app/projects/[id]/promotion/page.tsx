@@ -60,6 +60,7 @@ const STATUS: Record<
 > = {
   draft: { label: "초안", bg: "bg-amber-50", text: "text-amber-600" },
   scheduled: { label: "예약됨", bg: "bg-blue-50", text: "text-blue-600" },
+  publishing: { label: "게시 중", bg: "bg-blue-50", text: "text-blue-600" },
   published: { label: "발행됨", bg: "bg-emerald-50", text: "text-emerald-600" },
   failed: { label: "실패", bg: "bg-rose-50", text: "text-rose-600" },
 };

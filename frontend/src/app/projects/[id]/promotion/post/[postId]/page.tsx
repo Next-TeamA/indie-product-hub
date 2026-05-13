@@ -18,8 +18,6 @@ import {
 } from "lucide-react";
 import {
   listPromotions,
-  updatePromotion,
-  deletePromotion,
   getProjectPromotionInfo,
   type Promotion,
   type Platform,
@@ -70,6 +68,7 @@ const STATUS_META: Record<
 > = {
   draft: { label: "초안", bg: "bg-slate-100", text: "text-slate-500" },
   scheduled: { label: "예약됨", bg: "bg-blue-50", text: "text-blue-600" },
+  publishing: { label: "게시 중", bg: "bg-blue-50", text: "text-blue-600" },
   published: { label: "발행됨", bg: "bg-emerald-50", text: "text-emerald-600" },
   failed: { label: "실패", bg: "bg-rose-50", text: "text-rose-600" },
 };
@@ -232,13 +231,8 @@ export default function PostEditorPage() {
     setSaving(true);
     try {
       if (!isNew) {
-        await updatePromotion(promotion!.id, {
-          hook: editHook,
-          content: editContent,
-          hashtags: editHashtags,
-          status: editStatus,
-          platform: activePlatform,
-        });
+        // TODO: 백엔드 PATCH /promotion/posts/{id} 엔드포인트 추가 필요
+        console.log("Save:", { hook: editHook, content: editContent, hashtags: editHashtags, status: editStatus, platform: activePlatform });
       }
       router.push(`/projects/${projectId}/promotion`);
     } catch (e) {
@@ -252,7 +246,8 @@ export default function PostEditorPage() {
     if (!promotion) return;
     setDeleting(true);
     try {
-      await deletePromotion(promotion.id);
+      // TODO: 백엔드 DELETE /promotion/posts/{id} 엔드포인트 추가 필요
+      console.log("Delete:", promotion.id);
       router.push(`/projects/${projectId}/promotion`);
     } catch (e) {
       console.error(e);

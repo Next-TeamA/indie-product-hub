@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { MockProvider } from "@/components/MockProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Indie Product Hub",
-  description:
-    "Manage, promote, and track your indie products from a single dashboard",
+  title: "LaunchPad",
+  description: "Manage, promote, and track your indie products from a single dashboard",
 };
 
 export default function RootLayout({
@@ -32,9 +30,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <MockProvider>
-          <ThemeProvider>{children}</ThemeProvider>
-        </MockProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
