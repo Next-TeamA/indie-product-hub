@@ -98,6 +98,59 @@ class GitHubAPIClient:
         data = await self._request(token, "GET", f"/repos/{owner}/{repo}/actions/runs/{run_id}/jobs")
         return data.get("jobs", []) if isinstance(data, dict) else []
 
+    async def get_file_content(self, token: str, owner: str, repo: str, path: str, ref: str | None = None) -> str:
+        """Get raw file content at a specific commit/branch."""
+        params = {}
+        if ref:
+            params["ref"] = ref
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{self.BASE_URL}/repos/{owner}/{repo}/contents/{path}",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github.raw+json",
+                },
+                params=params,
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("GitHub", f"Get file failed: {response.status_code} {path}")
+            return response.text
+
+    async def get_commit_diff(self, token: str, owner: str, repo: str, sha: str) -> dict:
+        """Get commit details including file patches (diffs)."""
+        data = await self._request(token, "GET", f"/repos/{owner}/{repo}/commits/{sha}")
+        return {
+            "sha": data.get("sha", ""),
+            "message": data.get("commit", {}).get("message", ""),
+            "author": data.get("commit", {}).get("author", {}).get("name", ""),
+            "date": data.get("commit", {}).get("author", {}).get("date", ""),
+            "files": [
+                {
+                    "filename": f.get("filename", ""),
+                    "status": f.get("status", ""),  # added, modified, removed
+                    "additions": f.get("additions", 0),
+                    "deletions": f.get("deletions", 0),
+                    "patch": f.get("patch", "")[:2000],  # Truncate large diffs
+                }
+                for f in data.get("files", [])
+            ],
+        }
+
+    async def get_recent_commits_with_diffs(self, token: str, owner: str, repo: str, per_page: int = 3) -> list[dict]:
+        """Get recent commits with their file changes."""
+        commits = await self.list_commits(token, owner, repo, per_page=per_page)
+        results = []
+        for c in commits:
+            sha = c.get("sha", "")
+            if not sha:
+                continue
+            try:
+                diff = await self.get_commit_diff(token, owner, repo, sha)
+                results.append(diff)
+            except Exception:
+                continue
+        return results
+
     async def create_webhook(self, token: str, owner: str, repo: str, webhook_url: str, events: list[str] | None = None) -> dict:
         return await self._request(
             token, "POST", f"/repos/{owner}/{repo}/hooks",

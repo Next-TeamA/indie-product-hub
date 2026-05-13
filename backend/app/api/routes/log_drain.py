@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException
 
 from app.core.supabase import supabase
-from app.integrations import gemini
+from app.services.deep_analysis import deep_analyze_error
 
 router = APIRouter(prefix="/log-drain", tags=["log-drain"])
 
@@ -120,79 +120,72 @@ async def vercel_log_drain(request: Request):
 
 
 async def _analyze_runtime_errors(project_id: str, user_id: str, project_name: str, errors: list[dict]):
-    """AI analysis of accumulated runtime errors."""
-    error_text = "\n".join(
-        f"[{e.get('source','?')}] {e.get('path','')} -> {e.get('statusCode','')} {e['message']}"
-        for e in errors[:20]
-    )
-
-    prompt = f"""
-Product: {project_name}
-Platform: Vercel (runtime)
-
-The following runtime errors were detected in the last few minutes:
-```
-{error_text[:3000]}
-```
-
-{len(errors)} error(s) detected. Analyze:
-1. What's happening? (pattern -- same error repeating? different errors?)
-2. Root cause
-3. Impact on users
-4. Immediate fix
-
-Return JSON:
-{{
-  "pattern": "single_error|cascading|intermittent",
-  "summary": "...",
-  "root_cause": "...",
-  "user_impact": "high|medium|low",
-  "fix": "...",
-  "error_count": {len(errors)}
-}}
-"""
-
+    """Deep AI analysis: error -> source code -> commit diff -> root cause + fix."""
     try:
-        analysis = await gemini.generate_json(
-            prompt=prompt,
-            system="You are a production incident responder. Be concise and actionable. Never use emojis.",
-        )
+        analysis = await deep_analyze_error(project_id, user_id, project_name, errors)
 
-        # Determine alert severity based on impact
-        impact = analysis.get("user_impact", "medium")
-        severity = "critical" if impact == "high" else "warning"
+        severity_map = {"critical": "critical", "warning": "warning", "info": "info"}
+        severity = severity_map.get(analysis.get("severity", "warning"), "warning")
 
-        # Create alert
+        # Build rich alert message
+        root_cause = analysis.get("root_cause", "Unknown")
+        fix_info = analysis.get("fix", {})
+        fix_desc = fix_info.get("description", "") if isinstance(fix_info, dict) else str(fix_info)
+        if isinstance(fix_info, dict) and fix_info.get("before"):
+            fix_desc = f"In {fix_info.get('file', '?')} line {fix_info.get('line', '?')}:\n" \
+                       f"  Before: {fix_info['before'][:100]}\n" \
+                       f"  After: {fix_info.get('after', '?')[:100]}"
+
+        user_impact = analysis.get("user_impact", "Check logs")
+        files_checked = analysis.get("files_analyzed", [])
+        commits_checked = analysis.get("commits_checked", [])
+        introduced = analysis.get("introduced_by")
+
+        message_parts = [f"Root cause: {root_cause[:200]}"]
+        if introduced and isinstance(introduced, dict) and introduced.get("commit"):
+            message_parts.append(f"Introduced in commit {introduced['commit']}: {introduced.get('description', '')[:100]}")
+        message_parts.append(f"Fix: {fix_desc[:200]}")
+        message_parts.append(f"User impact: {user_impact[:100]}")
+        if files_checked:
+            message_parts.append(f"Files analyzed: {', '.join(files_checked[:3])}")
+
         supabase.table("alerts").insert({
             "user_id": user_id,
             "project_id": project_id,
             "alert_type": "error_rate_high",
             "severity": severity,
-            "title": analysis.get("summary", "Runtime errors detected")[:200],
-            "message": f"Pattern: {analysis.get('pattern', 'unknown')}\n"
-                       f"Root cause: {analysis.get('root_cause', 'Unknown')[:200]}\n"
-                       f"Fix: {analysis.get('fix', 'Check logs')[:200]}",
+            "title": analysis.get("error_trace", "Runtime errors detected")[:200],
+            "message": "\n".join(message_parts)[:1000],
             "action_url": f"/projects/{project_id}/issues",
         }).execute()
 
-        # Auto-create issue if high impact
-        if impact == "high":
-            supabase.table("issues").insert({
-                "project_id": project_id,
-                "user_id": user_id,
-                "title": f"Runtime error: {analysis.get('summary', 'Error detected')[:100]}",
-                "description": f"**Root cause:** {analysis.get('root_cause', 'Unknown')}\n\n"
-                               f"**Fix:** {analysis.get('fix', 'Unknown')}\n\n"
-                               f"**Error count:** {len(errors)}\n\n"
-                               f"```\n{error_text[:500]}\n```",
-                "severity": "critical",
-                "category": "error",
-                "status": "open",
-                "source": "vercel",
-            }).execute()
+        # Auto-create issue with full analysis
+        error_text = "\n".join(e["message"][:200] for e in errors[:5])
+        issue_desc = f"**Error trace:** {analysis.get('error_trace', 'Unknown')[:300]}\n\n" \
+                     f"**Root cause:** {root_cause[:300]}\n\n"
+        if isinstance(fix_info, dict) and fix_info.get("file"):
+            issue_desc += f"**Fix:** `{fix_info['file']}` line {fix_info.get('line', '?')}\n" \
+                          f"```diff\n- {fix_info.get('before', '')[:200]}\n+ {fix_info.get('after', '')[:200]}\n```\n\n"
+        else:
+            issue_desc += f"**Fix:** {fix_desc[:300]}\n\n"
+        if introduced and isinstance(introduced, dict) and introduced.get("commit"):
+            issue_desc += f"**Introduced by:** commit `{introduced['commit']}` -- {introduced.get('description', '')[:200]}\n\n"
+        issue_desc += f"**User impact:** {user_impact[:200]}\n\n" \
+                      f"**Error log:**\n```\n{error_text[:500]}\n```"
+
+        supabase.table("issues").insert({
+            "project_id": project_id,
+            "user_id": user_id,
+            "title": f"Runtime: {analysis.get('error_trace', 'Error detected')[:80]}",
+            "description": issue_desc[:2000],
+            "severity": "critical" if severity == "critical" else "warning",
+            "category": "error",
+            "status": "open",
+            "source": "vercel",
+        }).execute()
 
     except Exception:
-        # Fallback: create basic alert without AI analysis
+        # Fallback
         supabase.table("alerts").insert({
             "user_id": user_id,
             "project_id": project_id,
