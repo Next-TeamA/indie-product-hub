@@ -10,6 +10,7 @@ from app.services.automation import (
     generate_weekly_report,
     sync_github_issues,
 )
+from app.services.deploy_analysis import analyze_deployment_error
 
 router = APIRouter(prefix="/projects/{project_id}/automation", tags=["automation"])
 
@@ -46,3 +47,16 @@ async def trigger_github_sync(
 ):
     """Sync open issues from connected GitHub repository."""
     return await sync_github_issues(project_id, user["id"])
+
+
+@router.post("/analyze-deploy/{deploy_log_id}")
+@limiter.limit("10/hour")
+async def analyze_deploy_error(
+    request: Request,
+    project_id: str,
+    deploy_log_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """AI analysis of a failed deployment -- root cause, fix recommendation."""
+    return await analyze_deployment_error(project_id, user["id"], deploy_log_id)

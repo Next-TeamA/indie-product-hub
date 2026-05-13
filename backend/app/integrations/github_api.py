@@ -71,6 +71,33 @@ class GitHubAPIClient:
     async def list_pulls(self, token: str, owner: str, repo: str, state: str = "open", per_page: int = 10) -> list:
         return await self._request(token, "GET", f"/repos/{owner}/{repo}/pulls", params={"state": state, "per_page": per_page})
 
+    async def get_workflow_runs(self, token: str, owner: str, repo: str, status: str = "failure", per_page: int = 5) -> list:
+        """Get recent workflow runs (CI/CD)."""
+        return await self._request(
+            token, "GET", f"/repos/{owner}/{repo}/actions/runs",
+            params={"status": status, "per_page": per_page},
+        )
+
+    async def get_workflow_run_logs_url(self, token: str, owner: str, repo: str, run_id: int) -> str:
+        """Get download URL for workflow run logs (zip)."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{self.BASE_URL}/repos/{owner}/{repo}/actions/runs/{run_id}/logs",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                follow_redirects=False,
+            )
+            if response.status_code == 302:
+                return response.headers.get("location", "")
+            raise ExternalAPIError("GitHub", f"Get logs failed: {response.status_code}")
+
+    async def get_workflow_run_jobs(self, token: str, owner: str, repo: str, run_id: int) -> list:
+        """Get jobs for a workflow run -- includes step-level status and conclusions."""
+        data = await self._request(token, "GET", f"/repos/{owner}/{repo}/actions/runs/{run_id}/jobs")
+        return data.get("jobs", []) if isinstance(data, dict) else []
+
     async def create_webhook(self, token: str, owner: str, repo: str, webhook_url: str, events: list[str] | None = None) -> dict:
         return await self._request(
             token, "POST", f"/repos/{owner}/{repo}/hooks",
