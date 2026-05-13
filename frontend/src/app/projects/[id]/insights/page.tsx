@@ -218,7 +218,7 @@ export default function InsightsPage() {
         trend: "+0%",
         up: true,
       }))
-    : CHANNEL_DATA;
+    : [];
 
   // Build issue data from API or fallback
   const issueList = opsData?.recent_issues?.length
@@ -229,7 +229,7 @@ export default function InsightsPage() {
         time: new Date(i.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
         image: "",
       }))
-    : ISSUE_DATA;
+    : [];
 
   // Build news from market insights or fallback
   const newsData = marketInsights.length > 0
@@ -241,7 +241,7 @@ export default function InsightsPage() {
         image: "",
         tag: mi.insight_type,
       }))
-    : NEWS_DATA;
+    : [];
 
   return (
     <div className="px-10 py-10 w-full min-h-dvh bg-white selection:bg-slate-800 selection:text-white">

@@ -137,18 +137,16 @@ export default function ProjectsPage() {
   const { projects: apiProjects, isLoading } = useProjects();
 
   // API 데이터 있으면 사용, 없으면 mock fallback
-  const projectList = apiProjects.length > 0
-    ? apiProjects.map(p => ({
-        id: p.id,
-        name: p.name,
-        handle: "",
-        description: p.description ?? "",
-        status: p.status === "active" ? "운영중" : "준비중",
-        lastActivity: new Date(p.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
-        promotionCount: 0,
-        issueCount: 0,
-      }))
-    : MOCK_PROJECTS;
+  const projectList = apiProjects.map(p => ({
+    id: p.id,
+    name: p.name,
+    handle: "",
+    description: p.description ?? "",
+    status: p.status === "active" ? "운영중" : "준비중",
+    lastActivity: new Date(p.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+    promotionCount: 0,
+    issueCount: 0,
+  }));
 
   // --- 상태 관리 ---
   const [expandedId, setExpandedId] = useState<string | null>(null);

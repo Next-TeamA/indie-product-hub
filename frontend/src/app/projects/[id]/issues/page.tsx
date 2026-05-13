@@ -253,7 +253,7 @@ export default function IssuesPage() {
   const { deployments: apiDeploys } = useDeployments(projectId);
 
   // Map API deploys to local format, fallback to mock
-  const deployData = apiDeploys.length > 0 ? apiDeploys.map(d => ({
+  const deployData = apiDeploys.map(d => ({
     id: d.id,
     commit: (d.commit_sha ?? "").slice(0, 7) || "---",
     msg: d.commit_message ?? d.deployment_id?.slice(0, 12) ?? "Deploy",
@@ -262,13 +262,13 @@ export default function IssuesPage() {
     duration: "",
     status: (d.status === "ready" ? "success" : d.status === "error" ? "failed" : d.status === "building" ? "running" : "success") as DeployStatus,
     env: "production" as const,
-  })) : MOCK_DEPLOYS;
+  }));
 
   // Use API data if available, fallback to mock
   const CATEGORY_TO_ICON: Record<string, React.ElementType> = {
     security: Shield, performance: Zap, deployment: Server, error: AlertTriangle, general: AlertTriangle,
   };
-  const issueData = apiIssues.length > 0 ? apiIssues.map(i => ({
+  const issueData = apiIssues.map(i => ({
     id: i.id,
     title: i.title,
     severity: (i.severity as IssueSeverity) || "warning",
@@ -276,7 +276,7 @@ export default function IssuesPage() {
     icon: CATEGORY_TO_ICON[i.category] ?? AlertTriangle,
     time: new Date(i.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
     status: (i.status as IssueStatus) || "open",
-  })) : MOCK_ISSUES;
+  }));
 
   const openCount = issueData.filter((i) => i.status !== "resolved").length;
   const deploySuccessRate = Math.round(
