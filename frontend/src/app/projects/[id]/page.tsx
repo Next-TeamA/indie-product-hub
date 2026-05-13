@@ -28,13 +28,13 @@ import { useMarketingInsights, useOperationsInsights } from "@/hooks/use-insight
 import { useDeployments } from "@/hooks/use-deployments";
 import { cn } from "@/lib/utils";
 
-// ─── Fallback mock (API 데이터 없을 때만 사용) ──────────────
+// ─── Empty state stats ──────────────
 
-const FALLBACK_STATS = [
-  { id: "impressions", label: "총 노출", value: "--", change: "--", up: true, data: [0,0,0,0,0,0,0], color: "bg-blue-400/30", text: "text-blue-600" },
-  { id: "clicks", label: "총 클릭", value: "--", change: "--", up: true, data: [0,0,0,0,0,0,0], color: "bg-indigo-400/30", text: "text-indigo-600" },
-  { id: "conversion", label: "전환율", value: "--", change: "--", up: true, data: [0,0,0,0,0,0,0], color: "bg-rose-400/30", text: "text-rose-600" },
-  { id: "signups", label: "신규 가입", value: "--", change: "--", up: true, data: [0,0,0,0,0,0,0], color: "bg-emerald-400/30", text: "text-emerald-600" },
+const EMPTY_STATS = [
+  { id: "impressions", label: "총 노출", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-blue-400/30", text: "text-blue-600" },
+  { id: "clicks", label: "총 클릭", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-indigo-400/30", text: "text-indigo-600" },
+  { id: "conversion", label: "전환율", value: "0%", change: "0%", up: true, data: [] as number[], color: "bg-rose-400/30", text: "text-rose-600" },
+  { id: "likes", label: "좋아요", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-emerald-400/30", text: "text-emerald-600" },
 ];
 
 const CATEGORY_ICON: Record<string, React.ElementType> = {
@@ -73,7 +73,7 @@ export default function DashboardPage() {
       value: (marketingData.totals?.impressions ?? 0).toLocaleString(),
       change: marketingData.changes?.impressions ? `${marketingData.changes.impressions > 0 ? "+" : ""}${marketingData.changes.impressions}%` : "--",
       up: (marketingData.changes?.impressions ?? 0) >= 0,
-      data: [30, 45, 35, 60, 85, 70, 90], // TODO: time-series from API
+      data: [] as number[], // time-series from API when available
       color: "bg-blue-400/30", text: "text-blue-600",
     },
     {
@@ -81,7 +81,7 @@ export default function DashboardPage() {
       value: (marketingData.totals?.clicks ?? 0).toLocaleString(),
       change: marketingData.changes?.clicks ? `${marketingData.changes.clicks > 0 ? "+" : ""}${marketingData.changes.clicks}%` : "--",
       up: (marketingData.changes?.clicks ?? 0) >= 0,
-      data: [20, 35, 40, 50, 75, 60, 80],
+      data: [] as number[],
       color: "bg-indigo-400/30", text: "text-indigo-600",
     },
     {
@@ -89,7 +89,7 @@ export default function DashboardPage() {
       value: `${marketingData.engagement_rate ?? 0}%`,
       change: "--",
       up: true,
-      data: [10, 25, 20, 45, 60, 55, 70],
+      data: [] as number[],
       color: "bg-rose-400/30", text: "text-rose-600",
     },
     {
@@ -97,10 +97,10 @@ export default function DashboardPage() {
       value: (marketingData.totals?.likes ?? 0).toLocaleString(),
       change: marketingData.changes?.likes ? `${marketingData.changes.likes > 0 ? "+" : ""}${marketingData.changes.likes}%` : "--",
       up: (marketingData.changes?.likes ?? 0) >= 0,
-      data: [5, 15, 30, 40, 55, 45, 65],
+      data: [] as number[],
       color: "bg-emerald-400/30", text: "text-emerald-600",
     },
-  ] : FALLBACK_STATS;
+  ] : EMPTY_STATS;
 
   const currentMetric = promoStats.find((m) => m.id === activeMetric) ?? promoStats[0];
 
@@ -208,14 +208,18 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="h-40 flex items-end gap-3 px-2">
-              {currentMetric.data.map((h, i) => (
+              {currentMetric.data.length > 0 ? currentMetric.data.map((h: number, i: number) => (
                 <motion.div
                   key={i}
                   initial={{ height: 0 }}
                   animate={{ height: `${h}%` }}
                   className={cn("flex-1 rounded-t-xl transition-colors duration-500", currentMetric.color)}
                 />
-              ))}
+              )) : (
+                <div className="flex-1 flex items-center justify-center text-[13px] text-slate-400">
+                  SNS를 연결하고 게시물을 발행하면 여기에 성과 데이터가 표시됩니다
+                </div>
+              )}
             </div>
             <div className="flex justify-between border-t border-slate-50 pt-3 text-[11px] font-bold text-slate-300">
               {["월", "화", "수", "목", "금", "토", "일"].map((d) => (
