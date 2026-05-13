@@ -1,470 +1,331 @@
-# Design System — Indie Product Hub
+# LaunchPad Design System
 
-## 디자인 방향
+## Overview
 
-데이터 중심의 인디 제품 대시보드. 딥 네이비 사이드바 + 퍼플 포인트 컬러 + 밝고 청결한 콘텐츠 영역의 조합으로 전문적이고 생동감 있는 분석 대시보드 느낌을 목표로 한다.
+LaunchPad is a SaaS dashboard for indie product builders. The design is clean, professional, and data-driven. White-dominant surfaces with slate text, glass-effect cards, and shadow-based depth instead of borders. Pretendard Variable as the system font for sharp Korean/English rendering.
 
-```
-┌──────────────────┬─────────────────────────────────────────┐
-│  딥 네이비       │  흰색 / 연한 블루-그레이 배경           │
-│  사이드바        │                                         │
-│                  │  ┌──────┐ ┌──────┐ ┌──────┐           │
-│  ● Dashboard     │  │ 지표 │ │ 지표 │ │ 지표 │  ← 컬러   │
-│  ● Key Metrics   │  │ 카드 │ │ 카드 │ │ 카드 │    틴트   │
-│                  │  └──────┘ └──────┘ └──────┘           │
-│  Analytics ▾     │                                         │
-│    All analytics │  ████ 차트 (퍼플 그라디언트)           │
-│    Favorites     │                                         │
-│    New analytics │  ─────────────────────────────────     │
-│                  │  테이블  ● Completed ● Pending          │
-└──────────────────┴─────────────────────────────────────────┘
-```
-
----
-
-## Stack
-
-| 항목 | 사용 기술 |
-|------|-----------|
-| Framework | Next.js (App Router) |
-| Styling | Tailwind CSS v4 |
-| UI Primitives | shadcn/ui (base-ui 기반) |
-| Animation | motion/react (Framer Motion) |
-| Font | Geist Sans / Geist Mono |
-| Icon | lucide-react |
+The UI must never feel static or stiff. Every state change carries motion. Every interactive surface responds to the user.
 
 ---
 
 ## Color Palette
 
-### Brand Colors
+### Light Mode (Primary)
 
-| 이름 | Hex | oklch | 용도 |
-|------|-----|-------|------|
-| **Indigo 950** | `#1a1f4b` | `oklch(0.22 0.12 264)` | 사이드바 배경 |
-| **Violet 600** | `#7c3aed` | `oklch(0.52 0.24 278)` | 프라이머리 액션, 활성 상태 |
-| **Violet 400** | `#a78bfa` | `oklch(0.72 0.16 278)` | 차트 보조, 호버 |
-| **Violet 100** | `#ede9fe` | `oklch(0.95 0.04 278)` | 카드 틴트, 배지 배경 |
+| Token | Value | Usage |
+|---|---|---|
+| `--background` | `oklch(0.99 0.002 250)` | Page background, warm near-white |
+| `--foreground` | `oklch(0.27 0.01 250)` | Primary text, slate-800 tone |
+| `--card` | `oklch(1 0 0)` | Card surfaces, pure white |
+| `--border` | `oklch(0.95 0 0)` | Extremely subtle, shadow-first approach |
+| `--sidebar` | `oklch(0.99 0.002 250 / 0.7)` | Glassmorphism sidebar |
+| `--primary` | `oklch(0.205 0 0)` | CTA buttons, slate-900 |
+| `--muted-foreground` | `oklch(0.556 0 0)` | Secondary text, labels |
+| `--destructive` | `oklch(0.577 0.245 27.325)` | Error states |
 
-### Semantic Tokens (globals.css 추가 필요)
+### Semantic Colors
 
-```css
-:root {
-  /* Brand */
-  --primary:          oklch(0.52 0.24 278);   /* violet-600 */
-  --primary-foreground: oklch(0.985 0 0);
-  --primary-muted:    oklch(0.95 0.04 278);   /* violet-100 */
+| Purpose | Color | Usage |
+|---|---|---|
+| Success | `emerald-500/600` | Resolved issues, healthy services, positive changes |
+| Warning | `amber-500/600` | Investigating issues, degraded services |
+| Critical | `red-500/600` | Open critical issues, deploy failures |
+| Info | `blue-500/600` | Promotion events, informational badges |
+| Accent | `violet-500/600` | Deployment events, chart highlights |
 
-  /* Sidebar */
-  --sidebar:          oklch(0.22 0.12 264);   /* indigo-950 */
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-accent:   oklch(0.30 0.10 264);   /* 활성 메뉴 */
-  --sidebar-muted:    oklch(0.985 0 0 / 0.45);
+### Dark Mode
 
-  /* Content area */
-  --background:       oklch(0.97 0.01 260);   /* 연한 blue-gray */
-  --card:             oklch(1 0 0);
-  --card-foreground:  oklch(0.145 0 0);
-  --border:           oklch(0.92 0.01 260);
-
-  /* Status */
-  --status-success:   oklch(0.65 0.17 145);   /* emerald */
-  --status-warning:   oklch(0.75 0.15 70);    /* amber */
-  --status-danger:    oklch(0.60 0.22 25);    /* red */
-}
-```
-
-### 메트릭 카드 컬러 틴트
-
-각 지표 카드는 고유한 컬러 틴트를 가진다.
-
-```
-총 노출 / 매출    →  bg: oklch(0.97 0.04 145)   sparkline: emerald
-클릭 / 주문       →  bg: oklch(0.97 0.04 25)    sparkline: red/orange
-방문자 / 고객     →  bg: oklch(0.97 0.04 230)    sparkline: blue/violet
-전환율            →  bg: oklch(0.97 0.04 278)    sparkline: violet
-```
-
-### 상태 색상
-
-```
-● Completed   bg-emerald-100  text-emerald-700   dot: emerald-500
-● Pending     bg-amber-100    text-amber-700     dot: amber-500
-● Canceled    bg-red-100      text-red-700       dot: red-500
-```
+Follows shadcn defaults. Sidebar uses `oklch(0.145 0 0 / 0.8)` with glassmorphism.
 
 ---
 
 ## Typography
 
-### Scale
+**Font Stack:** Pretendard Variable (CDN loaded), system fallbacks.
 
-| 클래스 | 크기 | Weight | 용도 |
-|--------|------|--------|------|
-| `.h-display` | clamp(28–56px) | 700 | 히어로 헤드라인 |
-| `.h-title` | clamp(22–36px) | 600 | 섹션 타이틀 |
-| `.h-eyebrow` | 11px, tracking 0.14em | 500 | 섹션 레이블 (대문자) |
-| `text-2xl font-bold` | 24px | 700 | 페이지 제목 |
-| `text-3xl font-bold` | 30px | 700 | 지표 숫자 (MetricCard) |
-| `text-sm` | 14px | 400/500 | 본문, 테이블 셀 |
-| `text-xs` | 12px | 400/500 | 보조, 레이블, 배지 |
-
-### 숫자 강조
-
-```jsx
-<p className="text-3xl font-bold tracking-tight tabular-nums">{value}</p>
+```css
+--font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 ```
 
-`tabular-nums` — 숫자가 변할 때 레이아웃 흔들림 방지.
+### Scale (8-point aligned)
+
+| Class | Size | Weight | Tracking | Usage |
+|---|---|---|---|---|
+| `.h-display` | clamp(32-48px) | 800 | -0.04em | Hero headlines |
+| `.h-title` | clamp(20-24px) | 700 | -0.03em | Section headers |
+| `.h-eyebrow` | 10px | 700 | 0.1em, uppercase | Category labels |
+| `.text-lede` | 16px | 400 | normal | Lead paragraphs |
+| `.metric-value` | 24-32px | 900 | tighter | Dashboard metric numbers |
+| `.metric-label` | 10px | 700 | 0.08em, uppercase | Metric labels |
+| Body | 13-14px | 400-500 | normal | Default text |
+
+### Numeric Display
+
+`font-variant-numeric: tabular-nums` on all metric values. Numbers must column-align in tables and during counter animations.
 
 ---
 
 ## Layout
 
-### 전체 구조
+### Spacing (8-point grid)
 
-```
-┌─── w-64 ───┬──────────── flex-1 ────────────┐
-│  Sidebar   │  <main>                        │
-│  (fixed)   │    <Header />     h-16         │
-│            │    ─────────────────────────   │
-│            │    <Content>      p-6 ~ p-8    │
-│            │      max-w-6xl mx-auto         │
-│            │    </Content>                  │
-└────────────┴────────────────────────────────┘
-```
+| Token | Value | Usage |
+|---|---|---|
+| Card padding | `p-6` to `p-8` (24-32px) | Inside glass cards |
+| Card gap | `gap-5` (20px) | Between cards in grids |
+| Section gap | `space-y-12` (48px) | Between major sections |
+| Page padding | `px-6 py-8` | Page margins |
+| Max width | `max-w-5xl` (1024px) | Content constraint |
 
-- 사이드바: `w-64`, `fixed` 또는 `sticky top-0 h-dvh`
-- 콘텐츠 최대 너비: `max-w-6xl` (1152px) — 대시보드는 더 넓게
-- 페이지 패딩: `p-6` (24px)
-- 카드 간격: `gap-4` (16px) — 기존 gap-10보다 조밀하게
-- 카드 패딩: `p-5` 또는 `p-6`
+### Surface Hierarchy (Shadow-First)
 
-### 그리드
+No borders between sections. Depth is communicated through shadow and surface color.
 
-```jsx
-/* 지표 카드 — 3열 */
-<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-/* 대시보드 — 메인 + 사이드 */
-<div className="grid grid-cols-3 gap-4">
-  <div className="col-span-2">...</div>   {/* 차트 */}
-  <div className="col-span-1">...</div>   {/* 보조 위젯 */}
-</div>
-```
-
----
-
-## Components
-
-### Sidebar
-
-딥 네이비 배경. 로고 → 메뉴 그룹 → 하단 프로필 순서.
-
-```
-bg-[--sidebar]  text-[--sidebar-foreground]  w-64  h-dvh  sticky top-0
-
-┌──────────────────────┐
-│  ◉ Logo  AppName     │  ← 로고 + 앱명, p-5
-├──────────────────────┤
-│  ⊞ Dashboard      ✓ │  ← 활성: bg-[--sidebar-accent] rounded-lg
-│  📊 Key Metrics      │
-├──────────────────────┤
-│  Analytics        ▾  │  ← 그룹 헤더, text-[--sidebar-muted]
-│    • All analytics   │  ← 들여쓰기 pl-8
-│    • Favorites       │
-│    • New analytics   │
-├──────────────────────┤
-│  Documents        ▾  │
-│  Notification   26   │  ← 배지: bg-primary rounded-full px-2
-├──────────────────────┤
-│  [avatar] Name       │  ← 하단 고정, border-t border-white/10
-│           email →    │
-└──────────────────────┘
-```
-
-```jsx
-// 활성 메뉴 아이템
-"bg-[var(--sidebar-accent)] text-white rounded-lg font-medium"
-
-// 비활성 메뉴 아이템
-"text-white/60 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
-```
-
-### Header (콘텐츠 영역 상단)
-
-```
-┌─────────────────────────────────────────────────────┐
-│  Page Title         [🔍 Search...]  [🔔] [⚙ avatar] │
-└─────────────────────────────────────────────────────┘
-```
-
-```jsx
-<header className="flex items-center justify-between h-16 px-6 bg-card border-b border-border">
-  <h1 className="text-xl font-bold tracking-tight">페이지 제목</h1>
-  <div className="flex items-center gap-3">
-    {/* SearchBar, NotifBell, Avatar */}
-  </div>
-</header>
-```
-
-### Tab Navigation (필터 탭)
-
-언더라인 스타일. 배경 없이 보더-바텀으로 활성 표시.
-
-```
-  ─────────────────────────────────────────
-  ● Value comparison  % Average  ⚙ Config  ▼ Filter
-  ════════════                              ← 퍼플 언더라인
-  ─────────────────────────────────────────
-```
-
-```jsx
-<div className="flex gap-6 border-b border-border">
-  {tabs.map(tab => (
-    <button
-      key={tab.id}
-      className={cn(
-        "flex items-center gap-1.5 pb-3 text-sm font-medium transition-colors",
-        active === tab.id
-          ? "border-b-2 border-primary text-primary -mb-px"
-          : "text-muted-foreground hover:text-foreground"
-      )}
-    >
-      <tab.icon className="w-3.5 h-3.5" />
-      {tab.label}
-    </button>
-  ))}
-</div>
-```
-
-### MetricCard (지표 카드)
-
-컬러 틴트 배경 + 스파크라인 차트 조합.
-
-```
-┌──────────────────────────────────┐
-│  Total sales          ∿∿∿∿∿∿∿   │  ← sparkline (우측)
-│  $59,690                         │
-│  Since last week  ↑ 13.4%        │
-└──────────────────────────────────┘
-bg: 해당 카드 틴트 컬러, rounded-xl, p-5, shadow-sm
-```
-
-```jsx
-function MetricCard({ label, value, change, positive, tint, children }) {
-  return (
-    <div className={cn("rounded-xl p-5 shadow-sm", tint)}>
-      <div className="flex items-start justify-between">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <div className="w-20 h-10">{children /* sparkline */}</div>
-      </div>
-      <p className="text-3xl font-bold tracking-tight tabular-nums mt-2">{value}</p>
-      <div className="flex items-center gap-1 mt-1 text-xs">
-        <span className="text-muted-foreground">Since last week</span>
-        <span className={positive ? "text-emerald-600 font-medium" : "text-red-600 font-medium"}>
-          {change}
-        </span>
-      </div>
-    </div>
-  );
+```css
+.glass-card {
+  background: white/70;
+  backdrop-blur: xl;
+  border-radius: 24px;
+  border: 1px solid oklch(0 0 0 / 0.03);
+  box-shadow: 0 4px 20px -4px oklch(0 0 0 / 0.03), 0 0 0 1px oklch(1 1 1 / 0.5) inset;
+}
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -6px oklch(0 0 0 / 0.06), 0 0 0 1px oklch(1 1 1 / 0.8) inset;
 }
 ```
 
-### Chart Card
+### Sidebar
 
-```
-┌──────────────────────────────────────┐
-│  Sales Report   12M  6M  30D  7D  ↓ ···│
-│                                      │
-│  Avg. per month                      │
-│  $38,500  ▲                          │
-│                                      │
-│  ┄ Median $45,000                    │
-│                                      │
-│  ▁▂▃▄▂▅▃▆▇▅▇▄                       │  ← 퍼플 그라디언트 바
-│  Jan Feb Mar Apr ...                 │
-└──────────────────────────────────────┘
-bg-card, rounded-xl, p-5, shadow-sm
-```
+- Width: 240px (`w-60`)
+- Background: glassmorphism (`bg-sidebar` with 0.7 opacity + backdrop-blur)
+- Separation: `shadow-sidebar` (no border line)
+- Border between sidebar and content: never a line. Always shadow.
 
-**차트 색상:**
-```
-바 (기본):   oklch(0.52 0.24 278 / 0.2)   /* violet/20 */
-바 (활성):   oklch(0.52 0.24 278)          /* violet solid */
-라인:        oklch(0.52 0.24 278)
-라인 채움:   linear-gradient(violet/20 → transparent)
-```
+### Border Radius
 
-**기간 필터 탭:**
-```jsx
-<div className="flex gap-1 p-1 bg-muted rounded-lg">
-  {["12 Months","6 Months","30 Days","7 Days"].map(p => (
-    <button className={active === p
-      ? "bg-card shadow-sm text-foreground rounded-md px-3 py-1 text-xs font-medium"
-      : "text-muted-foreground px-3 py-1 text-xs"
-    }>{p}</button>
-  ))}
-</div>
-```
-
-### Data Table
-
-```
-┌──────┬───────────┬─────────┬────────┬──────────┬────────┬────────────┐
-│  #   │ Customer  │ Order   │  Cost  │ Due Date │ Rating │ Status     │
-├──────┼───────────┼─────────┼────────┼──────────┼────────┼────────────┤
-│  1   │ [●] John  │ #5845-12│ $97.50 │ 7 Feb    │ ★★★★★  │ ● Completed│
-│  2   │ [●] Matt  │ #4734-01│ $79.90 │ 6 Feb    │ ★★★★☆  │ ● Pending  │
-│  3   │ [●] Dont  │ #6959-26│ $80.40 │ 5 Feb    │ ★★★☆☆  │ ● Canceled │
-└──────┴───────────┴─────────┴────────┴──────────┴────────┴────────────┘
-```
-
-```jsx
-// 헤더
-<th className="text-xs font-medium text-muted-foreground pb-3 text-left">
-
-// 링크 스타일 주문번호
-<td className="text-sm text-primary font-medium hover:underline cursor-pointer">
-
-// 상태 배지
-const statusStyle = {
-  completed: "bg-emerald-100 text-emerald-700",
-  pending:   "bg-amber-100  text-amber-700",
-  canceled:  "bg-red-100    text-red-700",
-};
-<span className={cn("flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full w-fit", statusStyle[status])}>
-  <span className="w-1.5 h-1.5 rounded-full bg-current" />
-  {label}
-</span>
-```
-
-### Widget Card (우측 사이드)
-
-```
-┌──────────────────────┐
-│  Orders List  ↓  ··· │
-│                      │
-│  ████ ████           │  ← 스택 바 차트
-│  ████ ████           │
-│  Jan   Feb           │
-│                      │
-│  ● 10%  ● 20%  ● 40% │  ← 범례
-└──────────────────────┘
-```
+| Surface | Radius | Usage |
+|---|---|---|
+| Cards, panels | `rounded-[24px]` | Main content cards |
+| Nested cards | `rounded-[20px]` | Cards inside cards |
+| Buttons | `rounded-full` | Primary CTA |
+| Inputs | `rounded-lg` | Form inputs |
+| Badges | `rounded-md` | Status badges |
 
 ---
 
-## Border Radius
+## Motion System
 
-| 용도 | 클래스 | 값 |
-|------|--------|-----|
-| 카드, 패널 | `rounded-xl` | 12px |
-| 버튼, 인풋 | `rounded-lg` | 8px |
-| 배지, 태그 | `rounded-full` | 999px |
-| 아바타 | `rounded-full` | 999px |
-| 탭 내부 버튼 | `rounded-md` | 6px |
+Motion is a first-class design language. Every state change carries a corresponding motion. A button that opens a panel without animation asks the user to figure out that a panel appeared. We never do that.
+
+### Principles
+
+1. **Motion is informative, not decorative.** Every animation answers "where did this come from", "what just changed", "is the system still working". If it does not answer one, it should not exist.
+2. **Motion is fast.** Default duration is 200ms. Long-form transitions cap at 480ms. Motion never becomes a wait.
+3. **Motion uses standard easings, named not numeric.** Four easing tokens. Never inline a cubic-bezier in component code.
+4. **Motion respects `prefers-reduced-motion`.** Reduced-motion fallback is instant transition with only a 100ms opacity fade.
+5. **Motion never blocks input.** A user can click during a motion and the click is honoured immediately.
+
+### Easing Tokens
+
+| Token | Curve | Use |
+|---|---|---|
+| `ease.standard` | `cubic-bezier(0.2, 0, 0, 1)` | Default. Opacity, surface lift, position changes from user input. |
+| `ease.emphasised` | `cubic-bezier(0.3, 0, 0, 1.2)` | Slight overshoot. Panels sliding in, modals opening. |
+| `ease.decelerate` | `cubic-bezier(0, 0, 0.2, 1)` | Elements arriving on screen, no overshoot. |
+| `ease.accelerate` | `cubic-bezier(0.4, 0, 1, 1)` | Elements leaving the screen. Dismissal, exit. |
+
+### Duration Tokens
+
+| Token | Value | Use |
+|---|---|---|
+| `duration.instant` | 0ms | Reduced-motion fallback |
+| `duration.quick` | 120ms | Hover lift, button press, chip toggles |
+| `duration.base` | 200ms | Default for all state changes |
+| `duration.relaxed` | 320ms | Panel slide-in, modal open |
+| `duration.slow` | 480ms | Page-level transitions |
+| `duration.deliberate` | 800ms | Hero entrance (single-fire on page load) |
+
+### Standard Motions
+
+**`motion.fade-in`** -- opacity 0 -> 1, 200ms, `ease.standard`. Elements appearing in place.
+
+**`motion.fade-out`** -- opacity 1 -> 0, 120ms, `ease.accelerate`. Faster than fade-in.
+
+**`motion.slide-in-from-right`** -- translateX(100%) -> 0, opacity 0 -> 1, 320ms, `ease.emphasised`. Drawers, side panels.
+
+**`motion.slide-in-from-bottom`** -- translateY(8px) -> 0, opacity 0 -> 1, 200ms, `ease.decelerate`. Toasts, new list items, alerts.
+
+**`motion.lift-on-hover`** -- Background lifts one surface step, 120ms, `ease.standard`. No transform. Purely colour-based. Every hoverable card and list row.
+
+**`motion.press-down`** -- scale(0.96), 120ms press, 200ms release with overshoot. Every primary and secondary button.
+
+**`motion.expand-accordion`** -- height auto, opacity 0 -> 1, 200ms, `ease.decelerate`. Expandable sections.
+
+**`motion.page-stagger`** -- Cards stagger in from opacity 0, translateY(14px), `staggerChildren: 0.06`, 400ms per item. Every page load.
+
+### State Transitions
+
+| Transition | Change | Duration | Easing |
+|---|---|---|---|
+| Default -> Hover | Surface lifts one step | 120ms | `ease.standard` |
+| Hover -> Active | Surface to pressed, scale 0.96 | 120ms | `ease.standard` |
+| Active -> Default | Surface returns, scale 1 | 200ms | `ease.emphasised` (overshoot) |
+| Default -> Focus | 4px glow ring | 120ms | `ease.standard` |
+| Default -> Disabled | Opacity 0.4 | 200ms | `ease.standard` |
+
+### View Transitions
+
+**Project card click (home -> dashboard):**
+1. Card scales to 1.02 (0-120ms)
+2. Page content fades out (120-320ms)
+3. New page fades in with stagger (320-640ms)
+
+**Modal opening:**
+Backdrop fades in (0-200ms). Modal scales 0.96 -> 1, opacity 0 -> 1 (200-400ms). Backdrop blur 0 -> 8px.
+
+**Tab switching:**
+Content exits: opacity fade + translateY(-8px), 120ms. New content enters: opacity + translateY(8px -> 0), 200ms. `AnimatePresence mode="wait"`.
+
+### Micro-interactions
+
+**Chart data point hover:** Circle scales 3.5px -> 5px. Tooltip fades in from below (200ms). Vertical guide line at 0.04 opacity.
+
+**Metric counter on page load:** Numbers count up from 0, 800ms, `ease.decelerate`, `tabular-nums`.
+
+**Notification badge increment:** Scale 1 -> 1.2 -> 1, 300ms spring. Only on increment.
+
+**Status dot (degraded/running only):** Opacity 1 -> 0.4 -> 1, 2s infinite. No pulsing for normal states.
+
+**Card hover lift:** Background lighter, shadow grows, translateY(-2px), 120ms. Reversible.
+
+**Button press:** scale(0.96) mousedown, scale(1) with overshoot mouseup. Background darkens during press.
+
+**Toast notification:** Slides from bottom with 8px offset + overshoot. 4s (success) / 6s (error). Exit: fade-out + 8px drift down.
+
+**Copy-to-clipboard:** Icon morphs copy -> checkmark, 120ms. "Copied" for 800ms. Morphs back.
 
 ---
 
-## Shadow
+## Interaction Patterns
 
-```
-카드:     shadow-sm   (0 1px 3px rgba(0,0,0,0.08))
-호버 카드: shadow-md  (0 4px 12px rgba(0,0,0,0.12))
-사이드바: shadow-xl   (딥 네이비라 불필요할 수도)
-```
+### Hover, Press, Focus, Selection
+
+| State | Visual |
+|---|---|
+| Default | Surface at resting level |
+| Hover | One surface step up, subtle shadow growth |
+| Press | Surface pressed, scale 0.96 |
+| Focus | 4px accent glow ring |
+| Selected | 1px accent border |
+| Disabled | Opacity 0.4, cursor not-allowed |
+
+### Loading States
+
+- Skeletons matching content layout, surface-2 color
+- Subtle shimmer (background-position, 1.5s linear infinite)
+- Never empty white space while loading
+- Stagger skeleton appearance (0.06s per item)
+
+### Empty States
+
+- Centered icon (0.3 opacity) + text + CTA
+- No illustrations. Minimal.
+- Primary CTA for main action
+
+### Error States
+
+- Red-tinted card with humanized error message
+- "Retry" button always available
+- Never raw backend errors
 
 ---
 
-## Animation
+## Implementation
 
-### Easing
+### Libraries
 
-```ts
-const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
-```
+| Library | Usage |
+|---|---|
+| `motion/react` (Framer Motion) | All animations, page transitions, gestures |
+| `tailwindcss v4` | Utility styling |
+| `shadcn/ui` | Base UI primitives |
+| `lucide-react` | Icons |
+| `next-themes` | Dark/light mode |
+| `Pretendard Variable` | System font (CDN) |
 
-### 페이지 진입 (Stagger + FadeUp)
+### Motion Code Patterns
 
-```ts
+```tsx
+// Page-level stagger
 const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
 };
 const fadeUp = {
-  hidden: { opacity: 0, y: 16, filter: "blur(4px)" },
-  show: {
-    opacity: 1, y: 0, filter: "blur(0px)",
-    transition: { duration: 0.45, ease: EASE_OUT_EXPO },
-  },
+  hidden: { opacity: 0, y: 14, filter: "blur(4px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)",
+    transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
 };
 ```
 
-### 탭 전환
+```tsx
+// Button press
+<motion.button
+  whileHover={{ scale: 1.02 }}
+  whileTap={{ scale: 0.96 }}
+  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+/>
+```
 
-```jsx
+```tsx
+// Modal
+<AnimatePresence>
+  {isOpen && (
+    <>
+      <motion.div
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      />
+    </>
+  )}
+</AnimatePresence>
+```
+
+```tsx
+// Tab switch
 <AnimatePresence mode="wait">
   <motion.div
     key={activeTab}
     initial={{ opacity: 0, y: 8 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
+    transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
   />
 </AnimatePresence>
 ```
 
-### 숫자 카운트 업
+### Reduced Motion
 
-```jsx
-// motion/react useMotionValue + useTransform 또는 외부 라이브러리
-// 지표 카드의 숫자는 페이지 진입 시 0 → 목표값으로 카운트업
-```
+```tsx
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-### 바 차트 진입
-
-```jsx
-initial={{ scaleY: 0, originY: 1 }}
-animate={{ scaleY: 1 }}
-transition={{ delay: 0.3 + i * 0.06, duration: 0.5, ease: EASE_OUT_EXPO }}
+<motion.div
+  initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
+/>
 ```
 
 ---
 
-## Spacing Tokens
-
-| 용도 | 값 |
-|------|----|
-| 페이지 패딩 | `p-6` (24px) |
-| 카드 패딩 | `p-5` (20px) |
-| 카드 간격 | `gap-4` (16px) |
-| 섹션 간격 | `gap-6` (24px) |
-| 인라인 아이템 간격 | `gap-2` ~ `gap-3` |
-| 사이드바 너비 | `w-64` (256px) |
-| 헤더 높이 | `h-16` (64px) |
-
----
-
-## Onboarding (기존 유지)
-
-온보딩은 별도 레이어. 브랜드 색상 그라디언트 메쉬 배경.
-
-- `.onboard-shell` — fixed 전체화면, 중앙 정렬
-- `.onboard-mesh` — 블러 그라디언트 배경 (40s drift 애니메이션)
-- `.onboard-grain` — SVG 노이즈 오버레이
-- `.input-hero` — 52px, backdrop-filter blur(8px)
-- `.btn-hero` — 48px 알약형, spring hover
-- `.stepper-dot` — 활성: 32px / 비활성: 12px
-
----
-
-## 다크모드
-
-`ThemeProvider`로 class 기반. `dark:` variant 사용.  
-사이드바는 이미 어두운 네이비이므로 다크모드에서도 거의 동일하게 유지.  
-콘텐츠 영역만 `dark:bg-[oklch(0.12 0.02 264)]` 정도로 전환.
-
-```css
-@custom-variant dark (&:is(.dark *));
-```
+Version: 1.0
+Last Updated: 2026-05-14

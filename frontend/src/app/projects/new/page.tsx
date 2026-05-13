@@ -1,7 +1,8 @@
 "use client";
 
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createProject } from "@/lib/api/projects";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { Stepper } from "@/components/onboarding/stepper";
@@ -77,8 +78,29 @@ const initialState: State = {
 
 export default function NewProjectPage() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const currentIndex = STEPS.indexOf(state.stage);
   const router = useRouter();
+
+  async function handleSnsComplete(data: { selectedSns: string[] }) {
+    setIsCreating(true);
+    try {
+      const project = await createProject({
+        name: state.projectName,
+        description: state.projectDescription || undefined,
+        prd: state.prd || undefined,
+        github_repo_url: state.repoUrl || undefined,
+        sns_channels: data.selectedSns,
+      });
+      setCreatedProjectId(project.id);
+      dispatch({ type: "sns_done", payload: data });
+    } catch (e) {
+      console.error("Failed to create project:", e);
+    } finally {
+      setIsCreating(false);
+    }
+  }
 
   return (
     <div className="onboard-shell">
@@ -122,12 +144,12 @@ export default function NewProjectPage() {
           )}
           {state.stage === "sns" && (
             <SnsStep
-              onNext={(data) => dispatch({ type: "sns_done", payload: data })}
+              onNext={handleSnsComplete}
               onBack={() => dispatch({ type: "back" })}
             />
           )}
           {state.stage === "complete" && (
-            <CompleteStep projectName={state.projectName} />
+            <CompleteStep projectName={state.projectName} projectId={createdProjectId} />
           )}
         </motion.div>
       </AnimatePresence>

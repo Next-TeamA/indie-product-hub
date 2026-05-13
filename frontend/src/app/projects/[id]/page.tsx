@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useProject } from "@/hooks/use-projects";
 import { cn } from "@/lib/utils";
 
 // ─── 데이터 정의 ──────────────────────────────────────────
@@ -112,6 +113,7 @@ function SectionHeader({ title, href }: { title: string; href: string }) {
 export default function DashboardPage() {
   const params = useParams();
   const id = params.id as string;
+  const { project } = useProject(id);
   const [activeMetric, setActiveMetric] = useState("impressions");
 
   const currentMetric = MOCK_PROMO_STATS.find((m) => m.id === activeMetric)!;
@@ -126,7 +128,7 @@ export default function DashboardPage() {
         {/* 헤더 */}
         <div className="flex items-end justify-between border-b border-slate-50 pb-6">
           <h1 className="text-[28px] font-bold tracking-tight text-slate-800">
-            TaskFlow{" "}
+            {project?.name ?? "Dashboard"}{" "}
             <span className="text-slate-300 font-normal ml-2 text-[20px]">
               Dashboard
             </span>
