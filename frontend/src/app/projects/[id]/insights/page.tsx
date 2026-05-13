@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useParams } from "next/navigation";
+import { useMarketingInsights, useOperationsInsights, useMarketInsights } from "@/hooks/use-insights";
 import {
   TrendingUp,
   TrendingDown,
@@ -198,7 +200,13 @@ const TOP_POSTS = [
 type Tab = "marketing" | "operations";
 
 export default function InsightsPage() {
+  const { id: projectId } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>("marketing");
+
+  // API hooks -- data will override mock when available
+  const { data: marketingData } = useMarketingInsights(projectId);
+  const { data: opsData } = useOperationsInsights(projectId);
+  const { insights: marketInsights, generate: generateInsights } = useMarketInsights(projectId);
 
   return (
     <div className="px-10 py-10 w-full min-h-dvh bg-white selection:bg-slate-800 selection:text-white">

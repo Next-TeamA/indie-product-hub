@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Clock, Loader2 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useEvents, useEventActions } from "@/hooks/use-events";
+import type { CalendarEvent } from "@/lib/api/events";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -67,18 +70,41 @@ function formatDateLabel(dateStr: string) {
 const EMPTY_FORM = { title: "", type: "other" as EventType, time: "", description: "" };
 
 export default function CalendarPage() {
+  const { id: projectId } = useParams<{ id: string }>();
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
   const [current, setCurrent] = useState(() => new Date(today.getFullYear(), today.getMonth()));
-  const [events, setEvents] = useState<EventMap>(INITIAL_EVENTS);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const year = current.getFullYear();
   const month = current.getMonth();
+  const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+  const { events: rawEvents, isLoading, mutate } = useEvents(projectId, monthStr);
+  const { create, remove } = useEventActions(projectId);
+
+  // Group API events by date (adapting CalendarEvent to local EventMap structure)
+  const events = useMemo(() => {
+    const map: Record<string, { id: string; title: string; type: EventType; time: string; description: string }[]> = {};
+    for (const evt of rawEvents) {
+      const d = evt.date;
+      if (!map[d]) map[d] = [];
+      map[d].push({
+        id: evt.id,
+        title: evt.title,
+        type: (evt.event_type as EventType) || "other",
+        time: evt.time ?? "",
+        description: evt.description ?? "",
+      });
+    }
+    return map;
+  }, [rawEvents]);
+
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
@@ -95,30 +121,31 @@ export default function CalendarPage() {
     setIsModalOpen(true);
   };
 
-  const addEvent = () => {
+  const addEvent = async () => {
     if (!form.title.trim()) { setFormError("제목을 입력해 주세요."); return; }
-    const newEvent: EventItem = {
-      id: crypto.randomUUID(),
-      title: form.title.trim(),
-      type: form.type,
-      time: form.time,
-      description: form.description.trim(),
-    };
-    setEvents(prev => ({
-      ...prev,
-      [selectedDate]: [...(prev[selectedDate] || []), newEvent],
-    }));
-    setIsModalOpen(false);
+    setIsSaving(true);
+    try {
+      await create({
+        title: form.title.trim(),
+        event_type: form.type,
+        date: selectedDate,
+        time: form.time || undefined,
+        description: form.description.trim() || undefined,
+      });
+      await mutate();
+      setIsModalOpen(false);
+    } catch {
+      setFormError("일정 추가에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const deleteEvent = (id: string) => {
-    setEvents(prev => {
-      const updated = (prev[selectedDate] || []).filter(e => e.id !== id);
-      const next = { ...prev };
-      if (updated.length === 0) delete next[selectedDate];
-      else next[selectedDate] = updated;
-      return next;
-    });
+  const deleteEvent = async (id: string) => {
+    try {
+      await remove(id);
+      await mutate();
+    } catch {}
   };
 
   return (

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useProjects } from "@/hooks/use-projects";
 import {
   Plus,
   ChevronDown,
@@ -132,6 +133,23 @@ const toDateStr = (y: number, m: number, d: number) =>
 // ─── 메인 컴포넌트 ─────────────────────────────────────────
 
 export default function ProjectsPage() {
+  // --- API 연결 ---
+  const { projects: apiProjects, isLoading } = useProjects();
+
+  // API 데이터 있으면 사용, 없으면 mock fallback
+  const projectList = apiProjects.length > 0
+    ? apiProjects.map(p => ({
+        id: p.id,
+        name: p.name,
+        handle: "",
+        description: p.description ?? "",
+        status: p.status === "active" ? "운영중" : "준비중",
+        lastActivity: new Date(p.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+        promotionCount: 0,
+        issueCount: 0,
+      }))
+    : MOCK_PROJECTS;
+
   // --- 상태 관리 ---
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
@@ -209,7 +227,7 @@ export default function ProjectsPage() {
           <div className="flex items-end justify-between mb-6">
             <h2 className="text-[24px] font-bold tracking-tight text-slate-800">
               현재{" "}
-              <span className="text-blue-600">{MOCK_PROJECTS.length}개</span>의
+              <span className="text-blue-600">{projectList.length}개</span>의
               프로젝트를 관리 중입니다
             </h2>
           </div>
@@ -225,7 +243,7 @@ export default function ProjectsPage() {
             </div>
 
             <div className="divide-y divide-slate-50">
-              {MOCK_PROJECTS.map((project) => (
+              {projectList.map((project) => (
                 <div
                   key={project.id}
                   className="transition-colors hover:bg-slate-50/30"

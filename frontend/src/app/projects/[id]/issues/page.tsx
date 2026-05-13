@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useParams } from "next/navigation";
+import { useIssues } from "@/hooks/use-issues";
 import {
   AlertTriangle,
   Clock,
@@ -245,7 +247,24 @@ const STATUS_LABEL: Record<IssueStatus, string> = {
 // ─── 메인 컴포넌트 ────────────────────────────────────────
 
 export default function IssuesPage() {
-  const openCount = MOCK_ISSUES.filter((i) => i.status !== "resolved").length;
+  const { id: projectId } = useParams<{ id: string }>();
+  const { issues: apiIssues, isLoading } = useIssues(projectId);
+
+  // Use API data if available, fallback to mock
+  const CATEGORY_TO_ICON: Record<string, React.ElementType> = {
+    security: Shield, performance: Zap, deployment: Server, error: AlertTriangle, general: AlertTriangle,
+  };
+  const issueData = apiIssues.length > 0 ? apiIssues.map(i => ({
+    id: i.id,
+    title: i.title,
+    severity: (i.severity as IssueSeverity) || "warning",
+    category: i.category,
+    icon: CATEGORY_TO_ICON[i.category] ?? AlertTriangle,
+    time: new Date(i.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+    status: (i.status as IssueStatus) || "open",
+  })) : MOCK_ISSUES;
+
+  const openCount = issueData.filter((i) => i.status !== "resolved").length;
   const deploySuccessRate = Math.round(
     (MOCK_DEPLOYS.filter((d) => d.status === "success").length /
       MOCK_DEPLOYS.filter((d) => d.status !== "running").length) *
@@ -286,7 +305,7 @@ export default function IssuesPage() {
           {[
             {
               label: "Critical",
-              count: MOCK_ISSUES.filter(
+              count: issueData.filter(
                 (i) => i.severity === "critical" && i.status !== "resolved",
               ).length,
               colorClass: "text-rose-600",
@@ -294,7 +313,7 @@ export default function IssuesPage() {
             },
             {
               label: "Warning",
-              count: MOCK_ISSUES.filter(
+              count: issueData.filter(
                 (i) => i.severity === "warning" && i.status !== "resolved",
               ).length,
               colorClass: "text-amber-600",
@@ -302,7 +321,7 @@ export default function IssuesPage() {
             },
             {
               label: "Resolved",
-              count: MOCK_ISSUES.filter((i) => i.status === "resolved").length,
+              count: issueData.filter((i) => i.status === "resolved").length,
               colorClass: "text-emerald-600",
               sub: "24h 내 해결됨",
             },
@@ -511,7 +530,7 @@ export default function IssuesPage() {
             </div>
 
             <div className="flex flex-col gap-3 flex-1">
-              {MOCK_ISSUES.map((issue) => {
+              {issueData.map((issue) => {
                 const scfg = SEVERITY_CFG[issue.severity];
                 return (
                   <div
