@@ -14,6 +14,8 @@ from app.core.supabase import supabase
 from app.integrations.x_api import x_client, XAPIClient
 from app.integrations.threads_api import threads_client
 from app.integrations.github_api import github_client
+from app.integrations.vercel_api import vercel_client
+from app.integrations.railway_api import railway_client
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -49,6 +51,10 @@ async def connect_account(provider: str, user: dict = Depends(get_current_user))
         url = threads_client.get_auth_url(state)
     elif provider == "github":
         url = github_client.get_auth_url(state)
+    elif provider == "vercel":
+        url = vercel_client.get_auth_url(state)
+    elif provider == "railway":
+        url = railway_client.get_auth_url(state)
     else:
         raise AppError(f"Unsupported provider: {provider}", 400)
 
@@ -112,6 +118,39 @@ async def oauth_callback(provider: str, code: str, state: str):
             "profile_data": {"name": user_info.get("name"), "avatar": user_info.get("avatar_url")},
             "is_active": True,
         }
+
+    elif provider == "vercel":
+        token_data = await vercel_client.exchange_code(code)
+        user_info = await vercel_client.get_user(token_data["access_token"])
+        account_data = {
+            "user_id": user_id,
+            "provider": "vercel",
+            "provider_user_id": str(user_info.get("id", "")),
+            "provider_username": user_info.get("username", user_info.get("name")),
+            "access_token": encrypt_token(token_data["access_token"]),
+            "refresh_token": "",
+            "token_expires_at": None,
+            "scopes": [],
+            "profile_data": {"name": user_info.get("name"), "avatar": user_info.get("avatar")},
+            "is_active": True,
+        }
+
+    elif provider == "railway":
+        token_data = await railway_client.exchange_code(code)
+        user_info = await railway_client.get_user(token_data["access_token"])
+        account_data = {
+            "user_id": user_id,
+            "provider": "railway",
+            "provider_user_id": str(user_info.get("id", "")),
+            "provider_username": user_info.get("name"),
+            "access_token": encrypt_token(token_data["access_token"]),
+            "refresh_token": encrypt_token(token_data.get("refresh_token", "")),
+            "token_expires_at": None,
+            "scopes": [],
+            "profile_data": {"name": user_info.get("name"), "avatar": user_info.get("avatar")},
+            "is_active": True,
+        }
+
     else:
         raise AppError(f"Unsupported provider: {provider}", 400)
 

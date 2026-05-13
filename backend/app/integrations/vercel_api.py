@@ -1,4 +1,6 @@
-"""Vercel REST API wrapper."""
+"""Vercel API wrapper -- OAuth Integration for per-user access."""
+
+from urllib.parse import urlencode
 
 import httpx
 
@@ -8,52 +10,85 @@ from app.core.exceptions import ExternalAPIError
 
 class VercelAPIClient:
     BASE_URL = "https://api.vercel.com"
+    AUTH_URL = "https://vercel.com/integrations/new"
+    TOKEN_URL = "https://api.vercel.com/v2/oauth/access_token"
 
-    def _headers(self, token: str | None = None) -> dict:
-        t = token or settings.vercel_token
-        return {"Authorization": f"Bearer {t}"}
+    def get_auth_url(self, state: str) -> str:
+        """Get Vercel OAuth URL for user to authorize."""
+        params = {
+            "client_id": settings.vercel_client_id,
+            "redirect_uri": f"{settings.backend_url}/api/accounts/callback/vercel",
+            "state": state,
+        }
+        return f"{self.AUTH_URL}?{urlencode(params)}"
 
-    async def list_deployments(self, project_id: str, token: str | None = None, limit: int = 10) -> list[dict]:
+    async def exchange_code(self, code: str) -> dict:
+        """Exchange auth code for access token."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self.TOKEN_URL,
+                data={
+                    "client_id": settings.vercel_client_id,
+                    "client_secret": settings.vercel_client_secret,
+                    "code": code,
+                    "redirect_uri": f"{settings.backend_url}/api/accounts/callback/vercel",
+                },
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Vercel", f"Token exchange failed: {response.text}")
+            return response.json()
+
+    async def get_user(self, token: str) -> dict:
+        """Get authenticated user info."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.BASE_URL}/v2/user",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Vercel", f"Get user failed: {response.status_code}")
+            return response.json().get("user", {})
+
+    async def list_projects(self, token: str) -> list[dict]:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.BASE_URL}/v9/projects",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Vercel", f"List projects failed: {response.status_code}")
+            return response.json().get("projects", [])
+
+    async def list_deployments(self, token: str, project_id: str, limit: int = 10) -> list[dict]:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.BASE_URL}/v6/deployments",
-                headers=self._headers(token),
+                headers={"Authorization": f"Bearer {token}"},
                 params={"projectId": project_id, "limit": limit},
             )
             if response.status_code != 200:
                 raise ExternalAPIError("Vercel", f"List deployments failed: {response.status_code}")
             return response.json().get("deployments", [])
 
-    async def get_deployment(self, deployment_id: str, token: str | None = None) -> dict:
+    async def get_deployment(self, token: str, deployment_id: str) -> dict:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.BASE_URL}/v13/deployments/{deployment_id}",
-                headers=self._headers(token),
+                headers={"Authorization": f"Bearer {token}"},
             )
             if response.status_code != 200:
                 raise ExternalAPIError("Vercel", f"Get deployment failed: {response.status_code}")
             return response.json()
 
-    async def get_deployment_events(self, deployment_id: str, token: str | None = None) -> list[dict]:
-        """Get build logs for a deployment."""
+    async def get_deployment_events(self, token: str, deployment_id: str) -> list[dict]:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.BASE_URL}/v3/deployments/{deployment_id}/events",
-                headers=self._headers(token),
+                headers={"Authorization": f"Bearer {token}"},
             )
             if response.status_code != 200:
                 raise ExternalAPIError("Vercel", f"Get events failed: {response.status_code}")
             return response.json()
-
-    async def list_projects(self, token: str | None = None) -> list[dict]:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.BASE_URL}/v9/projects",
-                headers=self._headers(token),
-            )
-            if response.status_code != 200:
-                raise ExternalAPIError("Vercel", f"List projects failed: {response.status_code}")
-            return response.json().get("projects", [])
 
 
 vercel_client = VercelAPIClient()
