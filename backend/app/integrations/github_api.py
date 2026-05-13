@@ -24,7 +24,7 @@ class GitHubAPIClient:
         return f"{self.AUTH_URL}?{urlencode(params)}"
 
     async def exchange_code(self, code: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 headers={"Accept": "application/json"},
@@ -42,7 +42,7 @@ class GitHubAPIClient:
             return data
 
     async def _request(self, token: str, method: str, path: str, **kwargs) -> dict | list:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.request(
                 method,
                 f"{self.BASE_URL}{path}",

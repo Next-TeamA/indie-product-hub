@@ -1,14 +1,16 @@
-"""Connected accounts management -- OAuth flows for X, Threads, GitHub, Vercel, Railway."""
+"""Connected accounts management -- OAuth flows for X, Threads, GitHub, Vercel, Railway.
+OAuth state stored in Supabase for multi-process safety.
+"""
 
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 
 from app.api.dependencies.auth import get_current_user
 from app.core.config import settings
-from app.core.encryption import encrypt_token, decrypt_token
+from app.core.encryption import encrypt_token
 from app.core.exceptions import AppError, NotFoundError
 from app.core.supabase import supabase
 from app.integrations.x_api import x_client, XAPIClient
@@ -19,13 +21,44 @@ from app.integrations.railway_api import railway_client
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
-# In-memory state store for OAuth flows (use Redis in production)
-_oauth_states: dict[str, dict] = {}
+# OAuth state TTL
+STATE_TTL_MINUTES = 10
+
+
+def _save_state(state: str, data: dict) -> None:
+    """Store OAuth state in DB with TTL."""
+    supabase.table("oauth_states").insert({
+        "state": state,
+        "data": data,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=STATE_TTL_MINUTES)).isoformat(),
+    }).execute()
+
+
+def _pop_state(state: str) -> dict | None:
+    """Retrieve and delete OAuth state. Returns None if expired or missing."""
+    result = (
+        supabase.table("oauth_states")
+        .select("data, expires_at")
+        .eq("state", state)
+        .maybe_single()
+        .execute()
+    )
+    if not result.data:
+        return None
+
+    # Delete regardless (single use)
+    supabase.table("oauth_states").delete().eq("state", state).execute()
+
+    # Check expiry
+    expires_at = datetime.fromisoformat(result.data["expires_at"].replace("Z", "+00:00"))
+    if datetime.now(timezone.utc) > expires_at:
+        return None
+
+    return result.data["data"]
 
 
 @router.get("")
 async def list_accounts(user: dict = Depends(get_current_user)):
-    """List all connected accounts for the current user."""
     result = (
         supabase.table("connected_accounts")
         .select("id, provider, provider_username, provider_user_id, is_active, last_synced_at, created_at")
@@ -39,13 +72,12 @@ async def list_accounts(user: dict = Depends(get_current_user)):
 
 @router.get("/connect/{provider}")
 async def connect_account(provider: str, user: dict = Depends(get_current_user)):
-    """Get OAuth URL to connect a new account."""
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {"user_id": user["id"], "provider": provider}
+    state_data = {"user_id": user["id"], "provider": provider}
 
     if provider == "x":
         verifier, challenge = XAPIClient.generate_pkce()
-        _oauth_states[state]["code_verifier"] = verifier
+        state_data["code_verifier"] = verifier
         url = x_client.get_auth_url(state, challenge)
     elif provider == "threads":
         url = threads_client.get_auth_url(state)
@@ -58,15 +90,15 @@ async def connect_account(provider: str, user: dict = Depends(get_current_user))
     else:
         raise AppError(f"Unsupported provider: {provider}", 400)
 
+    _save_state(state, state_data)
     return {"auth_url": url, "state": state}
 
 
 @router.get("/callback/{provider}")
 async def oauth_callback(provider: str, code: str, state: str):
-    """Handle OAuth callback from provider."""
-    stored = _oauth_states.pop(state, None)
-    if not stored or stored["provider"] != provider:
-        raise AppError("Invalid OAuth state", 400)
+    stored = _pop_state(state)
+    if not stored or stored.get("provider") != provider:
+        raise AppError("Invalid or expired OAuth state", 400)
 
     user_id = stored["user_id"]
 
@@ -131,7 +163,7 @@ async def oauth_callback(provider: str, code: str, state: str):
             "refresh_token": "",
             "token_expires_at": None,
             "scopes": [],
-            "profile_data": {"name": user_info.get("name"), "avatar": user_info.get("avatar")},
+            "profile_data": {"name": user_info.get("name")},
             "is_active": True,
         }
 
@@ -147,14 +179,13 @@ async def oauth_callback(provider: str, code: str, state: str):
             "refresh_token": encrypt_token(token_data.get("refresh_token", "")),
             "token_expires_at": None,
             "scopes": [],
-            "profile_data": {"name": user_info.get("name"), "avatar": user_info.get("avatar")},
+            "profile_data": {"name": user_info.get("name")},
             "is_active": True,
         }
 
     else:
         raise AppError(f"Unsupported provider: {provider}", 400)
 
-    # Upsert (update if exists, insert if not)
     supabase.table("connected_accounts").upsert(
         account_data,
         on_conflict="user_id,provider,provider_user_id",
@@ -165,7 +196,6 @@ async def oauth_callback(provider: str, code: str, state: str):
 
 @router.delete("/{account_id}", status_code=204)
 async def disconnect_account(account_id: str, user: dict = Depends(get_current_user)):
-    """Disconnect (deactivate) an account."""
     result = (
         supabase.table("connected_accounts")
         .update({"is_active": False})

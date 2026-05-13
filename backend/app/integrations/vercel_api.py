@@ -24,7 +24,7 @@ class VercelAPIClient:
 
     async def exchange_code(self, code: str) -> dict:
         """Exchange auth code for access token."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 data={
@@ -40,7 +40,7 @@ class VercelAPIClient:
 
     async def get_user(self, token: str) -> dict:
         """Get authenticated user info."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/v2/user",
                 headers={"Authorization": f"Bearer {token}"},
@@ -50,7 +50,7 @@ class VercelAPIClient:
             return response.json().get("user", {})
 
     async def list_projects(self, token: str) -> list[dict]:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/v9/projects",
                 headers={"Authorization": f"Bearer {token}"},
@@ -60,7 +60,7 @@ class VercelAPIClient:
             return response.json().get("projects", [])
 
     async def list_deployments(self, token: str, project_id: str, limit: int = 10) -> list[dict]:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/v6/deployments",
                 headers={"Authorization": f"Bearer {token}"},
@@ -71,7 +71,7 @@ class VercelAPIClient:
             return response.json().get("deployments", [])
 
     async def get_deployment(self, token: str, deployment_id: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/v13/deployments/{deployment_id}",
                 headers={"Authorization": f"Bearer {token}"},
@@ -81,7 +81,7 @@ class VercelAPIClient:
             return response.json()
 
     async def get_deployment_events(self, token: str, deployment_id: str) -> list[dict]:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/v3/deployments/{deployment_id}/events",
                 headers={"Authorization": f"Bearer {token}"},

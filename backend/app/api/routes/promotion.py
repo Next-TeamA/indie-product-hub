@@ -10,7 +10,7 @@ from app.core.supabase import supabase
 from app.integrations import gemini
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
-from app.models.promotion import PromotionRequest
+from app.models.promotion import PromotionRequest, PromotionPostCreate, PromotionInfoUpsert
 
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
 
@@ -145,7 +145,7 @@ Generate promotional content. Return as JSON:
 @router.post("/posts")
 async def create_post(
     project_id: str,
-    body: dict,
+    body: PromotionPostCreate,
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
@@ -153,13 +153,13 @@ async def create_post(
     data = {
         "project_id": project_id,
         "user_id": user["id"],
-        "platform": body.get("platform", "x"),
-        "hook": body.get("hook", ""),
-        "content": body["content"],
-        "hashtags": body.get("hashtags", []),
-        "link": body.get("link"),
-        "tone": body.get("tone"),
-        "content_type": body.get("content_type"),
+        "platform": body.platform,
+        "hook": body.hook,
+        "content": body.content,
+        "hashtags": body.hashtags,
+        "link": body.link,
+        "tone": body.tone,
+        "content_type": body.content_type,
         "status": "draft",
     }
     result = supabase.table("promotion_posts").insert(data).execute()
@@ -213,8 +213,16 @@ async def publish_post(
     if post_data["status"] in ("published", "publishing"):
         raise ValidationError("Post is already published or publishing")
 
-    # Mark as publishing (prevents double-publish race condition)
-    supabase.table("promotion_posts").update({"status": "publishing"}).eq("id", post_id).execute()
+    # Atomically set to publishing -- only if still draft/scheduled (prevents double-publish)
+    update_result = (
+        supabase.table("promotion_posts")
+        .update({"status": "publishing"})
+        .eq("id", post_id)
+        .in_("status", ["draft", "scheduled"])
+        .execute()
+    )
+    if not update_result.data:
+        raise ValidationError("Post is already being published")
 
     # Publish in background
     background_tasks.add_task(_do_publish, user["id"], post_data)
@@ -289,16 +297,10 @@ async def get_promotion_info(
 @router.put("/info")
 async def upsert_promotion_info(
     project_id: str,
-    body: dict,
+    body: PromotionInfoUpsert,
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
-    data = {
-        "project_id": project_id,
-        **{k: v for k, v in body.items() if k in (
-            "service_name", "description", "target_user", "key_values",
-            "site_url", "default_hashtags", "tone_preference", "logo_url",
-        )},
-    }
+    data = {"project_id": project_id, **body.model_dump(exclude_none=True)}
     result = supabase.table("project_promotion_info").upsert(data).execute()
     return result.data[0]

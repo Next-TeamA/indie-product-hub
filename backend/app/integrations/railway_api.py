@@ -25,7 +25,7 @@ class RailwayAPIClient:
 
     async def exchange_code(self, code: str) -> dict:
         """Exchange auth code for access token."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 data={
@@ -41,7 +41,7 @@ class RailwayAPIClient:
             return response.json()
 
     async def _query(self, token: str, query: str, variables: dict | None = None) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.GRAPHQL_URL,
                 headers={

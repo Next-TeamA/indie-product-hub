@@ -42,7 +42,7 @@ class XAPIClient:
         return f"{self.AUTH_URL}?{urlencode(params)}"
 
     async def exchange_code(self, code: str, code_verifier: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 data={
@@ -59,7 +59,7 @@ class XAPIClient:
             return response.json()
 
     async def refresh_token(self, refresh_token: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 data={
@@ -74,7 +74,7 @@ class XAPIClient:
             return response.json()
 
     async def get_me(self, access_token: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/users/me",
                 headers={"Authorization": f"Bearer {access_token}"},
@@ -85,7 +85,7 @@ class XAPIClient:
             return response.json()["data"]
 
     async def post_tweet(self, access_token: str, text: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 f"{self.BASE_URL}/tweets",
                 headers={
@@ -100,7 +100,7 @@ class XAPIClient:
 
     async def get_tweet_metrics(self, access_token: str, tweet_id: str) -> dict:
         """Get full metrics for a single tweet (own tweets get non_public + organic too)."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/tweets/{tweet_id}",
                 headers={"Authorization": f"Bearer {access_token}"},
@@ -134,7 +134,7 @@ class XAPIClient:
         self, access_token: str, user_id: str, max_results: int = 20
     ) -> list[dict]:
         """Get user's recent tweets with all available metrics."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/users/{user_id}/tweets",
                 headers={"Authorization": f"Bearer {access_token}"},

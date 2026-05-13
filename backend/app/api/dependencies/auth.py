@@ -40,8 +40,7 @@ async def get_current_user(
                 algorithms=["HS256"],
                 audience="authenticated",
             )
-        except Exception as e:
-            print(f">>> JWT decode error: {e}")
+        except Exception:
             raise AppError("Invalid or expired token", 401, "UNAUTHORIZED")
 
     user_id: str = payload.get("sub")
