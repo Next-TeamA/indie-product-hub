@@ -1,11 +1,13 @@
 """Market insight generation and retrieval."""
 
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, Request
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.project_access import verify_project_access
 from app.core.supabase import supabase
 from app.integrations import gemini
+from app.models.promotion import InsightUpdate
+from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/projects/{project_id}/insights/market", tags=["market-insights"])
 
@@ -44,7 +46,9 @@ async def list_market_insights(
 
 
 @router.post("/generate")
+@limiter.limit("3/minute")
 async def generate_market_insights(
+    request: Request,
     project_id: str,
     background_tasks: BackgroundTasks,
     user: dict = Depends(get_current_user),
@@ -126,16 +130,12 @@ Return as JSON array:
 async def update_insight(
     project_id: str,
     insight_id: str,
-    body: dict,
+    body: InsightUpdate,
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
     """Mark insight as read or dismissed."""
-    updates = {}
-    if "is_read" in body:
-        updates["is_read"] = body["is_read"]
-    if "is_dismissed" in body:
-        updates["is_dismissed"] = body["is_dismissed"]
+    updates = body.model_dump(exclude_none=True)
     if not updates:
         return {"ok": True}
 

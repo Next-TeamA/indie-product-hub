@@ -31,12 +31,14 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
     github_webhook_secret: str = ""
 
-    # Vercel
-    vercel_token: str = ""
+    # Vercel (OAuth Integration -- https://vercel.com/docs/integrations)
+    vercel_client_id: str = ""
+    vercel_client_secret: str = ""
     vercel_webhook_secret: str = ""
 
-    # Railway
-    railway_token: str = ""
+    # Railway (OAuth App -- Workspace Settings > Developer)
+    railway_client_id: str = ""
+    railway_client_secret: str = ""
 
     model_config = {"env_file": ".env"}
 

@@ -31,7 +31,7 @@ class ThreadsAPIClient:
         return f"{self.AUTH_URL}?{urlencode(params)}"
 
     async def exchange_code(self, code: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
                 data={
@@ -47,7 +47,7 @@ class ThreadsAPIClient:
             return response.json()
 
     async def get_long_lived_token(self, short_token: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 self.LONG_LIVED_URL,
                 params={
@@ -61,7 +61,7 @@ class ThreadsAPIClient:
             return response.json()
 
     async def refresh_long_lived_token(self, token: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 self.LONG_LIVED_URL,
                 params={
@@ -74,7 +74,7 @@ class ThreadsAPIClient:
             return response.json()
 
     async def get_me(self, access_token: str) -> dict:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/me",
                 params={
@@ -88,7 +88,7 @@ class ThreadsAPIClient:
 
     async def create_post(self, access_token: str, user_id: str, text: str) -> str:
         """Two-step publish: create container -> publish. Returns media ID."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             # Step 1: Create container
             r1 = await client.post(
                 f"{self.BASE_URL}/{user_id}/threads",
@@ -116,7 +116,7 @@ class ThreadsAPIClient:
 
     async def get_post_insights(self, access_token: str, media_id: str) -> dict:
         """Get all available metrics for a single post."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/{media_id}/insights",
                 params={
@@ -144,7 +144,7 @@ class ThreadsAPIClient:
         self, access_token: str, user_id: str, limit: int = 20
     ) -> list[dict]:
         """Get user's recent posts with metrics for each."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             # Get posts
             response = await client.get(
                 f"{self.BASE_URL}/{user_id}/threads",
@@ -191,7 +191,7 @@ class ThreadsAPIClient:
         if until:
             params["until"] = until
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.BASE_URL}/{user_id}/threads_insights",
                 params=params,

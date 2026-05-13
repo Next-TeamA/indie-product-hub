@@ -10,7 +10,6 @@ async def sync_sns_metrics():
     """Pull latest metrics for all published posts with external IDs.
     Run every 30 minutes via scheduler.
     """
-    # Get all published posts with external_post_id
     posts = (
         supabase.table("promotion_posts")
         .select("id, project_id, user_id, platform, external_post_id")
@@ -22,7 +21,6 @@ async def sync_sns_metrics():
 
     for post in posts.data or []:
         try:
-            # Get user's account for this platform
             account = (
                 supabase.table("connected_accounts")
                 .select("access_token, provider_user_id")
@@ -36,38 +34,34 @@ async def sync_sns_metrics():
                 continue
 
             token = decrypt_token(account.data["access_token"])
-            metrics = {}
 
             if post["platform"] == "x":
-                data = await x_client.get_tweet_metrics(token, post["external_post_id"])
-                pm = data.get("public_metrics", {})
-                npm = data.get("non_public_metrics", {})
-                metrics = {
-                    "impressions": npm.get("impression_count", pm.get("impression_count", 0)),
-                    "likes": pm.get("like_count", 0),
-                    "replies": pm.get("reply_count", 0),
-                    "reposts": pm.get("retweet_count", 0),
-                    "quotes": pm.get("quote_count", 0),
-                    "bookmarks": pm.get("bookmark_count", 0),
-                    "url_clicks": npm.get("url_link_clicks", 0),
-                    "profile_clicks": npm.get("user_profile_clicks", 0),
-                }
-
-            elif post["platform"] == "threads":
-                data = await threads_client.get_post_insights(token, post["external_post_id"])
-                metrics = {
-                    "views": data.get("views", 0),
-                    "likes": data.get("likes", 0),
-                    "replies": data.get("replies", 0),
-                    "reposts": data.get("reposts", 0),
-                    "quotes": data.get("quotes", 0),
-                }
-
-            if metrics:
+                # get_tweet_metrics returns flat dict with impressions, likes, etc.
+                metrics = await x_client.get_tweet_metrics(token, post["external_post_id"])
                 supabase.table("sns_metrics_snapshots").insert({
                     "post_id": post["id"],
                     "project_id": post["project_id"],
-                    **metrics,
+                    "impressions": metrics.get("impressions", 0),
+                    "likes": metrics.get("likes", 0),
+                    "replies": metrics.get("replies", 0),
+                    "reposts": metrics.get("retweets", 0),
+                    "quotes": metrics.get("quotes", 0),
+                    "bookmarks": metrics.get("bookmarks", 0),
+                    "url_clicks": metrics.get("url_clicks", 0),
+                    "profile_clicks": metrics.get("profile_clicks", 0),
+                }).execute()
+
+            elif post["platform"] == "threads":
+                # get_post_insights returns flat dict with views, likes, etc.
+                metrics = await threads_client.get_post_insights(token, post["external_post_id"])
+                supabase.table("sns_metrics_snapshots").insert({
+                    "post_id": post["id"],
+                    "project_id": post["project_id"],
+                    "views": metrics.get("views", 0),
+                    "likes": metrics.get("likes", 0),
+                    "replies": metrics.get("replies", 0),
+                    "reposts": metrics.get("reposts", 0),
+                    "quotes": metrics.get("quotes", 0),
                 }).execute()
 
         except Exception:

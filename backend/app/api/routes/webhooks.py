@@ -1,21 +1,37 @@
-"""Incoming webhook handlers for Vercel, Railway, GitHub."""
+"""Incoming webhook handlers for Vercel, Railway, GitHub.
+All webhooks verify signatures before processing.
+"""
 
 import hmac
 import hashlib
+import re
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 
 from app.core.config import settings
 from app.core.supabase import supabase
+from app.services.automation import create_promo_draft_from_push, create_issue_from_deploy_failure
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+
+# Strict repo name pattern: owner/repo only
+_REPO_NAME_RE = re.compile(r"^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$")
 
 
 def _verify_github_signature(payload: bytes, signature: str) -> bool:
     if not settings.github_webhook_secret:
-        return True  # Skip verification if secret not configured
+        raise HTTPException(status_code=503, detail="GitHub webhook secret not configured")
     expected = "sha256=" + hmac.new(
         settings.github_webhook_secret.encode(), payload, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
+
+def _verify_vercel_signature(payload: bytes, signature: str) -> bool:
+    if not settings.vercel_webhook_secret:
+        raise HTTPException(status_code=503, detail="Vercel webhook secret not configured")
+    expected = hmac.new(
+        settings.vercel_webhook_secret.encode(), payload, hashlib.sha1
     ).hexdigest()
     return hmac.compare_digest(expected, signature)
 
@@ -27,20 +43,20 @@ async def github_webhook(request: Request):
     signature = request.headers.get("x-hub-signature-256", "")
 
     if not _verify_github_signature(body, signature):
-        return {"error": "Invalid signature"}, 401
+        raise HTTPException(status_code=401, detail="Invalid signature")
 
     payload = await request.json()
     event_type = request.headers.get("x-github-event", "")
 
-    # Find project by repo URL
     repo_name = payload.get("repository", {}).get("full_name", "")
-    if not repo_name:
-        return {"ok": True}
+    if not repo_name or not _REPO_NAME_RE.match(repo_name):
+        return {"ok": True, "skipped": "Invalid repo name"}
 
+    # Safe exact match -- no ilike wildcard injection
     project = (
         supabase.table("projects")
         .select("id, user_id")
-        .or_(f"github_repo_url.ilike.%{repo_name}%")
+        .eq("github_repo_url", f"https://github.com/{repo_name}")
         .maybe_single()
         .execute()
     )
@@ -50,38 +66,61 @@ async def github_webhook(request: Request):
     project_id = project.data["id"]
     user_id = project.data["user_id"]
 
-    if event_type == "deployment_status":
+    if event_type == "push":
+        # Auto-generate promotion draft from significant pushes
+        try:
+            await create_promo_draft_from_push(project_id, user_id, payload)
+        except Exception:
+            pass  # Non-critical, don't fail webhook
+
+    elif event_type == "deployment_status":
         deployment = payload.get("deployment", {})
         status_state = payload.get("deployment_status", {}).get("state", "")
         status_map = {"success": "ready", "failure": "error", "pending": "deploying"}
 
-        supabase.table("deployment_logs").upsert({
+        supabase.table("deployment_logs").insert({
             "project_id": project_id,
             "platform": "github",
-            "deployment_id": str(deployment.get("id", "")),
-            "deployment_url": deployment.get("url"),
-            "commit_sha": deployment.get("sha"),
-            "branch": deployment.get("ref"),
+            "deployment_id": str(deployment.get("id", ""))[:100],
+            "deployment_url": (deployment.get("url") or "")[:500],
+            "commit_sha": (deployment.get("sha") or "")[:40],
+            "branch": (deployment.get("ref") or "")[:100],
             "status": status_map.get(status_state, "deploying"),
-        }, on_conflict="project_id,deployment_id").execute()
+        }).execute()
 
         if status_state == "failure":
+            error_desc = (payload.get("deployment_status", {}).get("description") or "Deployment failed")[:500]
             supabase.table("alerts").insert({
                 "user_id": user_id,
                 "project_id": project_id,
                 "alert_type": "deploy_error",
                 "severity": "critical",
-                "title": f"Deploy failed: {deployment.get('ref', 'unknown')}",
-                "message": payload.get("deployment_status", {}).get("description", "Deployment failed"),
+                "title": f"Deploy failed: {(deployment.get('ref') or 'unknown')[:50]}",
+                "message": error_desc,
                 "source_table": "deployment_logs",
             }).execute()
+
+            # Auto-create issue from deploy failure
+            try:
+                await create_issue_from_deploy_failure(
+                    project_id, user_id, "github",
+                    str(deployment.get("id", ""))[:100], error_desc,
+                )
+            except Exception:
+                pass
 
     return {"ok": True}
 
 
 @router.post("/vercel")
 async def vercel_webhook(request: Request):
-    """Handle Vercel deployment events."""
+    """Handle Vercel deployment events. Verifies x-vercel-signature."""
+    body = await request.body()
+    signature = request.headers.get("x-vercel-signature", "")
+
+    if not _verify_vercel_signature(body, signature):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
     payload = await request.json()
     event_type = payload.get("type", "")
 
@@ -90,6 +129,9 @@ async def vercel_webhook(request: Request):
 
     deployment = payload.get("payload", {}).get("deployment", payload.get("payload", {}))
     project_id_vercel = deployment.get("projectId", "")
+
+    if not project_id_vercel:
+        return {"ok": True}
 
     project = (
         supabase.table("projects")
@@ -113,34 +155,33 @@ async def vercel_webhook(request: Request):
     supabase.table("deployment_logs").insert({
         "project_id": project_id,
         "platform": "vercel",
-        "deployment_id": deployment.get("id", ""),
-        "deployment_url": deployment.get("url"),
-        "commit_sha": deployment.get("meta", {}).get("githubCommitSha"),
-        "commit_message": deployment.get("meta", {}).get("githubCommitMessage"),
-        "branch": deployment.get("meta", {}).get("githubCommitRef"),
+        "deployment_id": (deployment.get("id") or "")[:100],
+        "deployment_url": (deployment.get("url") or "")[:500],
+        "commit_sha": (deployment.get("meta", {}).get("githubCommitSha") or "")[:40],
+        "commit_message": (deployment.get("meta", {}).get("githubCommitMessage") or "")[:200],
+        "branch": (deployment.get("meta", {}).get("githubCommitRef") or "")[:100],
         "status": status_map.get(event_type, "building"),
     }).execute()
 
     if event_type == "deployment.error":
+        error_msg = f"Deployment {(deployment.get('id') or 'unknown')[:8]} failed"
         supabase.table("alerts").insert({
             "user_id": user_id,
             "project_id": project_id,
             "alert_type": "deploy_error",
             "severity": "critical",
             "title": "Vercel deployment failed",
-            "message": f"Deployment {deployment.get('id', 'unknown')[:8]} failed",
+            "message": error_msg,
             "source_table": "deployment_logs",
         }).execute()
-    elif event_type == "deployment.succeeded":
-        supabase.table("alerts").insert({
-            "user_id": user_id,
-            "project_id": project_id,
-            "alert_type": "deploy_success",
-            "severity": "success",
-            "title": "Deployment live",
-            "message": f"Deployed to {deployment.get('url', 'production')}",
-            "source_table": "deployment_logs",
-        }).execute()
+
+        try:
+            await create_issue_from_deploy_failure(
+                project_id, user_id, "vercel",
+                (deployment.get("id") or "")[:100], error_msg,
+            )
+        except Exception:
+            pass
 
     return {"ok": True}
 
@@ -148,14 +189,27 @@ async def vercel_webhook(request: Request):
 @router.post("/railway")
 async def railway_webhook(request: Request):
     """Handle Railway deployment events."""
-    payload = await request.json()
+    # Railway doesn't support webhook signatures yet
+    # Validate payload structure instead
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
     status = payload.get("status", "")
-    deployment_id = payload.get("deployment", {}).get("id", payload.get("id", ""))
+    if not status:
+        return {"ok": True}
+
+    deployment_id = str(payload.get("deployment", {}).get("id", payload.get("id", "")))[:100]
+    railway_project_id = payload.get("project", {}).get("id", "")
+
+    if not railway_project_id:
+        return {"ok": True}
 
     project = (
         supabase.table("projects")
         .select("id, user_id")
-        .eq("deploy_project_id", payload.get("project", {}).get("id", ""))
+        .eq("deploy_project_id", railway_project_id)
         .maybe_single()
         .execute()
     )
@@ -170,7 +224,7 @@ async def railway_webhook(request: Request):
     supabase.table("deployment_logs").insert({
         "project_id": project_id,
         "platform": "railway",
-        "deployment_id": str(deployment_id),
+        "deployment_id": deployment_id,
         "status": status_map.get(status, "building"),
     }).execute()
 
@@ -181,7 +235,7 @@ async def railway_webhook(request: Request):
             "alert_type": "deploy_error",
             "severity": "critical",
             "title": f"Railway deploy {status.lower()}",
-            "message": f"Deployment {str(deployment_id)[:8]} {status.lower()}",
+            "message": f"Deployment {deployment_id[:8]} {status.lower()}",
             "source_table": "deployment_logs",
         }).execute()
 

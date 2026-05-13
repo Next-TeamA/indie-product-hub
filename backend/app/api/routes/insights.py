@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.project_access import verify_project_access
 from app.core.supabase import supabase
+from app.services.insight_engine import generate_marketing_insights
 
 router = APIRouter(prefix="/projects/{project_id}/insights", tags=["insights"])
 
@@ -15,64 +16,11 @@ async def get_marketing_insights(
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
-    """Marketing insights -- aggregated SNS metrics by channel and time."""
-    # Get latest metrics snapshots
-    metrics = (
-        supabase.table("sns_metrics_snapshots")
-        .select("*, promotion_posts!inner(platform)")
-        .eq("project_id", project_id)
-        .order("snapshot_at", desc=True)
-        .limit(100)
-        .execute()
-    )
+    """Marketing insights -- trend detection, platform comparison, best post analysis.
 
-    # Get promotion posts summary
-    posts = (
-        supabase.table("promotion_posts")
-        .select("platform, status")
-        .eq("project_id", project_id)
-        .execute()
-    )
-
-    # Aggregate by platform
-    by_platform: dict[str, dict] = {}
-    for m in metrics.data or []:
-        platform = m.get("promotion_posts", {}).get("platform", "unknown")
-        if platform not in by_platform:
-            by_platform[platform] = {
-                "impressions": 0, "clicks": 0, "likes": 0,
-                "replies": 0, "reposts": 0, "views": 0,
-            }
-        bp = by_platform[platform]
-        bp["impressions"] += m.get("impressions", 0)
-        bp["clicks"] += m.get("url_clicks", 0)
-        bp["likes"] += m.get("likes", 0)
-        bp["replies"] += m.get("replies", 0)
-        bp["reposts"] += m.get("reposts", 0)
-        bp["views"] += m.get("views", 0)
-
-    # Post counts by status
-    post_counts = {"total": 0, "published": 0, "scheduled": 0, "draft": 0}
-    for p in posts.data or []:
-        post_counts["total"] += 1
-        s = p.get("status", "draft")
-        if s in post_counts:
-            post_counts[s] += 1
-
-    # Total metrics
-    totals = {
-        "impressions": sum(bp.get("impressions", 0) for bp in by_platform.values()),
-        "clicks": sum(bp.get("clicks", 0) for bp in by_platform.values()),
-        "likes": sum(bp.get("likes", 0) for bp in by_platform.values()),
-    }
-    totals["ctr"] = round(totals["clicks"] / max(totals["impressions"], 1) * 100, 1)
-
-    return {
-        "totals": totals,
-        "by_platform": by_platform,
-        "post_counts": post_counts,
-        "recent_metrics": (metrics.data or [])[:30],
-    }
+    Uses stored data (zero API cost). Covers both X and Threads.
+    """
+    return await generate_marketing_insights(project_id)
 
 
 @router.get("/operations")

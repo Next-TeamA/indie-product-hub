@@ -4,7 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from slowapi.errors import RateLimitExceeded
 from app.core.exceptions import AppError, app_error_handler
+from app.core.rate_limit import limiter, rate_limit_handler
 
 from app.api.health import router as health_router
 from app.api.routes.projects import router as projects_router
@@ -18,6 +20,8 @@ from app.api.routes.deployments import router as deployments_router
 from app.api.routes.market_insights import router as market_insights_router
 from app.api.routes.webhooks import router as webhooks_router
 from app.api.routes.sns_metrics import router as sns_metrics_router
+from app.api.routes.automation import router as automation_router
+from app.api.routes.log_drain import router as log_drain_router
 
 
 @asynccontextmanager
@@ -39,7 +43,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LaunchPad API", lifespan=lifespan)
 
+app.state.limiter = limiter
 app.add_exception_handler(AppError, app_error_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,3 +70,5 @@ app.include_router(deployments_router, prefix="/api")
 app.include_router(market_insights_router, prefix="/api")
 app.include_router(webhooks_router, prefix="/api")
 app.include_router(sns_metrics_router, prefix="/api")
+app.include_router(automation_router, prefix="/api")
+app.include_router(log_drain_router, prefix="/api")
