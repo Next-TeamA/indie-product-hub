@@ -1,9 +1,10 @@
 """Promotion content generation and management."""
 
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, Request
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.project_access import verify_project_access
+from app.core.rate_limit import limiter
 from app.core.exceptions import ExternalAPIError, NotFoundError, ValidationError
 from app.core.encryption import decrypt_token
 from app.core.supabase import supabase
@@ -64,7 +65,9 @@ async def get_history(
 
 
 @router.post("/generate")
+@limiter.limit("10/minute")
 async def generate_promotion(
+    request: Request,
     project_id: str,
     body: PromotionRequest,
     user: dict = Depends(get_current_user),
@@ -189,7 +192,9 @@ async def list_posts(
 
 
 @router.post("/posts/{post_id}/publish")
+@limiter.limit("5/minute")
 async def publish_post(
+    request: Request,
     project_id: str,
     post_id: str,
     background_tasks: BackgroundTasks,
