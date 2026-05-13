@@ -203,10 +203,45 @@ export default function InsightsPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>("marketing");
 
-  // API hooks -- data will override mock when available
+  // API hooks
   const { data: marketingData } = useMarketingInsights(projectId);
   const { data: opsData } = useOperationsInsights(projectId);
   const { insights: marketInsights, generate: generateInsights } = useMarketInsights(projectId);
+
+  // Build channel data from API or fallback
+  const channelData = marketingData?.by_platform
+    ? Object.entries(marketingData.by_platform).map(([channel, metrics]) => ({
+        channel: channel.charAt(0).toUpperCase() + channel.slice(1),
+        impressions: (metrics.impressions ?? 0).toLocaleString(),
+        clicks: (metrics.clicks ?? 0).toLocaleString(),
+        ctr: metrics.impressions > 0 ? `${((metrics.clicks / metrics.impressions) * 100).toFixed(1)}%` : "0%",
+        trend: "+0%",
+        up: true,
+      }))
+    : CHANNEL_DATA;
+
+  // Build issue data from API or fallback
+  const issueList = opsData?.recent_issues?.length
+    ? opsData.recent_issues.map((i) => ({
+        title: i.title ?? "Issue",
+        description: `Severity: ${i.severity}, Status: ${i.status}`,
+        severity: i.severity === "critical" ? "high" as const : i.severity === "warning" ? "medium" as const : "low" as const,
+        time: new Date(i.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+        image: "",
+      }))
+    : ISSUE_DATA;
+
+  // Build news from market insights or fallback
+  const newsData = marketInsights.length > 0
+    ? marketInsights.slice(0, 4).map(mi => ({
+        title: mi.title,
+        source: mi.insight_type === "competitor" ? "Competitor" : mi.insight_type === "trend" ? "Trend" : "Market",
+        time: new Date(mi.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+        relevance: mi.is_urgent ? "높음" as const : "중간" as const,
+        image: "",
+        tag: mi.insight_type,
+      }))
+    : NEWS_DATA;
 
   return (
     <div className="px-10 py-10 w-full min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
@@ -394,7 +429,7 @@ export default function InsightsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {CHANNEL_DATA.map((row) => (
+                      {channelData.map((row) => (
                         <tr
                           key={row.channel}
                           className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
@@ -501,12 +536,12 @@ export default function InsightsPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-3">
-                  {ISSUE_DATA.map((issue) => {
+                  {issueList.map((issue, idx) => {
                     const cfg =
                       SEVERITY_CFG[issue.severity as keyof typeof SEVERITY_CFG];
                     return (
                       <div
-                        key={issue.id}
+                        key={idx}
                         className={cn(
                           "rounded-2xl border p-4 flex items-center gap-4 transition-all hover:bg-slate-50/50",
                           cfg.border,
@@ -555,7 +590,7 @@ export default function InsightsPage() {
                   </button>
                 </div>
                 <div className="grid grid-cols-4 gap-5">
-                  {NEWS_DATA.map((news, i) => (
+                  {newsData.map((news, i) => (
                     <div key={i} className="group cursor-pointer">
                       <div className="relative aspect-[16/9] rounded-xl overflow-hidden mb-3 border border-slate-50">
                         <img

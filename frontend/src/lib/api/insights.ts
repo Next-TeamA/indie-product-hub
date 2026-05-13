@@ -1,25 +1,64 @@
 import { apiFetch } from "./client";
 
-// --- Types ---
+// --- Types (matching backend response) ---
 
 export type MarketingInsights = {
-  metrics: {
-    id: string;
-    channel: string;
+  totals: {
     impressions: number;
     clicks: number;
-    recorded_at: string;
-  }[];
+    likes: number;
+    ctr: number;
+  };
+  changes: Record<string, number>;
+  engagement_rate: number;
+  best_post: {
+    hook: string;
+    platform: string;
+    tone: string;
+    content_type: string;
+    impressions: number;
+    engagement: number;
+  } | null;
+  anomalies: { metric: string; change: number; type: string }[];
+  by_platform: Record<string, {
+    impressions: number;
+    clicks: number;
+    likes: number;
+    replies: number;
+    reposts: number;
+    views: number;
+  }>;
+  total_posts: number;
+  data_points: number;
+  period: { from: string; to: string };
 };
 
 export type OperationsInsights = {
-  summary: {
+  issues: {
     critical_open: number;
     warning_open: number;
     resolved: number;
     total: number;
   };
-  issues: { severity: string; status: string }[];
+  deployments: {
+    total: number;
+    success: number;
+    failed: number;
+    success_rate: number;
+  };
+  recent_deployments: {
+    id: string;
+    platform: string;
+    deployment_id: string;
+    status: string;
+    created_at: string;
+  }[];
+  recent_issues: {
+    title: string;
+    severity: string;
+    status: string;
+    created_at: string;
+  }[];
 };
 
 // --- API ---

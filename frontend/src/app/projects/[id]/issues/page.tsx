@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { useParams } from "next/navigation";
 import { useIssues } from "@/hooks/use-issues";
+import { useDeployments } from "@/hooks/use-deployments";
 import {
   AlertTriangle,
   Clock,
@@ -249,6 +250,19 @@ const STATUS_LABEL: Record<IssueStatus, string> = {
 export default function IssuesPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const { issues: apiIssues, isLoading } = useIssues(projectId);
+  const { deployments: apiDeploys } = useDeployments(projectId);
+
+  // Map API deploys to local format, fallback to mock
+  const deployData = apiDeploys.length > 0 ? apiDeploys.map(d => ({
+    id: d.id,
+    commit: (d.commit_sha ?? "").slice(0, 7) || "---",
+    msg: d.commit_message ?? d.deployment_id?.slice(0, 12) ?? "Deploy",
+    author: "",
+    time: new Date(d.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+    duration: "",
+    status: (d.status === "ready" ? "success" : d.status === "error" ? "failed" : d.status === "building" ? "running" : "success") as DeployStatus,
+    env: "production" as const,
+  })) : MOCK_DEPLOYS;
 
   // Use API data if available, fallback to mock
   const CATEGORY_TO_ICON: Record<string, React.ElementType> = {
@@ -266,8 +280,8 @@ export default function IssuesPage() {
 
   const openCount = issueData.filter((i) => i.status !== "resolved").length;
   const deploySuccessRate = Math.round(
-    (MOCK_DEPLOYS.filter((d) => d.status === "success").length /
-      MOCK_DEPLOYS.filter((d) => d.status !== "running").length) *
+    (deployData.filter((d) => d.status === "success").length /
+      deployData.filter((d) => d.status !== "running").length) *
       100,
   );
 
@@ -411,7 +425,7 @@ export default function IssuesPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex gap-1 h-1.5 w-24">
-                  {[...MOCK_DEPLOYS].reverse().map((d, i) => (
+                  {[...deployData].reverse().map((d, i) => (
                     <div
                       key={i}
                       className={cn(
@@ -451,7 +465,7 @@ export default function IssuesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {MOCK_DEPLOYS.map((d) => {
+                {deployData.map((d) => {
                   const cfg = DEPLOY_CFG[d.status];
                   return (
                     <tr

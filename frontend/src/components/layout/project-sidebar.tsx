@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Calendar,
   Megaphone,
   BarChart3,
   AlertTriangle,
@@ -14,7 +13,6 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "", label: "대시보드", icon: LayoutDashboard },
-  { href: "/calendar", label: "캘린더", icon: Calendar },
   { href: "/promotion", label: "홍보", icon: Megaphone },
   { href: "/insights", label: "인사이트", icon: BarChart3 },
   { href: "/issues", label: "운영 이슈", icon: AlertTriangle },
