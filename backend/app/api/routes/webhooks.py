@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request, HTTPException
 
 from app.core.config import settings
 from app.core.supabase import supabase
+from app.services.automation import create_promo_draft_from_push, create_issue_from_deploy_failure
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -65,7 +66,14 @@ async def github_webhook(request: Request):
     project_id = project.data["id"]
     user_id = project.data["user_id"]
 
-    if event_type == "deployment_status":
+    if event_type == "push":
+        # Auto-generate promotion draft from significant pushes
+        try:
+            await create_promo_draft_from_push(project_id, user_id, payload)
+        except Exception:
+            pass  # Non-critical, don't fail webhook
+
+    elif event_type == "deployment_status":
         deployment = payload.get("deployment", {})
         status_state = payload.get("deployment_status", {}).get("state", "")
         status_map = {"success": "ready", "failure": "error", "pending": "deploying"}
@@ -81,15 +89,25 @@ async def github_webhook(request: Request):
         }).execute()
 
         if status_state == "failure":
+            error_desc = (payload.get("deployment_status", {}).get("description") or "Deployment failed")[:500]
             supabase.table("alerts").insert({
                 "user_id": user_id,
                 "project_id": project_id,
                 "alert_type": "deploy_error",
                 "severity": "critical",
                 "title": f"Deploy failed: {(deployment.get('ref') or 'unknown')[:50]}",
-                "message": (payload.get("deployment_status", {}).get("description") or "Deployment failed")[:500],
+                "message": error_desc,
                 "source_table": "deployment_logs",
             }).execute()
+
+            # Auto-create issue from deploy failure
+            try:
+                await create_issue_from_deploy_failure(
+                    project_id, user_id, "github",
+                    str(deployment.get("id", ""))[:100], error_desc,
+                )
+            except Exception:
+                pass
 
     return {"ok": True}
 
@@ -146,15 +164,24 @@ async def vercel_webhook(request: Request):
     }).execute()
 
     if event_type == "deployment.error":
+        error_msg = f"Deployment {(deployment.get('id') or 'unknown')[:8]} failed"
         supabase.table("alerts").insert({
             "user_id": user_id,
             "project_id": project_id,
             "alert_type": "deploy_error",
             "severity": "critical",
             "title": "Vercel deployment failed",
-            "message": f"Deployment {(deployment.get('id') or 'unknown')[:8]} failed",
+            "message": error_msg,
             "source_table": "deployment_logs",
         }).execute()
+
+        try:
+            await create_issue_from_deploy_failure(
+                project_id, user_id, "vercel",
+                (deployment.get("id") or "")[:100], error_msg,
+            )
+        except Exception:
+            pass
 
     return {"ok": True}
 

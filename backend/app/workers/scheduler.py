@@ -6,6 +6,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.workers.tasks.sync_sns_metrics import sync_sns_metrics
 from app.workers.tasks.publish_scheduled import publish_scheduled_posts
 from app.workers.tasks.refresh_tokens import refresh_expiring_tokens
+from app.workers.tasks.weekly_report import generate_weekly_reports
 
 scheduler = AsyncIOScheduler()
 
@@ -33,6 +34,17 @@ def setup_scheduler():
         refresh_expiring_tokens,
         IntervalTrigger(hours=1),
         id="refresh_tokens",
+        replace_existing=True,
+    )
+
+    # Weekly report every Monday at 9:00 UTC
+    scheduler.add_job(
+        generate_weekly_reports,
+        "cron",
+        day_of_week="mon",
+        hour=9,
+        minute=0,
+        id="weekly_reports",
         replace_existing=True,
     )
 
