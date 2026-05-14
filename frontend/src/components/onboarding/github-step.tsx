@@ -131,12 +131,21 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
           </motion.button>
         ) : (
           <>
-            {/* Connected badge */}
-            <div className="flex items-center gap-3 h-10 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-              <Check className="w-4 h-4 text-emerald-500" />
-              <span className="text-sm font-medium text-emerald-600">
-                GitHub 연결됨
-              </span>
+            {/* Connected badge + reconnect */}
+            <div className="flex items-center justify-between h-10 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+              <div className="flex items-center gap-3">
+                <Check className="w-4 h-4 text-emerald-500" />
+                <span className="text-sm font-medium text-emerald-600">
+                  GitHub 연결됨
+                </span>
+              </div>
+              <button
+                onClick={handleConnect}
+                disabled={connecting}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {connecting ? "연결 중..." : "재연결"}
+              </button>
             </div>
 
             {/* Search */}
