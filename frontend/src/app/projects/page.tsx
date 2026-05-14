@@ -82,26 +82,8 @@ const EVENT_TYPES = [
   },
 ] as const;
 
-const INITIAL_EVENTS = {
-  "2026-05-12": [
-    {
-      id: "1",
-      title: "Product Hunt 런칭",
-      type: "promotion",
-      time: "10:00",
-      description: "전체 프로젝트 통합 런칭데이",
-    },
-  ],
-  "2026-05-14": [
-    {
-      id: "2",
-      title: "보안 패치 업데이트",
-      type: "deployment",
-      time: "14:00",
-      description: "전체 서버 SSL 갱신",
-    },
-  ],
-};
+// Events populated from API when available (promotion posts, deploys)
+const INITIAL_EVENTS: Record<string, { id: string; title: string; type: string; time: string; description: string }[]> = {};
 
 // ─── 헬퍼 함수 ───────────────────────────────────────────
 

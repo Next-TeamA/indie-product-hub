@@ -116,10 +116,25 @@ async def generate_promotion(
     if proj.get("prd"):
         context_parts.append(f"PRD Summary: {proj['prd'][:500]}")
 
-    # Pull recent GitHub activity for richer context
-    github_context = await _get_github_context(user["id"], proj)
-    if github_context:
-        context_parts.append(f"\nRecent Development Activity:\n{github_context}")
+    # Pull knowledge base for richer context
+    knowledge = (
+        supabase.table("project_knowledge")
+        .select("category, content")
+        .eq("project_id", project_id)
+        .execute()
+    )
+    if knowledge.data:
+        kb_parts = []
+        for k in knowledge.data:
+            if k["category"] != "project_readme":
+                kb_parts.append(k["content"][:500])
+        if kb_parts:
+            context_parts.append(f"\nProject Knowledge Base:\n{chr(10).join(kb_parts)}")
+    else:
+        # Fallback: pull GitHub context directly if no knowledge base yet
+        github_context = await _get_github_context(user["id"], proj)
+        if github_context:
+            context_parts.append(f"\nRecent Development Activity:\n{github_context}")
 
     platform_hint = ""
     if body.template:

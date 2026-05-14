@@ -114,6 +114,18 @@ async def generate_marketing_insights(project_id: str) -> dict:
         elif change < -50:
             anomalies.append({"metric": key, "change": change, "type": "drop"})
 
+    # Daily impressions for chart (last 7 days)
+    daily_impressions = []
+    for days_ago in range(6, -1, -1):
+        day_start = (now - timedelta(days=days_ago)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        day_total = sum(
+            m.get("impressions", 0) + m.get("views", 0)
+            for m in tw
+            if day_start.isoformat() <= m.get("snapshot_at", "") < day_end.isoformat()
+        )
+        daily_impressions.append(day_total)
+
     # Platform breakdown
     platform_data = {}
     for p in posts.data or []:
@@ -135,6 +147,7 @@ async def generate_marketing_insights(project_id: str) -> dict:
         "by_platform": platform_data,
         "total_posts": len(posts.data or []),
         "data_points": len(tw),
+        "daily_impressions": daily_impressions,
     }
 
 

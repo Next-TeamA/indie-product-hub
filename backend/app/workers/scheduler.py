@@ -9,6 +9,7 @@ from app.workers.tasks.publish_scheduled import publish_scheduled_posts
 from app.workers.tasks.refresh_tokens import refresh_expiring_tokens
 from app.workers.tasks.weekly_report import generate_weekly_reports
 from app.workers.tasks.cleanup import cleanup_expired_oauth_states
+from app.workers.tasks.sync_knowledge import sync_project_knowledge
 
 scheduler = AsyncIOScheduler()
 
@@ -61,6 +62,14 @@ def setup_scheduler():
         cleanup_expired_oauth_states,
         IntervalTrigger(hours=1),
         id="cleanup_oauth_states",
+        replace_existing=True,
+    )
+
+    # Knowledge base sync: every 6 hours
+    scheduler.add_job(
+        sync_project_knowledge,
+        IntervalTrigger(hours=6),
+        id="sync_knowledge",
         replace_existing=True,
     )
 

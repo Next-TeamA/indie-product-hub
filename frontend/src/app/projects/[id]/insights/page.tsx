@@ -262,25 +262,30 @@ export default function InsightsPage() {
                     주간 노출 추이
                   </p>
                   <div className="flex items-end gap-3 h-40 px-2">
-                    {marketingData?.data_points && marketingData.data_points > 0 ? (
-                      [45, 60, 40, 75, 90, 70, 95].map((h, i) => (
-                        <motion.div
-                          key={i}
-                          className="flex-1 bg-slate-50 rounded-t-xl relative group hover:bg-slate-100 transition-colors cursor-default border border-slate-100/50"
-                          initial={{ height: 0 }}
-                          animate={{ height: `${h}%` }}
-                          transition={{ delay: i * 0.05, duration: 0.5, ease: EASE_OUT_EXPO }}
-                        >
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white border border-slate-100 px-2 py-1 rounded-md shadow-sm">
-                            {Math.round(h * 112)}
-                          </div>
-                        </motion.div>
-                      ))
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center text-[13px] text-slate-400">
-                        SNS 채널을 연결하고 게시물을 발행하면 데이터가 표시됩니다
-                      </div>
-                    )}
+                    {(() => {
+                      const daily = marketingData?.daily_impressions ?? [];
+                      const maxVal = Math.max(...daily, 1);
+                      if (daily.length > 0 && daily.some(v => v > 0)) {
+                        return daily.map((val, i) => (
+                          <motion.div
+                            key={i}
+                            className="flex-1 bg-slate-50 rounded-t-xl relative group hover:bg-slate-100 transition-colors cursor-default border border-slate-100/50"
+                            initial={{ height: 0 }}
+                            animate={{ height: `${(val / maxVal) * 100}%` }}
+                            transition={{ delay: i * 0.05, duration: 0.5, ease: EASE_OUT_EXPO }}
+                          >
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white border border-slate-100 px-2 py-1 rounded-md shadow-sm">
+                              {val.toLocaleString()}
+                            </div>
+                          </motion.div>
+                        ));
+                      }
+                      return (
+                        <div className="flex-1 flex items-center justify-center text-[13px] text-slate-400">
+                          SNS 채널을 연결하고 게시물을 발행하면 데이터가 표시됩니다
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex justify-between mt-4 border-t border-slate-50 pt-3">
                     {["월", "화", "수", "목", "금", "토", "일"].map((d) => (

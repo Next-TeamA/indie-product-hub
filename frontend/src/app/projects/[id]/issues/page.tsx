@@ -12,7 +12,6 @@ import {
   Server,
   Shield,
   Zap,
-  Database,
   Globe,
   GitCommit,
   Activity,
@@ -45,36 +44,28 @@ type ServiceStatus = "healthy" | "degraded" | "down";
 
 
 
-const SERVICES = [
-  {
-    name: "API 서버",
-    icon: Server,
-    status: "degraded" as ServiceStatus,
-    latency: "2.3s",
-    uptime: "99.1%",
-  },
-  {
-    name: "데이터베이스",
-    icon: Database,
-    status: "healthy" as ServiceStatus,
-    latency: "12ms",
-    uptime: "99.9%",
-  },
-  {
-    name: "CDN / 프론트",
-    icon: Globe,
-    status: "healthy" as ServiceStatus,
-    latency: "48ms",
-    uptime: "100%",
-  },
-  {
-    name: "인증 서비스",
-    icon: Shield,
-    status: "healthy" as ServiceStatus,
-    latency: "130ms",
-    uptime: "99.8%",
-  },
-];
+function deriveServices(deploys: { status: string; platform: string }[]) {
+  if (deploys.length === 0) return [];
+  const platforms = [...new Set(deploys.map(d => d.platform || "unknown"))];
+  const ICONS: Record<string, typeof Server> = { vercel: Globe, railway: Server, github: Shield };
+  const NAMES: Record<string, string> = { vercel: "Vercel", railway: "Railway", github: "GitHub Actions" };
+  return platforms.map(p => {
+    const platDeploys = deploys.filter(d => d.platform === p);
+    const recent = platDeploys[0];
+    const successCount = platDeploys.filter(d => d.status === "ready").length;
+    const uptime = platDeploys.length > 0 ? Math.round(successCount / platDeploys.length * 100) : 100;
+    let status: ServiceStatus = "healthy";
+    if (recent?.status === "error") status = "down";
+    else if (uptime < 90) status = "degraded";
+    return {
+      name: NAMES[p] || p,
+      icon: ICONS[p] || Server,
+      status,
+      latency: "--",
+      uptime: `${uptime}%`,
+    };
+  });
+}
 
 const SERVICE_CFG: Record<
   ServiceStatus,
@@ -286,7 +277,7 @@ export default function IssuesPage() {
             </p>
           </div>
           <div className="grid grid-cols-4 gap-4">
-            {SERVICES.map((svc) => {
+            {deriveServices(apiDeploys).map((svc) => {
               const cfg = SERVICE_CFG[svc.status];
               return (
                 <div
