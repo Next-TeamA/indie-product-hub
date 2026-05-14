@@ -21,9 +21,10 @@ interface SnsStepProps {
   onNext: (data: { selectedSns: string[] }) => void;
   onBack: () => void;
   onBeforeOAuth?: () => void;
+  isSubmitting?: boolean;
 }
 
-export function SnsStep({ onNext, onBack, onBeforeOAuth }: SnsStepProps) {
+export function SnsStep({ onNext, onBack, onBeforeOAuth, isSubmitting = false }: SnsStepProps) {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [connecting, setConnecting] = useState<string | null>(null);
 
@@ -49,11 +50,12 @@ export function SnsStep({ onNext, onBack, onBeforeOAuth }: SnsStepProps) {
   }, []);
 
   const handleConnect = async (provider: string) => {
+    if (isSubmitting) return;
     setConnecting(provider);
     try {
       onBeforeOAuth?.();
       const { auth_url } = await connectAccount(provider, "/projects/new");
-      window.location.href = auth_url;
+      window.location.assign(auth_url);
     } catch (e) {
       console.error(`${provider} connect failed:`, e);
       setConnecting(null);
@@ -114,22 +116,15 @@ export function SnsStep({ onNext, onBack, onBeforeOAuth }: SnsStepProps) {
         <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
           ← 이전
         </button>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onNext({ selectedSns: [] })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            나중에 하기
-          </button>
-          <motion.button
-            onClick={() => onNext({ selectedSns: connectedList })}
-            className="btn-hero bg-primary text-primary-foreground cursor-pointer"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            다음 →
-          </motion.button>
-        </div>
+        <motion.button
+          onClick={() => onNext({ selectedSns: connectedList })}
+          disabled={isSubmitting}
+          className="btn-hero bg-primary text-primary-foreground cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+          whileHover={isSubmitting ? undefined : { scale: 1.02 }}
+          whileTap={isSubmitting ? undefined : { scale: 0.98 }}
+        >
+          {isSubmitting ? "생성 중..." : "나중에 하기"}
+        </motion.button>
       </motion.div>
     </motion.div>
   );

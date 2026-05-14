@@ -214,11 +214,43 @@ export default function PromotionPage() {
   const futureDraftCount = promos.filter(
     (p) => p.status === "draft" && p.scheduled_at && p.date >= todayStr,
   ).length;
+  const scheduledCount = promos.filter(
+    (p) => p.status === "scheduled" && p.date >= todayStr,
+  ).length;
+  const scheduleToggleOn = futureDraftCount === 0 && scheduledCount > 0;
 
   // Selected day
   const selectedPosts = byDate[selected] ?? [];
   const primaryPost = selectedPosts[0];
   const selectedIsPast = selected < todayStr;
+  const viewSwitcher = (
+    <div className="inline-flex rounded-full border border-slate-100 bg-slate-50 p-1">
+      <button
+        onClick={() => setViewMode("calendar")}
+        className={cn(
+          "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
+          viewMode === "calendar"
+            ? "bg-white text-slate-800 shadow-sm"
+            : "text-slate-400 hover:text-slate-600",
+        )}
+      >
+        <CalendarDays className="h-3.5 w-3.5" />
+        캘린더 보기
+      </button>
+      <button
+        onClick={() => setViewMode("feed")}
+        className={cn(
+          "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
+          viewMode === "feed"
+            ? "bg-white text-slate-800 shadow-sm"
+            : "text-slate-400 hover:text-slate-600",
+        )}
+      >
+        <MessagesSquare className="h-3.5 w-3.5" />
+        피드 보기
+      </button>
+    </div>
+  );
 
   return (
     <div className="w-full flex flex-col h-dvh bg-white selection:bg-slate-800 selection:text-white">
@@ -288,35 +320,6 @@ export default function PromotionPage() {
         </div>
       </motion.div>
 
-      <div className="px-8 pb-4 shrink-0">
-        <div className="inline-flex rounded-full border border-slate-100 bg-slate-50 p-1">
-          <button
-            onClick={() => setViewMode("calendar")}
-            className={cn(
-              "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
-              viewMode === "calendar"
-                ? "bg-white text-slate-800 shadow-sm"
-                : "text-slate-400 hover:text-slate-600",
-            )}
-          >
-            <CalendarDays className="h-3.5 w-3.5" />
-            캘린더 보기
-          </button>
-          <button
-            onClick={() => setViewMode("feed")}
-            className={cn(
-              "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
-              viewMode === "feed"
-                ? "bg-white text-slate-800 shadow-sm"
-                : "text-slate-400 hover:text-slate-600",
-            )}
-          >
-            <MessagesSquare className="h-3.5 w-3.5" />
-            피드 보기
-          </button>
-        </div>
-      </div>
-
       {/* Stats bar */}
       <div className="border-y border-slate-50 px-8 py-3 flex items-center gap-8 text-[12px] font-semibold shrink-0">
         <div className="flex items-center gap-2 text-slate-400">
@@ -339,24 +342,45 @@ export default function PromotionPage() {
         <button
           onClick={handleActivateScheduled}
           disabled={futureDraftCount === 0 || activatingSchedule}
-          className="ml-auto flex items-center gap-1.5 text-slate-300 hover:text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+          aria-pressed={scheduleToggleOn}
+          className="ml-auto flex items-center gap-3 rounded-full px-1 py-0.5 text-slate-400 transition-colors hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {activatingSchedule ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="w-3.5 h-3.5" />
-          )}
-          <span className="text-[11px] uppercase tracking-wider">
-            예약 발행 켜기{futureDraftCount > 0 ? ` (${futureDraftCount})` : ""}
+          <span className="text-[11px] font-bold uppercase tracking-wider">
+            예약 발행{futureDraftCount > 0 ? ` ${futureDraftCount}` : ""}
+          </span>
+          <span
+            className={cn(
+              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+              scheduleToggleOn ? "bg-blue-500" : "bg-slate-200",
+              futureDraftCount > 0 && "bg-blue-100",
+            )}
+          >
+            <span
+              className={cn(
+                "inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform",
+                scheduleToggleOn ? "translate-x-5" : "translate-x-0.5",
+              )}
+            >
+              {activatingSchedule && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+            </span>
           </span>
         </button>
       </div>
 
       {/* Body */}
       {viewMode === "calendar" ? (
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="shrink-0 px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Calendar
+              </p>
+            </div>
+            {viewSwitcher}
+          </div>
+          <div className="flex-1 flex overflow-hidden">
           {/* Calendar */}
-          <div className="flex-1 flex flex-col overflow-y-auto px-6 py-4">
+          <div className="flex-1 flex flex-col overflow-y-auto px-6 pb-4">
           {/* Weekday row */}
           <div className="grid grid-cols-7 mb-2">
             {WEEKDAYS.map((d) => (
@@ -581,9 +605,19 @@ export default function PromotionPage() {
             </div>
           </div>
           </motion.aside>
+          </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto bg-white px-4">
+        <div className="flex-1 flex flex-col overflow-hidden bg-white">
+          <div className="shrink-0 px-8 py-4 flex items-center justify-between border-b border-slate-50">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Feed
+              </p>
+            </div>
+            {viewSwitcher}
+          </div>
+          <div className="flex-1 overflow-y-auto px-4">
           <div className="mx-auto w-full max-w-[720px] border-x border-slate-100">
             {feedPosts.length > 0 ? (
               feedPosts.map((post) => {
@@ -706,6 +740,7 @@ export default function PromotionPage() {
                 </Link>
               </div>
             )}
+          </div>
           </div>
         </div>
       )}

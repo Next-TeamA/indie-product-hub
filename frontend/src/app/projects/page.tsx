@@ -417,6 +417,27 @@ export default function ProjectsPage() {
                 {cells.map((day, i) => {
                   const dStr = day ? toDateStr(year, month, day) : "";
                   const dayEvents = calEvents[dStr] ?? [];
+                  const promotionCount = dayEvents.filter(e => e.source === "promotion").length;
+                  const nonPromotionEvents = dayEvents.filter(e => e.source !== "promotion");
+                  const dayLabels = [
+                    ...(promotionCount > 0
+                      ? [{
+                          id: `promotion-${dStr}`,
+                          label: `홍보글 ${promotionCount}개`,
+                          className: "bg-blue-50 text-blue-600 border-blue-100",
+                          count: promotionCount,
+                        }]
+                      : []),
+                    ...nonPromotionEvents
+                      .slice(0, promotionCount > 0 ? 1 : 2)
+                      .map(e => ({
+                        id: e.id,
+                        label: e.title,
+                        className: EVENT_TYPES.find(t => t.value === e.event_type)?.badge ?? "bg-slate-50 text-slate-500",
+                        count: 1,
+                      })),
+                  ];
+                  const hiddenCount = dayEvents.length - dayLabels.reduce((sum, label) => sum + label.count, 0);
                   return (
                     <div
                       key={i}
@@ -429,10 +450,16 @@ export default function ProjectsPage() {
                             {day}
                           </span>
                           <div className="space-y-1">
-                            {dayEvents.slice(0, 2).map(e => (
-                              <div key={e.id} className={cn("h-1.5 w-full rounded-full opacity-60", EVENT_TYPES.find(t => t.value === e.event_type)?.dot ?? "bg-slate-300")} />
+                            {dayLabels.map(label => (
+                              <div
+                                key={label.id}
+                                className={cn("h-5 px-1.5 rounded-md border text-[10px] font-bold leading-5 truncate", label.className)}
+                                title={label.label}
+                              >
+                                {label.label}
+                              </div>
                             ))}
-                            {dayEvents.length > 2 && <div className="text-[9px] text-slate-400 pl-0.5">+{dayEvents.length - 2}</div>}
+                            {hiddenCount > 0 && <div className="text-[9px] text-slate-400 pl-0.5">+{hiddenCount}</div>}
                           </div>
                         </>
                       )}
