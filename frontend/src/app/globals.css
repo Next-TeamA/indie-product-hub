@@ -173,6 +173,14 @@
   }
 }
 
+/* ===== Logo ===== */
+.logo-text {
+  font-family: var(--font-logo), "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* ===== Typography (8-point scale adjusted) ===== */
 .h-display {
   /* 48px */

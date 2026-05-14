@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useProjects } from "@/hooks/use-projects";
 import {
   Plus,
   ChevronDown,
@@ -53,28 +54,6 @@ const GLOBAL_GUIDELINES = [
   },
 ];
 
-const MOCK_PROJECTS = [
-  {
-    id: "1",
-    name: "TaskFlow",
-    handle: "@idididid",
-    description: "팀 업무 관리 SaaS",
-    status: "운영중",
-    lastActivity: "2일 전",
-    promotionCount: 12,
-    issueCount: 3,
-  },
-  {
-    id: "2",
-    name: "PixelSnap",
-    handle: "@pixelsnap_official",
-    description: "디자인 에셋 생성기",
-    status: "준비중",
-    lastActivity: "5일 전",
-    promotionCount: 4,
-    issueCount: 0,
-  },
-];
 
 const EVENT_TYPES = [
   {
@@ -132,6 +111,21 @@ const toDateStr = (y: number, m: number, d: number) =>
 // ─── 메인 컴포넌트 ─────────────────────────────────────────
 
 export default function ProjectsPage() {
+  // --- API 연결 ---
+  const { projects: apiProjects, isLoading } = useProjects();
+
+  // API 데이터 있으면 사용, 없으면 mock fallback
+  const projectList = apiProjects.map(p => ({
+    id: p.id,
+    name: p.name,
+    handle: "",
+    description: p.description ?? "",
+    status: p.status === "active" ? "운영중" : "준비중",
+    lastActivity: new Date(p.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+    promotionCount: 0,
+    issueCount: 0,
+  }));
+
   // --- 상태 관리 ---
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
@@ -166,9 +160,9 @@ export default function ProjectsPage() {
     <div className="min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
       {/* 1. Header */}
       <header className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
-        <div className="text-lg font-bold tracking-tighter text-slate-900 uppercase">
-          Indie Product Hub
-        </div>
+        <span className="logo-text text-[17px] text-slate-900">
+          Launch<span className="text-blue-500">.</span>Pad
+        </span>
         <Link
           href="/projects/new"
           className="bg-slate-900 text-white flex items-center gap-2 text-[13px] font-semibold h-10 px-5 rounded-full hover:bg-slate-800 transition-all"
@@ -209,7 +203,7 @@ export default function ProjectsPage() {
           <div className="flex items-end justify-between mb-6">
             <h2 className="text-[24px] font-bold tracking-tight text-slate-800">
               현재{" "}
-              <span className="text-blue-600">{MOCK_PROJECTS.length}개</span>의
+              <span className="text-blue-600">{projectList.length}개</span>의
               프로젝트를 관리 중입니다
             </h2>
           </div>
@@ -225,7 +219,7 @@ export default function ProjectsPage() {
             </div>
 
             <div className="divide-y divide-slate-50">
-              {MOCK_PROJECTS.map((project) => (
+              {projectList.map((project) => (
                 <div
                   key={project.id}
                   className="transition-colors hover:bg-slate-50/30"

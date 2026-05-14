@@ -8,6 +8,7 @@ from app.workers.tasks.smart_sync import smart_sync_metrics, daily_market_insigh
 from app.workers.tasks.publish_scheduled import publish_scheduled_posts
 from app.workers.tasks.refresh_tokens import refresh_expiring_tokens
 from app.workers.tasks.weekly_report import generate_weekly_reports
+from app.workers.tasks.cleanup import cleanup_expired_oauth_states
 
 scheduler = AsyncIOScheduler()
 
@@ -52,6 +53,14 @@ def setup_scheduler():
         generate_weekly_reports,
         CronTrigger(day_of_week="mon", hour=9, minute=0),
         id="weekly_reports",
+        replace_existing=True,
+    )
+
+    # Cleanup expired OAuth states: every hour
+    scheduler.add_job(
+        cleanup_expired_oauth_states,
+        IntervalTrigger(hours=1),
+        id="cleanup_oauth_states",
         replace_existing=True,
     )
 

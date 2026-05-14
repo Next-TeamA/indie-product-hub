@@ -43,3 +43,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# ===== Deploy env notes =====
+deploy-env-*.txt

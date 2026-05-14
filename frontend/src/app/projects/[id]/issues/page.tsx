@@ -1,6 +1,9 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useParams } from "next/navigation";
+import { useIssues } from "@/hooks/use-issues";
+import { useDeployments } from "@/hooks/use-deployments";
 import {
   AlertTriangle,
   Clock,
@@ -40,92 +43,7 @@ type IssueSeverity = "critical" | "warning" | "info";
 type DeployStatus = "success" | "failed" | "running" | "cancelled";
 type ServiceStatus = "healthy" | "degraded" | "down";
 
-const MOCK_ISSUES = [
-  {
-    id: "1",
-    title: "SSL 인증서 만료 예정 (5/15)",
-    severity: "critical" as IssueSeverity,
-    category: "보안",
-    icon: Shield,
-    time: "2시간 전",
-    status: "open" as IssueStatus,
-  },
-  {
-    id: "2",
-    title: "API 응답 시간 평균 2.3s 초과",
-    severity: "warning" as IssueSeverity,
-    category: "성능",
-    icon: Zap,
-    time: "6시간 전",
-    status: "investigating" as IssueStatus,
-  },
-  {
-    id: "3",
-    title: "배포 실패: main@a3f2d1c",
-    severity: "warning" as IssueSeverity,
-    category: "배포",
-    icon: Server,
-    time: "12시간 전",
-    status: "resolved" as IssueStatus,
-  },
-  {
-    id: "4",
-    title: "Error rate 증가: /api/checkout",
-    severity: "critical" as IssueSeverity,
-    category: "에러",
-    icon: AlertTriangle,
-    time: "1일 전",
-    status: "open" as IssueStatus,
-  },
-];
 
-const MOCK_DEPLOYS = [
-  {
-    id: "d1",
-    commit: "f7a3b2e",
-    msg: "feat: 결제 플로우 UX 개선",
-    author: "박보겸",
-    time: "14분 전",
-    status: "running" as DeployStatus,
-    env: "production",
-  },
-  {
-    id: "d2",
-    commit: "c9e1d4a",
-    msg: "fix: 세션 만료 버그 수정",
-    author: "박보겸",
-    time: "3시간 전",
-    status: "success" as DeployStatus,
-    env: "production",
-  },
-  {
-    id: "d3",
-    commit: "a3f2d1c",
-    msg: "refactor: 이미지 최적화 파이프라인",
-    author: "박보겸",
-    time: "12시간 전",
-    status: "failed" as DeployStatus,
-    env: "production",
-  },
-  {
-    id: "d4",
-    commit: "b8c5f9d",
-    msg: "chore: 의존성 업데이트",
-    author: "박보겸",
-    time: "1일 전",
-    status: "success" as DeployStatus,
-    env: "staging",
-  },
-  {
-    id: "d5",
-    commit: "e2a7c3f",
-    msg: "feat: 대시보드 차트 컴포넌트 추가",
-    author: "박보겸",
-    time: "2일 전",
-    status: "success" as DeployStatus,
-    env: "production",
-  },
-];
 
 const SERVICES = [
   {
@@ -245,10 +163,40 @@ const STATUS_LABEL: Record<IssueStatus, string> = {
 // ─── 메인 컴포넌트 ────────────────────────────────────────
 
 export default function IssuesPage() {
-  const openCount = MOCK_ISSUES.filter((i) => i.status !== "resolved").length;
+  const { id: projectId } = useParams<{ id: string }>();
+  const { issues: apiIssues, isLoading } = useIssues(projectId);
+  const { deployments: apiDeploys } = useDeployments(projectId);
+
+  // Map API deploys to local format, fallback to mock
+  const deployData = apiDeploys.map(d => ({
+    id: d.id,
+    commit: (d.commit_sha ?? "").slice(0, 7) || "---",
+    msg: d.commit_message ?? d.deployment_id?.slice(0, 12) ?? "Deploy",
+    author: "",
+    time: new Date(d.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+    duration: "",
+    status: (d.status === "ready" ? "success" : d.status === "error" ? "failed" : d.status === "building" ? "running" : "success") as DeployStatus,
+    env: "production" as const,
+  }));
+
+  // Use API data if available, fallback to mock
+  const CATEGORY_TO_ICON: Record<string, React.ElementType> = {
+    security: Shield, performance: Zap, deployment: Server, error: AlertTriangle, general: AlertTriangle,
+  };
+  const issueData = apiIssues.map(i => ({
+    id: i.id,
+    title: i.title,
+    severity: (i.severity as IssueSeverity) || "warning",
+    category: i.category,
+    icon: CATEGORY_TO_ICON[i.category] ?? AlertTriangle,
+    time: new Date(i.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+    status: (i.status as IssueStatus) || "open",
+  }));
+
+  const openCount = issueData.filter((i) => i.status !== "resolved").length;
   const deploySuccessRate = Math.round(
-    (MOCK_DEPLOYS.filter((d) => d.status === "success").length /
-      MOCK_DEPLOYS.filter((d) => d.status !== "running").length) *
+    (deployData.filter((d) => d.status === "success").length /
+      deployData.filter((d) => d.status !== "running").length) *
       100,
   );
 
@@ -286,7 +234,7 @@ export default function IssuesPage() {
           {[
             {
               label: "Critical",
-              count: MOCK_ISSUES.filter(
+              count: issueData.filter(
                 (i) => i.severity === "critical" && i.status !== "resolved",
               ).length,
               colorClass: "text-rose-600",
@@ -294,7 +242,7 @@ export default function IssuesPage() {
             },
             {
               label: "Warning",
-              count: MOCK_ISSUES.filter(
+              count: issueData.filter(
                 (i) => i.severity === "warning" && i.status !== "resolved",
               ).length,
               colorClass: "text-amber-600",
@@ -302,7 +250,7 @@ export default function IssuesPage() {
             },
             {
               label: "Resolved",
-              count: MOCK_ISSUES.filter((i) => i.status === "resolved").length,
+              count: issueData.filter((i) => i.status === "resolved").length,
               colorClass: "text-emerald-600",
               sub: "24h 내 해결됨",
             },
@@ -392,7 +340,7 @@ export default function IssuesPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex gap-1 h-1.5 w-24">
-                  {[...MOCK_DEPLOYS].reverse().map((d, i) => (
+                  {[...deployData].reverse().map((d, i) => (
                     <div
                       key={i}
                       className={cn(
@@ -432,7 +380,7 @@ export default function IssuesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {MOCK_DEPLOYS.map((d) => {
+                {deployData.map((d) => {
                   const cfg = DEPLOY_CFG[d.status];
                   return (
                     <tr
@@ -511,7 +459,7 @@ export default function IssuesPage() {
             </div>
 
             <div className="flex flex-col gap-3 flex-1">
-              {MOCK_ISSUES.map((issue) => {
+              {issueData.map((issue) => {
                 const scfg = SEVERITY_CFG[issue.severity];
                 return (
                   <div

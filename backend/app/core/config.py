@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # App
     frontend_url: str = "http://localhost:3000"
     backend_url: str = "http://localhost:8000"
+    backend_port: int = 8000
 
     # AI
     gemini_api_key: str

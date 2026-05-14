@@ -38,7 +38,7 @@ export default function LoginPage() {
         </motion.div>
 
         <div className="flex flex-col gap-3">
-          <h1 className="h-display">Indie Product Hub</h1>
+          <h1 className="logo-text text-[36px] text-foreground">Launch<span className="text-blue-500">.</span>Pad</h1>
           <p className="text-lede mx-auto">
             만든 프로덕트, 한곳에서 관리하고 홍보하세요
           </p>

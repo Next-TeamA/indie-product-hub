@@ -2,6 +2,8 @@
 
 import { motion } from "motion/react";
 import { Check, Link2 } from "lucide-react";
+import { useState } from "react";
+import { connectAccount } from "@/lib/api/accounts";
 
 function GithubIcon({ className }: { className?: string }) {
   return (
@@ -10,23 +12,12 @@ function GithubIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-import { useState } from "react";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
-
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
-};
-
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
 const item = {
   hidden: { opacity: 0, y: 12, filter: "blur(6px)" },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.5, ease: EASE_OUT_EXPO },
-  },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE_OUT_EXPO } },
 };
 
 interface GithubStepProps {
@@ -37,26 +28,27 @@ interface GithubStepProps {
 export function GithubStep({ onNext, onBack }: GithubStepProps) {
   const [repoUrl, setRepoUrl] = useState("");
   const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
-  const handleConnect = () => {
-    // TODO: GitHub OAuth 연동
-    setConnected(true);
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const { auth_url } = await connectAccount("github");
+      // OAuth redirect -- user will come back after authorization
+      window.location.href = auth_url;
+    } catch (e) {
+      console.error("GitHub connect failed:", e);
+      setConnecting(false);
+    }
   };
 
   return (
-    <motion.div
-      className="relative z-10 w-full max-w-lg mx-auto px-6"
-      variants={stagger}
-      initial="hidden"
-      animate="show"
-    >
+    <motion.div className="relative z-10 w-full max-w-lg mx-auto px-6" variants={stagger} initial="hidden" animate="show">
       <motion.div variants={item} className="mb-2">
         <p className="h-eyebrow">STEP 2</p>
       </motion.div>
 
-      <motion.h2 variants={item} className="h-title mb-3">
-        GitHub 연동
-      </motion.h2>
+      <motion.h2 variants={item} className="h-title mb-3">GitHub 연동</motion.h2>
 
       <motion.p variants={item} className="text-lede mb-8">
         레포지토리를 연결하면 배포 로그, 이슈를 자동으로 추적합니다.
@@ -66,19 +58,17 @@ export function GithubStep({ onNext, onBack }: GithubStepProps) {
         {!connected ? (
           <motion.button
             onClick={handleConnect}
-            className="flex items-center justify-center gap-3 h-14 rounded-2xl
-                       border border-border bg-card text-foreground font-medium
-                       transition-colors hover:bg-accent cursor-pointer"
+            disabled={connecting}
+            className="flex items-center justify-center gap-3 h-14 rounded-2xl border border-border bg-card text-foreground font-medium transition-colors hover:bg-accent cursor-pointer disabled:opacity-50"
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.985 }}
           >
             <GithubIcon className="w-5 h-5" />
-            GitHub 계정 연결하기
+            {connecting ? "연결 중..." : "GitHub 계정 연결하기"}
           </motion.button>
         ) : (
           <motion.div
-            className="flex items-center gap-3 h-14 rounded-2xl border border-emerald-500/30
-                        bg-emerald-500/5 px-5"
+            className="flex items-center gap-3 h-14 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-5"
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -89,20 +79,14 @@ export function GithubStep({ onNext, onBack }: GithubStepProps) {
         )}
 
         <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
           <div className="relative flex justify-center">
-            <span className="bg-background px-3 text-xs text-muted-foreground">
-              또는 직접 입력
-            </span>
+            <span className="bg-background px-3 text-xs text-muted-foreground">또는 직접 입력</span>
           </div>
         </div>
 
         <div>
-          <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
-            레포지토리 URL
-          </label>
+          <label className="text-sm font-medium text-muted-foreground mb-1.5 block">레포지토리 URL</label>
           <div className="relative">
             <input
               type="url"
@@ -117,10 +101,7 @@ export function GithubStep({ onNext, onBack }: GithubStepProps) {
       </motion.div>
 
       <motion.div variants={item} className="mt-8 flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
+        <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
           ← 이전
         </button>
         <motion.button
