@@ -6,7 +6,7 @@ from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.project_access import verify_project_access
 from app.core.encryption import decrypt_token
 from app.core.exceptions import ExternalAPIError, NotFoundError
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 
@@ -56,21 +56,19 @@ async def get_x_tweets_with_metrics(
     _project: dict = Depends(verify_project_access),
 ):
     """Get user's recent X tweets with full metrics (live from API)."""
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token, provider_user_id")
         .eq("user_id", user["id"])
         .eq("provider", "x")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         raise NotFoundError("Connected X account")
 
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     tweets = await x_client.get_user_tweets_with_metrics(
-        token, account.data["provider_user_id"], max_results=20
+        token, account["provider_user_id"], max_results=20
     )
     return tweets
 
@@ -82,19 +80,17 @@ async def get_x_profile_metrics(
     _project: dict = Depends(verify_project_access),
 ):
     """Get X profile-level metrics (followers, tweet count, etc)."""
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user["id"])
         .eq("provider", "x")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         raise NotFoundError("Connected X account")
 
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     return await x_client.get_user_profile_metrics(token)
 
 
@@ -105,21 +101,19 @@ async def get_threads_posts_with_metrics(
     _project: dict = Depends(verify_project_access),
 ):
     """Get user's recent Threads posts with insights (live from API)."""
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token, provider_user_id")
         .eq("user_id", user["id"])
         .eq("provider", "threads")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         raise NotFoundError("Connected Threads account")
 
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     posts = await threads_client.get_user_posts_with_insights(
-        token, account.data["provider_user_id"], limit=20
+        token, account["provider_user_id"], limit=20
     )
     return posts
 
@@ -131,21 +125,19 @@ async def get_threads_profile_insights(
     _project: dict = Depends(verify_project_access),
 ):
     """Get Threads profile-level insights (followers, views, engagement)."""
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token, provider_user_id")
         .eq("user_id", user["id"])
         .eq("provider", "threads")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         raise NotFoundError("Connected Threads account")
 
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     return await threads_client.get_profile_insights(
-        token, account.data["provider_user_id"]
+        token, account["provider_user_id"]
     )
 
 
@@ -162,19 +154,17 @@ async def _sync_project_metrics(project_id: str, user_id: str):
 
     for post in posts.data or []:
         try:
-            account = (
+            account = safe_maybe_single(
                 supabase.table("connected_accounts")
                 .select("access_token, provider_user_id")
                 .eq("user_id", user_id)
                 .eq("provider", post["platform"])
                 .eq("is_active", True)
-                .maybe_single()
-                .execute()
             )
-            if not account.data:
+            if not account:
                 continue
 
-            token = decrypt_token(account.data["access_token"])
+            token = decrypt_token(account["access_token"])
 
             if post["platform"] == "x":
                 metrics = await x_client.get_tweet_metrics(token, post["external_post_id"])

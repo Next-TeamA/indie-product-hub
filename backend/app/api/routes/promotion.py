@@ -9,7 +9,7 @@ from app.api.dependencies.project_access import verify_project_access
 from app.core.rate_limit import limiter
 from app.core.exceptions import ExternalAPIError, NotFoundError, ValidationError
 from app.core.encryption import decrypt_token
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations import gemini
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
@@ -78,14 +78,11 @@ async def generate_promotion(
 ):
     """Generate promotion content with rich project context."""
     # Load project promotion info for context
-    promo_info = (
+    info = safe_maybe_single(
         supabase.table("project_promotion_info")
         .select("*")
         .eq("project_id", project_id)
-        .maybe_single()
-        .execute()
-    )
-    info = promo_info.data or {}
+    ) or {}
 
     # Load project details
     project = (
@@ -357,16 +354,14 @@ async def get_promotion_info(
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
-    result = (
+    data = safe_maybe_single(
         supabase.table("project_promotion_info")
         .select("*")
         .eq("project_id", project_id)
-        .maybe_single()
-        .execute()
     )
-    if result is None or result.data is None:
+    if not data:
         return {}
-    return result.data
+    return data
 
 
 async def _get_github_context(user_id: str, project: dict) -> str | None:
@@ -376,20 +371,18 @@ async def _get_github_context(user_id: str, project: dict) -> str | None:
     if not owner or not repo:
         return None
 
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user_id)
         .eq("provider", "github")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         return None
 
     try:
-        token = decrypt_token(account.data["access_token"])
+        token = decrypt_token(account["access_token"])
         commits = await github_client.list_commits(token, owner, repo, per_page=5)
         pulls = await github_client.list_pulls(token, owner, repo, state="all", per_page=5)
 

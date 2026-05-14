@@ -5,7 +5,7 @@ to identify what went wrong, why, and how to fix it.
 """
 
 from app.core.encryption import decrypt_token
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations import gemini
 from app.integrations.vercel_api import vercel_client
 from app.integrations.github_api import github_client
@@ -65,17 +65,15 @@ async def analyze_deployment_error(
 
     if platform == "vercel":
         # Pull build events from Vercel
-        account = (
+        account = safe_maybe_single(
             supabase.table("connected_accounts")
             .select("access_token")
             .eq("user_id", user_id)
             .eq("provider", "vercel")
             .eq("is_active", True)
-            .maybe_single()
-            .execute()
         )
-        if account.data and d.get("deployment_id"):
-            token = decrypt_token(account.data["access_token"])
+        if account and d.get("deployment_id"):
+            token = decrypt_token(account["access_token"])
             try:
                 events = await vercel_client.get_deployment_events(token, d["deployment_id"])
                 # Extract error lines from build events
@@ -94,17 +92,15 @@ async def analyze_deployment_error(
 
     elif platform == "github":
         # Pull GitHub Actions job logs
-        account = (
+        account = safe_maybe_single(
             supabase.table("connected_accounts")
             .select("access_token")
             .eq("user_id", user_id)
             .eq("provider", "github")
             .eq("is_active", True)
-            .maybe_single()
-            .execute()
         )
-        if account.data and proj.get("github_repo_owner"):
-            token = decrypt_token(account.data["access_token"])
+        if account and proj.get("github_repo_owner"):
+            token = decrypt_token(account["access_token"])
             owner = proj["github_repo_owner"]
             repo = proj["github_repo_name"]
             try:
