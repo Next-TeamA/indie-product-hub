@@ -5,14 +5,12 @@ import { motion, AnimatePresence } from "motion/react";
 import { useProjects } from "@/hooks/use-projects";
 import {
   Plus,
-  ChevronDown,
   ArrowRight,
   Pencil,
   X,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Trash2,
   Lightbulb,
   AlertCircle,
   ShieldCheck,
@@ -20,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { updateProject } from "@/lib/api/projects";
 
 // ─── 상수 및 Mock 데이터 ───────────────────────────────────
 
@@ -109,12 +108,10 @@ export default function ProjectsPage() {
   }));
 
   // --- 상태 관리 ---
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
-  const [infoForm, setInfoForm] = useState({
-    service_name: "",
-    description: "",
-  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [infoForm, setInfoForm] = useState({ service_name: "", description: "" });
+  const [saving, setSaving] = useState(false);
 
   // 캘린더 상태
   const today = new Date();
@@ -191,9 +188,8 @@ export default function ProjectsPage() {
           </div>
 
           <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] overflow-hidden">
-            <div className="grid grid-cols-[80px_1fr_80px_80px_80px_24px] gap-6 px-8 py-4 border-b border-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              <div>상태</div>
-              <div>계정</div>
+            <div className="grid grid-cols-[1fr_80px_80px_80px_32px] gap-6 px-8 py-4 border-b border-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <div>프로젝트 이름</div>
               <div>홍보</div>
               <div className="text-center">현황</div>
               <div className="text-center">이슈</div>
@@ -206,26 +202,9 @@ export default function ProjectsPage() {
                   key={project.id}
                   className="transition-colors hover:bg-slate-50/30"
                 >
-                  <div
-                    className="grid grid-cols-[80px_1fr_80px_80px_80px_24px] gap-6 px-8 py-6 items-center cursor-pointer"
-                    onClick={() =>
-                      setExpandedId(
-                        expandedId === project.id ? null : project.id,
-                      )
-                    }
-                  >
-                    <span
-                      className={cn(
-                        "text-[11px] font-bold px-2 py-0.5 rounded-md",
-                        project.status === "운영중"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-amber-50 text-amber-600",
-                      )}
-                    >
-                      {project.status}
-                    </span>
+                  <div className="grid grid-cols-[1fr_80px_80px_80px_32px] gap-6 px-8 py-6 items-center">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-900" />
+                      <div className="w-10 h-10 rounded-full bg-slate-900 shrink-0" />
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-slate-800">
@@ -234,6 +213,7 @@ export default function ProjectsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              setEditingId(project.id);
                               setInfoForm({
                                 service_name: project.name,
                                 description: project.description,
@@ -246,7 +226,7 @@ export default function ProjectsPage() {
                           </button>
                         </div>
                         <p className="text-[12px] font-medium text-slate-400">
-                          {project.handle}
+                          {project.description}
                         </p>
                       </div>
                     </div>
@@ -266,42 +246,14 @@ export default function ProjectsPage() {
                     >
                       {project.issueCount > 0 ? `${project.issueCount}건` : "-"}
                     </div>
-                    <ChevronDown
-                      className={cn(
-                        "w-4 h-4 text-slate-300 transition-transform",
-                        expandedId === project.id && "rotate-180",
-                      )}
-                    />
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all"
+                      title="대시보드 입장"
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
                   </div>
-                  <AnimatePresence>
-                    {expandedId === project.id && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden bg-slate-50/30"
-                      >
-                        <div className="px-8 pb-8 pt-2 grid grid-cols-[80px_1fr_120px] gap-6">
-                          <div />
-                          <div className="border-t border-slate-100 pt-6">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                              Description
-                            </p>
-                            <p className="text-[14px] font-medium text-slate-600 mb-6">
-                              {project.description}
-                            </p>
-                            <Link
-                              href={`/projects/${project.id}`}
-                              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-slate-200 bg-white text-[13px] font-bold text-slate-700 hover:bg-slate-50 transition-all"
-                            >
-                              대시보드 입장 <ArrowRight className="w-4 h-4" />
-                            </Link>
-                          </div>
-                          <div />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               ))}
             </div>
@@ -528,10 +480,23 @@ export default function ProjectsPage() {
                   취소
                 </button>
                 <button
-                  onClick={() => setShowInfoDrawer(false)}
-                  className="flex-1 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!editingId) return;
+                    setSaving(true);
+                    try {
+                      await updateProject(editingId, {
+                        name: infoForm.service_name,
+                        description: infoForm.description,
+                      });
+                      setShowInfoDrawer(false);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  className="flex-1 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 disabled:opacity-50"
                 >
-                  저장하기
+                  {saving ? "저장 중..." : "저장하기"}
                 </button>
               </div>
             </motion.div>
