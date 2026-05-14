@@ -8,8 +8,6 @@ Architecture:
 from __future__ import annotations
 
 import json
-import traceback
-from dataclasses import dataclass, field
 from typing import Any
 
 from google import genai
@@ -18,29 +16,7 @@ from google.genai import types
 from app.core.config import settings
 from app.core.encryption import decrypt_token
 from app.core.supabase import supabase
-from app.agents.tools.registry import ToolDef
-
-
-# ---------------------------------------------------------------------------
-# Data structures
-# ---------------------------------------------------------------------------
-
-@dataclass
-class AgentContext:
-    project_id: str
-    user_id: str
-    project: dict
-    knowledge: dict[str, str]          # category -> content
-    tokens: dict[str, str]             # provider -> decrypted token
-    max_iterations: int = 10
-
-
-@dataclass
-class AgentResult:
-    answer: str
-    tool_calls: list[dict] = field(default_factory=list)
-    iterations: int = 0
-    error: str | None = None
+from app.agents.context import AgentContext, AgentResult
 
 
 # ---------------------------------------------------------------------------
