@@ -80,6 +80,14 @@ export type PromotionCampaignResult = {
   posts: Promotion[];
 };
 
+export type LatestPromotionCampaign = {
+  id: string;
+  input: PromotionCampaignInput;
+  status: "generating" | "completed" | "failed";
+  created_at: string;
+  updated_at: string;
+} | null;
+
 // --- Promotion Posts API ---
 
 export async function listPromotions(projectId: string): Promise<Promotion[]> {
@@ -156,6 +164,10 @@ export async function createPromotionCampaign(
     method: "POST",
     body: data,
   });
+}
+
+export async function getLatestPromotionCampaign(projectId: string): Promise<LatestPromotionCampaign> {
+  return apiFetch(`/api/projects/${projectId}/promotion/campaigns/latest`);
 }
 
 // --- Project Promotion Info ---

@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import {
   createPromotionCampaign,
+  getLatestPromotionCampaign,
   getProjectPromotionInfo,
   type PromotionCampaignInput,
 } from "@/lib/api/promotion";
@@ -24,6 +25,30 @@ const initialForm: PromotionCampaignInput = {
   tone_preference: "친근하지만 너무 가볍지 않게",
   additional_context: "",
 };
+
+const storageKey = (projectId: string) => `promotion-campaign-form:${projectId}`;
+
+function readSavedForm(projectId: string): Partial<PromotionCampaignInput> {
+  try {
+    const saved = window.localStorage.getItem(storageKey(projectId));
+    if (!saved) return {};
+    const parsed = JSON.parse(saved) as Partial<PromotionCampaignInput>;
+    return {
+      project_name: parsed.project_name,
+      one_line_description: parsed.one_line_description,
+      target_user: parsed.target_user,
+      problem: parsed.problem,
+      core_value: parsed.core_value,
+      main_features: parsed.main_features,
+      promotion_goal: parsed.promotion_goal,
+      channel: "threads",
+      tone_preference: parsed.tone_preference,
+      additional_context: parsed.additional_context,
+    };
+  } catch {
+    return {};
+  }
+}
 
 type FieldProps = {
   label: string;
@@ -55,19 +80,24 @@ export default function NewPromotionCampaignPage() {
   useEffect(() => {
     async function loadDefaults() {
       try {
-        const [project, info] = await Promise.all([
+        const savedForm = readSavedForm(projectId);
+        const [project, info, latestCampaign] = await Promise.all([
           getProject(projectId),
           getProjectPromotionInfo(projectId).catch(() => null),
+          getLatestPromotionCampaign(projectId).catch(() => null),
         ]);
 
-        setForm((prev) => ({
-          ...prev,
+        setForm({
+          ...initialForm,
           project_name: info?.service_name || project.name || "",
           one_line_description: info?.description || project.description || "",
           target_user: info?.target_user || "",
           core_value: info?.key_values || "",
           additional_context: project.prd || "",
-        }));
+          ...(latestCampaign?.input ?? {}),
+          ...savedForm,
+          channel: "threads",
+        });
       } catch (e) {
         console.error(e);
         setError("프로젝트 정보를 불러오지 못했습니다.");
@@ -78,6 +108,11 @@ export default function NewPromotionCampaignPage() {
 
     loadDefaults();
   }, [projectId]);
+
+  useEffect(() => {
+    if (loading) return;
+    window.localStorage.setItem(storageKey(projectId), JSON.stringify(form));
+  }, [form, loading, projectId]);
 
   const setValue = (key: keyof PromotionCampaignInput, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));

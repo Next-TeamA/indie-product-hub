@@ -8,17 +8,20 @@ stay strategic, varied, and easy to validate.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import re
 from zoneinfo import ZoneInfo
 
 from app.core.exceptions import ExternalAPIError, ValidationError
 from app.core.supabase import supabase
 from app.integrations import gemini
 from app.models.promotion import PromotionCampaignRequest
+from app.workspace.skill_loader import get_skill_prompt
 
 MODEL = "gemini-2.5-flash"
 CAMPAIGN_DAYS = 14
 DEFAULT_POST_HOUR = 19
 SEOUL = ZoneInfo("Asia/Seoul")
+PROMOTION_SKILL = get_skill_prompt("promotion")
 
 CONTENT_TYPE_MAP = {
     "문제 공감형": "qa",
@@ -183,6 +186,9 @@ You are a Threads copywriter for finished product promotion.
 
 Write actual post drafts for the 14-day calendar.
 
+Promotion writing skill:
+{PROMOTION_SKILL or "No promotion skill document is available. Follow the rules below."}
+
 Rules:
 - Korean by default unless the input clearly asks otherwise.
 - Threads tone: conversational, concrete, community-aware.
@@ -208,7 +214,12 @@ Calendar:
 
 Return only a JSON array with exactly 14 objects:
 [
-  {{"day": 1, "draft": "actual Threads post draft"}}
+  {{
+    "day": 1,
+    "hook": "opening hook, one sentence",
+    "content": "post body without repeating the hook",
+    "draft": "hook + newline + body"
+  }}
 ]
 """
     result = await gemini.generate_json(prompt=prompt, system="Write natural, non-salesy Threads drafts for product promotion.", model=MODEL)
@@ -220,12 +231,19 @@ Return only a JSON array with exactly 14 objects:
 
 async def _review_campaign(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict, calendar: list, drafts: list) -> dict:
     merged = []
-    draft_by_day = {int(d.get("day", 0)): d.get("draft", "") for d in drafts if isinstance(d, dict)}
+    draft_by_day = {int(d.get("day", 0)): d for d in drafts if isinstance(d, dict)}
     for item in calendar:
         if not isinstance(item, dict):
             continue
         day = int(item.get("day", len(merged) + 1))
-        merged.append({**item, "day": day, "draft": draft_by_day.get(day, "")})
+        draft_item = draft_by_day.get(day, {})
+        merged.append({
+            **item,
+            "day": day,
+            "hook": draft_item.get("hook", ""),
+            "content": draft_item.get("content", ""),
+            "draft": draft_item.get("draft", ""),
+        })
 
     prompt = f"""
 You are the final editor for a 14-day product promotion campaign.
@@ -272,6 +290,8 @@ Return only JSON:
       "coreMessage": "",
       "cta": "",
       "assignedInfo": "",
+      "hook": "",
+      "content": "",
       "draft": ""
     }}
   ]
@@ -291,9 +311,49 @@ def _post_content_type(content_type: str | None) -> str:
     return CONTENT_TYPE_MAP.get(content_type, "tip")
 
 
-def _hook_from_draft(draft: str, topic: str) -> str:
-    first_line = draft.strip().splitlines()[0] if draft.strip() else topic
-    return first_line[:160]
+def _split_hook_and_content(draft: str, topic: str) -> tuple[str, str]:
+    """Separate a generated draft's opening hook from the remaining body."""
+    cleaned = draft.strip()
+    fallback = topic.strip()
+    if not cleaned:
+        return fallback[:160], fallback
+
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    if len(lines) > 1:
+        hook = lines[0]
+        content = "\n\n".join(lines[1:]).strip()
+        return hook[:160], content or cleaned
+
+    sentence_match = re.match(r"^(.+?[.!?。！？]|.+?[다요죠까네])(?:\s+|$)(.*)$", cleaned, re.DOTALL)
+    if sentence_match:
+        hook = sentence_match.group(1).strip()
+        content = sentence_match.group(2).strip()
+        return hook[:160], content or cleaned
+
+    return cleaned[:160], cleaned
+
+
+def _remove_repeated_hook(hook: str, content: str) -> str:
+    normalized_hook = hook.strip()
+    normalized_content = content.strip()
+    if normalized_hook and normalized_content.startswith(normalized_hook):
+        return normalized_content[len(normalized_hook):].lstrip("\n\r\t -")
+    lines = [line.strip() for line in normalized_content.splitlines() if line.strip()]
+    if len(lines) > 1 and _same_text(normalized_hook, lines[0]):
+        return "\n\n".join(lines[1:]).strip()
+    sentence_match = re.match(r"^(.+?[.!?。！？]|.+?[다요죠까네])(?:\s+|$)(.*)$", normalized_content, re.DOTALL)
+    if sentence_match and _same_text(normalized_hook, sentence_match.group(1)):
+        return sentence_match.group(2).strip()
+    return normalized_content
+
+
+def _same_text(a: str, b: str) -> bool:
+    def compact(value: str) -> str:
+        return re.sub(r"[\s\"'“”‘’.,!?。！？…·:;~-]+", "", value).lower()
+
+    compact_a = compact(a)
+    compact_b = compact(b)
+    return bool(compact_a and compact_b and (compact_a == compact_b or compact_a.startswith(compact_b) or compact_b.startswith(compact_a)))
 
 
 def _scheduled_at_for_day(day: int) -> str:
@@ -343,12 +403,19 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
             day = int(raw.get("day", len(posts_payload) + 1))
             draft = str(raw.get("draft", "")).strip()
             topic = str(raw.get("topic", "")).strip()
+            hook = str(raw.get("hook", "")).strip()
+            content = str(raw.get("content", "")).strip()
+            if not hook or not content:
+                hook, content = _split_hook_and_content(draft, topic)
+            elif draft and _same_text(hook, content):
+                _, content = _split_hook_and_content(draft, topic)
+            content = _remove_repeated_hook(hook, content) or topic or body.one_line_description
             posts_payload.append({
                 "project_id": project_id,
                 "user_id": user_id,
                 "platform": body.channel,
-                "hook": _hook_from_draft(draft, topic),
-                "content": draft or topic or body.one_line_description,
+                "hook": hook,
+                "content": content or topic or body.one_line_description,
                 "hashtags": [],
                 "tone": "friendly",
                 "content_type": _post_content_type(raw.get("contentType")),

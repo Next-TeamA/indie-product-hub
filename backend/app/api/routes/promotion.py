@@ -197,6 +197,27 @@ async def create_promotion_campaign(
     return await create_campaign(project_id, user["id"], body)
 
 
+@router.get("/campaigns/latest")
+async def get_latest_promotion_campaign(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Get the latest campaign input so the strategy form can be reused."""
+    result = (
+        supabase.table("promotion_campaigns")
+        .select("id, input, status, created_at, updated_at")
+        .eq("project_id", project_id)
+        .eq("user_id", user["id"])
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        return None
+    return result.data[0]
+
+
 @router.post("/posts")
 async def create_post(
     project_id: str,
