@@ -1,6 +1,6 @@
 """GitHub tools for LaunchPad Agent."""
 
-from app.agents.core import AgentContext
+from app.agents.context import AgentContext
 from app.agents.tools.registry import register_tool
 from app.integrations.github_api import github_client
 

@@ -1,6 +1,6 @@
 """Deploy monitoring tools for LaunchPad Agent."""
 
-from app.agents.core import AgentContext
+from app.agents.context import AgentContext
 from app.agents.tools.registry import register_tool
 from app.core.supabase import supabase
 from app.integrations.vercel_api import vercel_client
