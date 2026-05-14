@@ -30,6 +30,7 @@ export type MarketingInsights = {
   }>;
   total_posts: number;
   data_points: number;
+  daily_impressions: number[];
   period: { from: string; to: string };
 };
 

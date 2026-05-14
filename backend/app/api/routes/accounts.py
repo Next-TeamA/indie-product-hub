@@ -161,9 +161,11 @@ async def list_railway_projects(user: dict = Depends(get_current_user)):
 
 
 @router.get("/connect/{provider}")
-async def connect_account(provider: str, user: dict = Depends(get_current_user)):
+async def connect_account(provider: str, return_to: str | None = None, user: dict = Depends(get_current_user)):
     state = secrets.token_urlsafe(32)
     state_data = {"user_id": user["id"], "provider": provider}
+    if return_to:
+        state_data["return_to"] = return_to
 
     if provider == "x":
         verifier, challenge = XAPIClient.generate_pkce()
@@ -281,7 +283,10 @@ async def oauth_callback(provider: str, code: str, state: str):
         on_conflict="user_id,provider,provider_user_id",
     ).execute()
 
-    return RedirectResponse(url=f"{settings.frontend_url}/projects?connected={provider}")
+    # Redirect to return_to if provided (e.g. onboarding flow), otherwise /projects
+    return_to = stored.get("return_to", f"/projects?connected={provider}")
+    redirect_url = return_to if return_to.startswith("http") else f"{settings.frontend_url}{return_to}"
+    return RedirectResponse(url=redirect_url)
 
 
 @router.delete("/{account_id}", status_code=204)

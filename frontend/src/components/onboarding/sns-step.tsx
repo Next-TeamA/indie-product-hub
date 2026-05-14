@@ -20,16 +20,18 @@ const SNS_OPTIONS = [
 interface SnsStepProps {
   onNext: (data: { selectedSns: string[] }) => void;
   onBack: () => void;
+  onBeforeOAuth?: () => void;
 }
 
-export function SnsStep({ onNext, onBack }: SnsStepProps) {
+export function SnsStep({ onNext, onBack, onBeforeOAuth }: SnsStepProps) {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [connecting, setConnecting] = useState<string | null>(null);
 
   const handleConnect = async (provider: string) => {
     setConnecting(provider);
     try {
-      const { auth_url } = await connectAccount(provider);
+      onBeforeOAuth?.();
+      const { auth_url } = await connectAccount(provider, "/projects/new");
       window.location.href = auth_url;
     } catch (e) {
       console.error(`${provider} connect failed:`, e);

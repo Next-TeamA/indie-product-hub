@@ -22,11 +22,17 @@ from app.api.routes.webhooks import router as webhooks_router
 from app.api.routes.sns_metrics import router as sns_metrics_router
 from app.api.routes.automation import router as automation_router
 from app.api.routes.log_drain import router as log_drain_router
+from app.api.routes.agent import router as agent_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup -- start background scheduler
+    # Startup -- register agent tools + start background scheduler
+    try:
+        from app.agents.tools import register_all_tools
+        register_all_tools()
+    except Exception:
+        pass
     try:
         from app.workers.scheduler import setup_scheduler, shutdown_scheduler
         setup_scheduler()
@@ -72,3 +78,4 @@ app.include_router(webhooks_router, prefix="/api")
 app.include_router(sns_metrics_router, prefix="/api")
 app.include_router(automation_router, prefix="/api")
 app.include_router(log_drain_router, prefix="/api")
+app.include_router(agent_router, prefix="/api")

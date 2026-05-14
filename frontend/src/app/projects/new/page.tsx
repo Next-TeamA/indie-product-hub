@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useState } from "react";
+import { useReducer, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/lib/api/projects";
 import { AnimatePresence, motion } from "motion/react";
@@ -13,6 +13,7 @@ import { SnsStep } from "@/components/onboarding/sns-step";
 import { CompleteStep } from "@/components/onboarding/complete-step";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+const STORAGE_KEY = "onboarding_state";
 
 type Stage = "prd" | "github" | "deploy" | "sns" | "complete";
 
@@ -49,7 +50,8 @@ type Action =
       payload: { deploy_platform: string; deploy_project_id: string };
     }
   | { type: "sns_done"; payload: { selectedSns: string[] } }
-  | { type: "back" };
+  | { type: "back" }
+  | { type: "restore"; payload: State };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -87,6 +89,8 @@ function reducer(state: State, action: Action): State {
       if (currentIndex <= 0) return state;
       return { ...state, stage: STEPS[currentIndex - 1] };
     }
+    case "restore":
+      return action.payload;
     default:
       return state;
   }
@@ -105,12 +109,48 @@ const initialState: State = {
   selectedSns: [],
 };
 
+function saveState(state: State) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
+}
+
+function loadAndClearState(): State | null {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return JSON.parse(saved) as State;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export default function NewProjectPage() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [isCreating, setIsCreating] = useState(false);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const currentIndex = STEPS.indexOf(state.stage);
   const router = useRouter();
+
+  // Restore state from sessionStorage on mount (after OAuth redirect)
+  useEffect(() => {
+    const saved = loadAndClearState();
+    if (saved) {
+      dispatch({ type: "restore", payload: saved });
+    }
+    setReady(true);
+  }, []);
+
+  // Save state to sessionStorage before OAuth redirect
+  const saveBeforeOAuth = useCallback(() => {
+    saveState(state);
+  }, [state]);
 
   async function handleSnsComplete(data: { selectedSns: string[] }) {
     setIsCreating(true);
@@ -134,6 +174,8 @@ export default function NewProjectPage() {
       setIsCreating(false);
     }
   }
+
+  if (!ready) return null;
 
   return (
     <div className="onboard-shell">
@@ -173,6 +215,7 @@ export default function NewProjectPage() {
                 dispatch({ type: "github_done", payload: data })
               }
               onBack={() => dispatch({ type: "back" })}
+              onBeforeOAuth={saveBeforeOAuth}
             />
           )}
           {state.stage === "deploy" && (
@@ -181,12 +224,14 @@ export default function NewProjectPage() {
                 dispatch({ type: "deploy_done", payload: data })
               }
               onBack={() => dispatch({ type: "back" })}
+              onBeforeOAuth={saveBeforeOAuth}
             />
           )}
           {state.stage === "sns" && (
             <SnsStep
               onNext={handleSnsComplete}
               onBack={() => dispatch({ type: "back" })}
+              onBeforeOAuth={saveBeforeOAuth}
             />
           )}
           {state.stage === "complete" && (

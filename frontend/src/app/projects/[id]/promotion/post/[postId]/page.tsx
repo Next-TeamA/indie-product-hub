@@ -19,6 +19,11 @@ import {
 import {
   listPromotions,
   getProjectPromotionInfo,
+  generatePromotion,
+  updatePromotion,
+  deletePromotion as deletePromotionApi,
+  createPromotion,
+  publishPromotion,
   type Promotion,
   type Platform,
   type PromotionStatus,
@@ -113,38 +118,6 @@ function toKoDate(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()} (${KO_DAYS[d.getDay()]})`;
 }
 
-// Mock AI generation
-function mockGenerate(opts: {
-  projectInfo: ProjectPromotionInfo;
-  message: string;
-  tone: Tone;
-  contentType: ContentType;
-  reference: string;
-  platform: Platform;
-}): { hook: string; content: string; hashtags: string[] } {
-  const { projectInfo, message, tone, contentType, reference } = opts;
-  const hooks: Record<Tone, string> = {
-    친근한: `${projectInfo.service_name}으로 더 가볍게 시작하세요`,
-    전문적: `${projectInfo.service_name}: ${projectInfo.description}`,
-    유머: `복잡한 도구는 이제 그만 👋`,
-  };
-  const bodies: Record<ContentType, string> = {
-    출시: `${projectInfo.service_name}이 출시되었습니다.\n\n${message || projectInfo.description}\n→ ${reference || "지금 바로 시작해보세요"}`,
-    회고: `${projectInfo.service_name} 솔직한 회고\n\n${message || projectInfo.key_values.split("\n")[0] || "꾸준한 빌드"}\n\n다음 달엔 더 잘할 수 있을 것 같습니다.`,
-    업데이트: `새로운 업데이트가 나왔습니다!\n\n${message || projectInfo.key_values}\n\n사용해보고 피드백 남겨주세요 🙏`,
-    "Q&A": `자주 받는 질문에 답해드립니다.\n\nQ: ${reference || "왜 만들었나요?"}\nA: ${message || projectInfo.description}`,
-  };
-  return {
-    hook: hooks[tone],
-    content: bodies[contentType],
-    hashtags: [
-      "#인디메이커",
-      `#${projectInfo.service_name.replace(/\s/g, "")}`,
-      "#빌드인퍼블릭",
-    ],
-  };
-}
-
 // --- Component ---
 
 export default function PostEditorPage() {
@@ -208,35 +181,51 @@ export default function PostEditorPage() {
     fetchAll();
   }, [projectId, postId, isNew]);
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     if (!projectInfo) return;
     setGenerating(true);
-    setTimeout(() => {
-      const result = mockGenerate({
-        projectInfo,
-        message,
-        tone,
-        contentType,
-        reference,
-        platform: activePlatform,
+    try {
+      const prompt = [message, reference].filter(Boolean).join("\n\n");
+      const result = await generatePromotion(projectId, {
+        message: prompt || `${contentType} 게시물을 ${tone} 톤으로 작성해주세요.`,
+        template: activePlatform,
       });
-      setEditHook(result.hook);
-      setEditContent(result.content);
-      setEditHashtags(result.hashtags);
+      setEditHook(result.generated.hook);
+      setEditContent(result.generated.content);
+      setEditHashtags(result.generated.hashtags);
+    } catch (e) {
+      console.error("AI generation failed:", e);
+    } finally {
       setGenerating(false);
-    }, 900);
-  }, [projectInfo, message, tone, contentType, reference, activePlatform]);
+    }
+  }, [projectInfo, projectId, message, tone, contentType, reference, activePlatform]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (!isNew) {
-        // TODO: 백엔드 PATCH /promotion/posts/{id} 엔드포인트 추가 필요
-        console.log("Save:", { hook: editHook, content: editContent, hashtags: editHashtags, status: editStatus, platform: activePlatform });
+      const postData = {
+        hook: editHook,
+        content: editContent,
+        hashtags: editHashtags,
+        platform: activePlatform,
+        tone: tone === "친근한" ? "friendly" : tone === "전문적" ? "professional" : "humorous",
+        content_type: contentType === "출시" ? "launch" : contentType === "업데이트" ? "update" : contentType === "회고" ? "retrospective" : "qa",
+      };
+
+      if (isNew) {
+        const created = await createPromotion(projectId, postData);
+        if (editStatus === "published") {
+          await publishPromotion(projectId, created.id);
+        }
+      } else if (promotion) {
+        await updatePromotion(projectId, promotion.id, postData);
+        if (editStatus === "published" && promotion.status !== "published") {
+          await publishPromotion(projectId, promotion.id);
+        }
       }
       router.push(`/projects/${projectId}/promotion`);
     } catch (e) {
-      console.error(e);
+      console.error("Save failed:", e);
     } finally {
       setSaving(false);
     }
@@ -246,11 +235,10 @@ export default function PostEditorPage() {
     if (!promotion) return;
     setDeleting(true);
     try {
-      // TODO: 백엔드 DELETE /promotion/posts/{id} 엔드포인트 추가 필요
-      console.log("Delete:", promotion.id);
+      await deletePromotionApi(projectId, promotion.id);
       router.push(`/projects/${projectId}/promotion`);
     } catch (e) {
-      console.error(e);
+      console.error("Delete failed:", e);
     } finally {
       setDeleting(false);
     }

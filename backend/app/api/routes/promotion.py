@@ -1,5 +1,7 @@
 """Promotion content generation and management."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, BackgroundTasks, Request
 
 from app.api.dependencies.auth import get_current_user
@@ -11,6 +13,7 @@ from app.core.supabase import supabase
 from app.integrations import gemini
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
+from app.integrations.github_api import github_client
 from app.models.promotion import PromotionRequest, PromotionPostCreate, PromotionInfoUpsert
 
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
@@ -87,7 +90,7 @@ async def generate_promotion(
     # Load project details
     project = (
         supabase.table("projects")
-        .select("name, description, prd")
+        .select("name, description, prd, github_repo_owner, github_repo_name")
         .eq("id", project_id)
         .single()
         .execute()
@@ -112,6 +115,26 @@ async def generate_promotion(
         context_parts.append(f"Key Values: {info['key_values']}")
     if proj.get("prd"):
         context_parts.append(f"PRD Summary: {proj['prd'][:500]}")
+
+    # Pull knowledge base for richer context
+    knowledge = (
+        supabase.table("project_knowledge")
+        .select("category, content")
+        .eq("project_id", project_id)
+        .execute()
+    )
+    if knowledge.data:
+        kb_parts = []
+        for k in knowledge.data:
+            if k["category"] != "project_readme":
+                kb_parts.append(k["content"][:500])
+        if kb_parts:
+            context_parts.append(f"\nProject Knowledge Base:\n{chr(10).join(kb_parts)}")
+    else:
+        # Fallback: pull GitHub context directly if no knowledge base yet
+        github_context = await _get_github_context(user["id"], proj)
+        if github_context:
+            context_parts.append(f"\nRecent Development Activity:\n{github_context}")
 
     platform_hint = ""
     if body.template:
@@ -189,6 +212,51 @@ async def list_posts(
         query = query.eq("platform", platform)
     result = query.execute()
     return result.data
+
+
+@router.patch("/posts/{post_id}")
+async def update_post(
+    project_id: str,
+    post_id: str,
+    body: PromotionPostCreate,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Update a draft/scheduled promotion post."""
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise ValidationError("No fields to update")
+    result = (
+        supabase.table("promotion_posts")
+        .update(updates)
+        .eq("id", post_id)
+        .eq("project_id", project_id)
+        .in_("status", ["draft", "scheduled"])
+        .execute()
+    )
+    if not result.data:
+        raise NotFoundError("Post", post_id)
+    return result.data[0]
+
+
+@router.delete("/posts/{post_id}", status_code=204)
+async def delete_post(
+    project_id: str,
+    post_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Delete a draft/scheduled promotion post."""
+    result = (
+        supabase.table("promotion_posts")
+        .delete()
+        .eq("id", post_id)
+        .eq("project_id", project_id)
+        .in_("status", ["draft", "scheduled", "failed"])
+        .execute()
+    )
+    if not result.data:
+        raise NotFoundError("Post", post_id)
 
 
 @router.post("/posts/{post_id}/publish")
@@ -297,6 +365,46 @@ async def get_promotion_info(
         .execute()
     )
     return result.data or {}
+
+
+async def _get_github_context(user_id: str, project: dict) -> str | None:
+    """Pull recent commits and PRs from the project's linked GitHub repo."""
+    owner = project.get("github_repo_owner")
+    repo = project.get("github_repo_name")
+    if not owner or not repo:
+        return None
+
+    account = (
+        supabase.table("connected_accounts")
+        .select("access_token")
+        .eq("user_id", user_id)
+        .eq("provider", "github")
+        .eq("is_active", True)
+        .maybe_single()
+        .execute()
+    )
+    if not account.data:
+        return None
+
+    try:
+        token = decrypt_token(account.data["access_token"])
+        commits = await github_client.list_commits(token, owner, repo, per_page=5)
+        pulls = await github_client.list_pulls(token, owner, repo, state="all", per_page=5)
+
+        parts = []
+        if commits:
+            commit_lines = [
+                f"- {c['commit']['message'].split(chr(10))[0]}" for c in commits
+            ]
+            parts.append("Recent commits:\n" + "\n".join(commit_lines))
+        if pulls:
+            pr_lines = [
+                f"- [{p['state']}] {p['title']}" for p in pulls
+            ]
+            parts.append("Recent PRs:\n" + "\n".join(pr_lines))
+        return "\n".join(parts) if parts else None
+    except Exception:
+        return None
 
 
 @router.put("/info")
