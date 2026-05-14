@@ -158,7 +158,18 @@ export default function PostEditorPage() {
           getProjectPromotionInfo(projectId),
           isNew ? Promise.resolve([]) : listPromotions(projectId),
         ]);
-        setProjectInfo(info);
+        setProjectInfo({
+          project_id: projectId,
+          service_name: info?.service_name || "My Product",
+          description: info?.description || "",
+          target_user: info?.target_user || "",
+          key_values: info?.key_values || "",
+          site_url: info?.site_url || "",
+          default_hashtags: info?.default_hashtags || [],
+          tone_preference: info?.tone_preference || "friendly",
+          logo_url: info?.logo_url || null,
+          updated_at: info?.updated_at || "",
+        });
         if (!isNew) {
           const found = (list as Promotion[]).find((p) => p.id === postId);
           if (found) {
@@ -173,6 +184,21 @@ export default function PostEditorPage() {
         }
       } catch (e) {
         console.error(e);
+        // Set default projectInfo so page doesn't crash
+        if (!projectInfo) {
+          setProjectInfo({
+            project_id: projectId,
+            service_name: "My Product",
+            description: "",
+            target_user: "",
+            key_values: "",
+            site_url: "",
+            default_hashtags: [],
+            tone_preference: "friendly",
+            logo_url: null,
+            updated_at: "",
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -491,12 +517,12 @@ export default function PostEditorPage() {
               <div className="p-8 flex flex-col gap-5">
                 <div className="flex items-center gap-3.5 mb-2.5">
                   <div className="w-11 h-11 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-[16px]">
-                    {projectInfo?.service_name.charAt(0)}
+                    {(projectInfo?.service_name || "P").charAt(0)}
                   </div>
                   <div className="flex-1">
                     <p className="text-[16px] font-bold text-slate-900">
                       @
-                      {projectInfo?.service_name
+                      {(projectInfo?.service_name || "product")
                         .toLowerCase()
                         .replace(/\s/g, "")}
                     </p>
@@ -537,7 +563,7 @@ export default function PostEditorPage() {
 
                 <div className="pt-5 border-t border-slate-50 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-slate-400 underline underline-offset-4">
-                    ↗ {projectInfo?.site_url.replace("https://", "")}
+                    ↗ {(projectInfo?.site_url || "").replace("https://", "")}
                   </p>
                   <p
                     className={cn(
