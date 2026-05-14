@@ -271,7 +271,7 @@ async def _do_publish(user_id: str, post_data: dict):
         # Update post as published
         supabase.table("promotion_posts").update({
             "status": "published",
-            "published_at": "now()",
+            "published_at": datetime.now(timezone.utc).isoformat(),
             "external_post_id": str(external_id),
         }).eq("id", post_id).execute()
 

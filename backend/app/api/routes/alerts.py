@@ -33,7 +33,7 @@ async def list_alerts(
 async def mark_read(alert_id: str, user: dict = Depends(get_current_user)):
     supabase.table("alerts").update({
         "is_read": True,
-        "read_at": "now()",
+        "read_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", alert_id).eq("user_id", user["id"]).execute()
     return {"ok": True}
 
@@ -42,6 +42,6 @@ async def mark_read(alert_id: str, user: dict = Depends(get_current_user)):
 async def mark_all_read(user: dict = Depends(get_current_user)):
     supabase.table("alerts").update({
         "is_read": True,
-        "read_at": "now()",
+        "read_at": datetime.now(timezone.utc).isoformat(),
     }).eq("user_id", user["id"]).eq("is_read", False).execute()
     return {"ok": True}
