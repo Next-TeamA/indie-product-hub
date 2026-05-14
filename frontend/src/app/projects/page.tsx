@@ -17,8 +17,11 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { updateProject } from "@/lib/api/projects";
+import { createClient } from "@/lib/supabase/client";
+import { useUser } from "@/hooks/use-user";
 
 // ─── 상수 및 Mock 데이터 ───────────────────────────────────
 
@@ -92,6 +95,16 @@ const toDateStr = (y: number, m: number, d: number) =>
 // ─── 메인 컴포넌트 ─────────────────────────────────────────
 
 export default function ProjectsPage() {
+  const router = useRouter();
+  const user = useUser();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
   // --- API 연결 ---
   const { projects: apiProjects, isLoading } = useProjects();
 
@@ -138,16 +151,57 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
       {/* 1. Header */}
-      <header className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
+      <header className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
         <span className="logo-text text-[17px] text-slate-900">
           Launch<span className="text-blue-500">.</span>Pad
         </span>
-        <Link
-          href="/projects/new"
-          className="bg-slate-900 text-white flex items-center gap-2 text-[13px] font-semibold h-10 px-5 rounded-full hover:bg-slate-800 transition-all"
-        >
-          <Plus className="w-4 h-4" /> 새 프로젝트 등록
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/settings"
+            className="text-[13px] font-medium text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            설정
+          </Link>
+          <Link
+            href="/projects/new"
+            className="bg-slate-900 text-white flex items-center gap-2 text-[13px] font-semibold h-9 px-4 rounded-full hover:bg-slate-800 transition-all"
+          >
+            <Plus className="w-4 h-4" /> 새 프로젝트
+          </Link>
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 hover:bg-slate-300 transition-colors cursor-pointer overflow-hidden"
+            >
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                user?.name?.[0]?.toUpperCase() ?? "U"
+              )}
+            </button>
+            {showUserMenu && (
+              <div className="absolute right-0 top-10 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50">
+                <div className="px-4 py-2 border-b border-slate-100">
+                  <p className="text-xs font-medium text-slate-800 truncate">{user?.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
+                </div>
+                <Link
+                  href="/settings"
+                  className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  계정 설정
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  로그아웃
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 pb-20 space-y-12">
