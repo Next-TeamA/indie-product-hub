@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ChevronLeft,
-  Copy,
   Trash2,
   Save,
   Sparkles,
@@ -14,6 +13,7 @@ import {
   RefreshCw,
   Bookmark,
   Star,
+  ImageIcon,
 } from "lucide-react";
 import {
   listPromotions,
@@ -28,6 +28,8 @@ import {
   type PromotionStatus,
   type ProjectPromotionInfo,
 } from "@/lib/api/promotion";
+import { listAccounts } from "@/lib/api/accounts";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 // --- Constants ---
@@ -35,7 +37,6 @@ import { cn } from "@/lib/utils";
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 const KO_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-// 캘린더 색상과 동일하게 브랜드 컬러 복구
 const PLATFORM_META: Record<
   Platform,
   { name: string; bg: string; text: string; maxChars: number }
@@ -122,13 +123,18 @@ function toKoDate(dateStr: string) {
 export default function PostEditorPage() {
   const { id: projectId, postId } = useParams<{ id: string; postId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isNew = postId === "new";
+
+  // Default schedule date from calendar selection (passed via ?date=YYYY-MM-DD)
+  const urlDate = searchParams.get("date") ?? "";
 
   const [promotion, setPromotion] = useState<Promotion | null>(null);
   const [projectInfo, setProjectInfo] = useState<ProjectPromotionInfo | null>(
     null,
   );
   const [loading, setLoading] = useState(!isNew);
+  const [snsConnected, setSnsConnected] = useState(false);
 
   const [editHook, setEditHook] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -139,10 +145,16 @@ export default function PostEditorPage() {
   const [message, setMessage] = useState("");
   const [tone, setTone] = useState<Tone>("친근한");
   const [contentType, setContentType] = useState<ContentType>("출시");
-  const [reference, setReference] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([
     "threads",
   ]);
+
+  const [scheduleDate, setScheduleDate] = useState(urlDate);
+  const [scheduleTime, setScheduleTime] = useState("09:00");
 
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -154,9 +166,10 @@ export default function PostEditorPage() {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const [info, list] = await Promise.all([
+        const [info, list, accounts] = await Promise.all([
           getProjectPromotionInfo(projectId),
           isNew ? Promise.resolve([]) : listPromotions(projectId),
+          listAccounts().catch(() => []),
         ]);
         setProjectInfo({
           project_id: projectId,
@@ -170,6 +183,10 @@ export default function PostEditorPage() {
           logo_url: info?.logo_url || null,
           updated_at: info?.updated_at || "",
         });
+        const hasSns = accounts.some(
+          (a) => (a.provider === "threads" || a.provider === "x") && a.is_active,
+        );
+        setSnsConnected(hasSns);
         if (!isNew) {
           const found = (list as Promotion[]).find((p) => p.id === postId);
           if (found) {
@@ -180,11 +197,18 @@ export default function PostEditorPage() {
             setEditStatus(found.status);
             setActivePlatform(found.platform);
             setSelectedPlatforms([found.platform]);
+            if (found.scheduled_at) {
+              setScheduleDate(found.scheduled_at.split("T")[0]);
+              setScheduleTime(found.scheduled_at.split("T")[1]?.slice(0, 5) ?? "09:00");
+            }
+            if (found.images?.[0]) {
+              setImageUrl(found.images[0]);
+              setImagePreview(found.images[0]);
+            }
           }
         }
       } catch (e) {
         console.error(e);
-        // Set default projectInfo so page doesn't crash
         if (!projectInfo) {
           setProjectInfo({
             project_id: projectId,
@@ -206,13 +230,42 @@ export default function PostEditorPage() {
     fetchAll();
   }, [projectId, postId, isNew]);
 
+  const handleImageChange = async (file: File) => {
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop();
+      const path = `${projectId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("promotion-images")
+        .upload(path, file, { upsert: true });
+      if (!error) {
+        const { data: urlData } = supabase.storage
+          .from("promotion-images")
+          .getPublicUrl(path);
+        setImageUrl(urlData.publicUrl);
+      }
+    } catch (e) {
+      console.error("Image upload failed:", e);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setImageUrl(null);
+  };
+
   const handleGenerate = useCallback(async () => {
     if (!projectInfo) return;
     setGenerating(true);
     try {
-      const prompt = [message, reference].filter(Boolean).join("\n\n");
       const result = await generatePromotion(projectId, {
-        message: prompt || `${contentType} 게시물을 ${tone} 톤으로 작성해주세요.`,
+        message: message || `${contentType} 게시물을 ${tone} 톤으로 작성해주세요.`,
         template: activePlatform,
       });
       setEditHook(result.generated.hook);
@@ -223,12 +276,21 @@ export default function PostEditorPage() {
     } finally {
       setGenerating(false);
     }
-  }, [projectInfo, projectId, message, tone, contentType, reference, activePlatform]);
+  }, [projectInfo, projectId, message, tone, contentType, activePlatform]);
 
   const handleSave = async (targetStatus?: "draft" | "scheduled" | "published") => {
+    if ((targetStatus === "scheduled" || targetStatus === "published") && !snsConnected) {
+      router.push(`/projects/${projectId}/settings`);
+      return;
+    }
     const status = targetStatus || editStatus;
     setSaving(true);
     try {
+      // Build scheduled_at ISO string when scheduling
+      let scheduledAt: string | undefined;
+      if (status === "scheduled" && scheduleDate) {
+        scheduledAt = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+      }
       const postData = {
         hook: editHook,
         content: editContent,
@@ -236,6 +298,8 @@ export default function PostEditorPage() {
         platform: activePlatform,
         tone: tone === "친근한" ? "friendly" : tone === "전문적" ? "professional" : "humorous",
         content_type: contentType === "출시" ? "launch" : contentType === "업데이트" ? "update" : contentType === "회고" ? "retrospective" : "qa",
+        images: imageUrl ? [imageUrl] : [],
+        scheduled_at: scheduledAt ?? null,
       };
 
       if (isNew) {
@@ -268,12 +332,6 @@ export default function PostEditorPage() {
     } finally {
       setDeleting(false);
     }
-  };
-
-  const handleCopy = () => {
-    const siteUrl = projectInfo?.site_url ?? "";
-    const text = `${editHook}\n\n${editContent}\n\n${editHashtags.join(" ")}${siteUrl ? `\n↗ ${siteUrl}` : ""}`;
-    navigator.clipboard.writeText(text);
   };
 
   const togglePlatform = (p: Platform) => {
@@ -325,13 +383,6 @@ export default function PostEditorPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleCopy}
-            className="w-9 h-9 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors"
-            title="복사"
-          >
-            <Copy className="w-4 h-4" />
-          </button>
-          <button
             onClick={handleDelete}
             disabled={!promotion}
             className="w-9 h-9 rounded-xl border border-slate-100 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors disabled:opacity-30"
@@ -339,11 +390,11 @@ export default function PostEditorPage() {
             <Trash2 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleSave()}
+            onClick={() => handleSave("draft")}
             disabled={!editContent.trim() || saving}
             className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" /> {saving ? "저장 중..." : "저장"}
+            <Save className="w-4 h-4" /> {saving ? "저장 중..." : "임시저장"}
           </button>
         </div>
       </motion.div>
@@ -412,13 +463,41 @@ export default function PostEditorPage() {
               </Field>
             </div>
 
-            <Field label="레퍼런스">
-              <input
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                className="w-full h-11 px-4 text-[14px] font-medium text-slate-800 rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm placeholder:text-slate-300"
-                placeholder="링크나 참고 내용을 입력하세요"
-              />
+            <Field label="이미지">
+              {imagePreview ? (
+                <div className="relative rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                  <img
+                    src={imagePreview}
+                    alt="업로드 이미지"
+                    className="w-full object-cover max-h-48"
+                  />
+                  {uploading && (
+                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                      <RefreshCw className="w-5 h-5 animate-spin text-slate-400" />
+                    </div>
+                  )}
+                  <button
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/60 flex items-center justify-center text-white hover:bg-slate-900/80 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-2xl bg-white border border-dashed border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-400 transition-colors cursor-pointer shadow-sm">
+                  <ImageIcon className="w-5 h-5" />
+                  <span className="text-[12px] font-semibold">클릭해서 이미지 업로드</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImageChange(f);
+                    }}
+                  />
+                </label>
+              )}
             </Field>
 
             <Field label="플랫폼 선택">
@@ -446,6 +525,29 @@ export default function PostEditorPage() {
                   );
                 })}
               </div>
+            </Field>
+
+            <Field label="예약 날짜 · 시간">
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="flex-1 min-w-0 h-11 px-3 text-[13px] font-medium text-slate-800 rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                />
+                <input
+                  type="time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  className="w-36 shrink-0 h-11 px-3 text-[13px] font-medium text-slate-800 rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                />
+              </div>
+              {scheduleDate && (
+                <p className="text-[11px] font-medium text-blue-500 mt-0.5">
+                  예약하기 클릭 시 이 날짜에 등록됩니다
+                </p>
+              )}
             </Field>
 
             <div className="mt-4 p-6 rounded-[24px] bg-blue-50/50 border border-blue-100/50 shadow-inner">
@@ -562,6 +664,16 @@ export default function PostEditorPage() {
                   ))}
                 </div>
 
+                {imagePreview && (
+                  <div className="w-full rounded-2xl overflow-hidden border border-slate-100">
+                    <img
+                      src={imagePreview}
+                      alt="첨부 이미지"
+                      className="w-full object-cover max-h-64"
+                    />
+                  </div>
+                )}
+
                 <div className="pt-5 border-t border-slate-50 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-slate-400 underline underline-offset-4">
                     ↗ {(projectInfo?.site_url || "").replace("https://", "")}
@@ -585,30 +697,13 @@ export default function PostEditorPage() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="px-8 py-5 border-t border-slate-50 bg-white flex items-center justify-between shrink-0">
-            <div className="flex gap-2">
-              {(["draft", "scheduled", "published"] as PromotionStatus[]).map(
-                (s) => (
-                  <button
-                    key={s}
-                    onClick={() => setEditStatus(s)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-[12px] font-bold transition-all",
-                      editStatus === s
-                        ? `${STATUS_META[s].bg} ${STATUS_META[s].text}`
-                        : "bg-slate-50 text-slate-400 hover:bg-slate-100",
-                    )}
-                  >
-                    {STATUS_META[s].label}
-                  </button>
-                ),
-              )}
-            </div>
+          <div className="px-8 py-5 border-t border-slate-50 bg-white flex items-center justify-end shrink-0">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => handleSave("scheduled")}
-                disabled={!editContent.trim()}
+                disabled={!editContent.trim() || !scheduleDate}
                 className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title={!scheduleDate ? "예약 날짜를 선택해주세요" : ""}
               >
                 예약하기
               </button>

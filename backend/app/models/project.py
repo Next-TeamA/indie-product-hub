@@ -18,6 +18,7 @@ class ProjectUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     prd: str | None = None
+    logo_url: str | None = None
     github_repo_url: str | None = None
     github_repo_owner: str | None = None
     github_repo_name: str | None = None

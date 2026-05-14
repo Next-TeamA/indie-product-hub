@@ -14,8 +14,10 @@ class PromotionPostCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
     hashtags: list[str] = Field(default_factory=list, max_length=10)
     link: str | None = Field(None, max_length=500)
+    images: list[str] | None = None
     tone: Literal["friendly", "professional", "humorous", "informative"] | None = None
     content_type: Literal["launch", "update", "retrospective", "qa", "tip", "milestone"] | None = None
+    scheduled_at: datetime | None = None
 
 
 class PromotionInfoUpsert(BaseModel):

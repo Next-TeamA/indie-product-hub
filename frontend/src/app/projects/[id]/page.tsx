@@ -138,50 +138,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* [섹션 1] 인사이트 */}
-        <section className="bg-white rounded-[24px] border border-slate-100 p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
-          <SectionHeader title="인사이트" href={`/projects/${id}/insights`} />
-          <div className="grid grid-cols-2 gap-8">
-            <div className="flex gap-5 items-start">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-6 h-6 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-blue-500 uppercase tracking-widest mb-1.5">Marketing Summary</p>
-                <p className="text-[15px] font-bold text-slate-800 mb-2">
-                  {marketingData?.best_post?.platform
-                    ? `${marketingData.best_post.platform} 채널 강세`
-                    : "데이터 수집 중"}
-                </p>
-                <p className="text-[13px] font-medium text-slate-500 leading-relaxed">
-                  {marketingData
-                    ? `총 ${marketingData.totals?.impressions?.toLocaleString() ?? 0} 노출, 참여율 ${marketingData.engagement_rate ?? 0}%. ${marketingData.total_posts ?? 0}개 게시물 분석 기반.`
-                    : "프로모션을 게시하면 마케팅 데이터가 여기에 표시됩니다."}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-5 items-start">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
-                <ArrowUpRight className="w-6 h-6 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-widest mb-1.5">Operations Summary</p>
-                <p className="text-[15px] font-bold text-slate-800 mb-2">
-                  {opsSummary
-                    ? `이슈 ${opsSummary.total}건 (해결 ${opsSummary.resolved}건)`
-                    : "운영 상태 양호"}
-                </p>
-                <p className="text-[13px] font-medium text-slate-500 leading-relaxed">
-                  {deploySuccessRate !== null
-                    ? `배포 성공률 ${deploySuccessRate}%. ${deployments.length}회 배포 중 ${deployments.filter(d => d.status === "error").length}건 실패.`
-                    : "배포 플랫폼을 연결하면 배포 현황이 표시됩니다."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* [섹션 2] 홍보 */}
+        {/* [섹션 1] 홍보 */}
         <section className="bg-white rounded-[24px] border border-slate-100 p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
           <SectionHeader title="홍보" href={`/projects/${id}/promotion`} />
           <div className="space-y-8">
@@ -225,6 +182,77 @@ export default function DashboardPage() {
               {["월", "화", "수", "목", "금", "토", "일"].map((d) => (
                 <span key={d} className="flex-1 text-center">{d}</span>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* [섹션 2] 인사이트 */}
+        <section className="bg-white rounded-[24px] border border-slate-100 p-8 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
+          <SectionHeader title="인사이트" href={`/projects/${id}/insights`} />
+          <div className="grid grid-cols-2 gap-5">
+
+            {/* 홍보 인사이트 카드 */}
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                  <Megaphone className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">홍보 인사이트</p>
+                  <p className="text-[13px] font-bold text-slate-700 mt-0.5">
+                    {marketingData?.best_post?.platform ? `${marketingData.best_post.platform} 채널 강세` : "데이터 수집 중"}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "총 노출", value: marketingData?.totals?.impressions?.toLocaleString() ?? "—" },
+                  { label: "총 클릭", value: marketingData?.totals?.clicks?.toLocaleString() ?? "—" },
+                  { label: "참여율", value: marketingData ? `${marketingData.engagement_rate ?? 0}%` : "—" },
+                ].map(s => (
+                  <div key={s.label} className="bg-white rounded-xl p-3 border border-blue-100">
+                    <p className="text-[10px] font-bold text-slate-400 mb-1">{s.label}</p>
+                    <p className="text-[16px] font-bold text-slate-800">{s.value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[12px] text-slate-500 mt-4 leading-relaxed">
+                {marketingData
+                  ? `${marketingData.total_posts ?? 0}개 게시물 기반. 좋아요 ${marketingData.totals?.likes?.toLocaleString() ?? 0}개.`
+                  : "프로모션을 게시하면 데이터가 표시됩니다."}
+              </p>
+            </div>
+
+            {/* 운영 인사이트 카드 */}
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                  <BarChart3 className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">운영 인사이트</p>
+                  <p className="text-[13px] font-bold text-slate-700 mt-0.5">
+                    {opsSummary ? `이슈 ${opsSummary.total}건 중 ${opsSummary.resolved}건 해결` : "운영 상태 양호"}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "전체 이슈", value: opsSummary ? String(opsSummary.total) : String(issues.length) },
+                  { label: "미해결", value: String(openIssues.length), alert: openIssues.length > 0 },
+                  { label: "배포 성공률", value: deploySuccessRate !== null ? `${deploySuccessRate}%` : "—" },
+                ].map(s => (
+                  <div key={s.label} className="bg-white rounded-xl p-3 border border-emerald-100">
+                    <p className="text-[10px] font-bold text-slate-400 mb-1">{s.label}</p>
+                    <p className={cn("text-[16px] font-bold", s.alert ? "text-rose-500" : "text-slate-800")}>{s.value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[12px] text-slate-500 mt-4 leading-relaxed">
+                {deployments.length > 0
+                  ? `총 ${deployments.length}회 배포. ${recentDeploy ? `최근 배포 ${new Date(recentDeploy.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}` : ""}`
+                  : "배포 플랫폼을 연결하면 현황이 표시됩니다."}
+              </p>
             </div>
           </div>
         </section>

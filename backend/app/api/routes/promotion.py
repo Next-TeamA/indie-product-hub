@@ -172,7 +172,10 @@ async def create_post(
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
-    """Create a promotion post (draft)."""
+    """Create a promotion post (draft or scheduled)."""
+    now = datetime.now(timezone.utc)
+    is_future = body.scheduled_at is not None and body.scheduled_at > now
+    status = "scheduled" if is_future else "draft"
     data = {
         "project_id": project_id,
         "user_id": user["id"],
@@ -181,9 +184,11 @@ async def create_post(
         "content": body.content,
         "hashtags": body.hashtags,
         "link": body.link,
+        "images": body.images or [],
         "tone": body.tone,
         "content_type": body.content_type,
-        "status": "draft",
+        "status": status,
+        "scheduled_at": body.scheduled_at.isoformat() if body.scheduled_at else None,
     }
     result = supabase.table("promotion_posts").insert(data).execute()
     return result.data[0]
@@ -221,6 +226,16 @@ async def update_post(
 ):
     """Update a draft/scheduled promotion post."""
     updates = body.model_dump(exclude_none=True)
+    # Re-evaluate status if scheduled_at changed
+    if "scheduled_at" in updates:
+        now = datetime.now(timezone.utc)
+        sa = body.scheduled_at
+        if sa and sa > now:
+            updates["status"] = "scheduled"
+        elif sa is None:
+            updates["status"] = "draft"
+        # Convert datetime to isoformat string for Supabase
+        updates["scheduled_at"] = sa.isoformat() if sa else None
     if not updates:
         raise ValidationError("No fields to update")
     result = (

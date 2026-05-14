@@ -5,6 +5,7 @@ import { apiFetch } from "./client";
 export type CalendarEvent = {
   id: string;
   project_id: string;
+  project_name?: string | null;
   title: string;
   event_type: string;
   date: string;
@@ -59,4 +60,9 @@ export async function deleteEvent(
   return apiFetch(`/api/projects/${projectId}/events/${eventId}`, {
     method: "DELETE",
   });
+}
+
+export async function listAllEvents(month?: string): Promise<CalendarEvent[]> {
+  const params = month ? { month } : undefined;
+  return apiFetch<CalendarEvent[]>("/api/events", { params });
 }
