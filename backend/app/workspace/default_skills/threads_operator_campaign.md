@@ -44,6 +44,16 @@ Forbidden unfinished-product framing:
 - 1-2 posts can be soft feature, practical tip, or problem insight posts.
 - Do not allocate one rigid pattern per post. Mix 1-3 emotional elements inside each short post.
 
+The rhythm should be selected from the campaign strategy, not mechanically copied.
+Different products can need different rhythms:
+- Launch/identity rhythm: clearer product context early, then operator shortform.
+- Community growth rhythm: more 스친/스하리/질문 posts in the first half.
+- Feedback recruitment rhythm: product requests ask for specific feedback more often.
+- Expert/B2B rhythm: more target-calling and work-situation posts, less cute pleading.
+- Re-activation rhythm: more "forgotten project", "trying again", and tiny progress posts.
+
+Use these as directional patterns, not fixed calendars.
+
 ## Post Formats
 
 ### product_intro

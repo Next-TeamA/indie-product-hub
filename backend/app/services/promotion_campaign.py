@@ -207,23 +207,146 @@ def _ensure_list(value: object, step: str) -> list:
     return value
 
 
-def _merge_locked_rhythm(calendar_rhythm: list) -> list:
-    """Preserve the fixed campaign rhythm while keeping model-written role details."""
-    model_by_day = {
+def _fallback_rhythm_item(day: int) -> dict:
+    return next(
+        (item.copy() for item in DEFAULT_THREADS_RHYTHM if item["day"] == day),
+        {
+            "day": day,
+            "postFormat": "operator_shortform",
+            "rhythmRole": "운영자의 사람다운 짧은 글",
+            "toneElements": ["사람다움", "짧은 혼잣말"],
+            "ctaStrength": "low",
+            "usePlatformLanguage": False,
+            "productMentionLevel": "implied",
+        },
+    )
+
+
+def _normalize_rhythm_item(item: dict, day: int) -> dict:
+    allowed_formats = {
+        "product_intro",
+        "operator_shortform",
+        "product_request",
+        "community_question",
+        "soft_feature",
+        "proof_or_progress",
+    }
+    allowed_cta = {"none", "low", "medium", "high"}
+    allowed_mentions = {"none", "implied", "clear"}
+    fallback = _fallback_rhythm_item(day)
+
+    post_format = item.get("postFormat") if isinstance(item.get("postFormat"), str) else ""
+    cta_strength = item.get("ctaStrength") if isinstance(item.get("ctaStrength"), str) else ""
+    mention_level = item.get("productMentionLevel") if isinstance(item.get("productMentionLevel"), str) else ""
+
+    tone_elements = item.get("toneElements")
+    if not isinstance(tone_elements, list) or not tone_elements:
+        tone_elements = fallback["toneElements"]
+
+    return {
+        **fallback,
+        **item,
+        "day": day,
+        "postFormat": post_format if post_format in allowed_formats else fallback["postFormat"],
+        "rhythmRole": item.get("rhythmRole") or fallback["rhythmRole"],
+        "toneElements": tone_elements,
+        "ctaStrength": cta_strength if cta_strength in allowed_cta else fallback["ctaStrength"],
+        "usePlatformLanguage": bool(item.get("usePlatformLanguage", fallback["usePlatformLanguage"])),
+        "productMentionLevel": mention_level if mention_level in allowed_mentions else fallback["productMentionLevel"],
+    }
+
+
+def _normalize_operating_rhythm(rhythm: dict) -> dict:
+    """Let strategy shape the rhythm, then enforce only the safety rails."""
+    raw_items = rhythm.get("calendarRhythm")
+    if not isinstance(raw_items, list):
+        raw_items = []
+    raw_by_day = {
         int(item.get("day", 0)): item
-        for item in calendar_rhythm
+        for item in raw_items
         if isinstance(item, dict)
     }
-    merged = []
-    for locked in DEFAULT_THREADS_RHYTHM:
-        item = model_by_day.get(locked["day"], {})
-        merged.append({
-            **item,
-            **locked,
-            "rhythmRole": item.get("rhythmRole") or locked["rhythmRole"],
-            "toneElements": item.get("toneElements") or locked["toneElements"],
-        })
-    return merged
+
+    items = [_normalize_rhythm_item(raw_by_day.get(day, {}), day) for day in range(1, CAMPAIGN_DAYS + 1)]
+
+    # Hard boundary: first post must identify the finished product.
+    items[0] = {
+        **items[0],
+        "postFormat": "product_intro",
+        "ctaStrength": "medium" if items[0].get("ctaStrength") == "high" else items[0].get("ctaStrength", "medium"),
+        "usePlatformLanguage": False,
+        "productMentionLevel": "clear",
+    }
+
+    # Keep hard product asks present but not overwhelming.
+    product_request_days = [item["day"] for item in items if item["postFormat"] == "product_request"]
+    for day in [4, 8, 12]:
+        if len(product_request_days) >= 3:
+            break
+        idx = day - 1
+        if items[idx]["postFormat"] != "product_intro":
+            items[idx] = {
+                **items[idx],
+                "postFormat": "product_request",
+                "rhythmRole": items[idx].get("rhythmRole") or "제품 사용과 피드백을 직접 부탁한다",
+                "ctaStrength": "high",
+                "productMentionLevel": "clear",
+            }
+            product_request_days.append(day)
+
+    if len(product_request_days) > 4:
+        keep = set(product_request_days[:4])
+        for item in items:
+            if item["postFormat"] == "product_request" and item["day"] not in keep:
+                item["postFormat"] = "operator_shortform"
+                item["ctaStrength"] = "low"
+                item["productMentionLevel"] = "implied"
+
+    operator_formats = {"operator_shortform", "community_question", "proof_or_progress"}
+    operator_count = sum(1 for item in items if item["postFormat"] in operator_formats)
+    if operator_count < 8:
+        for item in items[1:]:
+            if operator_count >= 8:
+                break
+            if item["postFormat"] in {"soft_feature"}:
+                item["postFormat"] = "operator_shortform"
+                item["ctaStrength"] = "low"
+                item["productMentionLevel"] = "implied"
+                operator_count += 1
+
+    platform_days = [item["day"] for item in items if item["usePlatformLanguage"]]
+    if len(platform_days) < 3:
+        for day in [3, 5, 10, 13]:
+            if len(platform_days) >= 3:
+                break
+            item = items[day - 1]
+            if item["postFormat"] != "product_intro" and not item["usePlatformLanguage"]:
+                item["usePlatformLanguage"] = True
+                platform_days.append(day)
+    elif len(platform_days) > 6:
+        keep = set(platform_days[:6])
+        for item in items:
+            item["usePlatformLanguage"] = item["day"] in keep
+
+    direct_mentions = [item["day"] for item in items if item["productMentionLevel"] == "clear"]
+    if len(direct_mentions) > 6:
+        keep = set(direct_mentions[:6])
+        for item in items:
+            if item["day"] not in keep and item["productMentionLevel"] == "clear":
+                item["productMentionLevel"] = "implied"
+
+    rhythm["calendarRhythm"] = items
+    rhythm["productRequestDays"] = [item["day"] for item in items if item["postFormat"] == "product_request"]
+    rhythm["platformLanguageDays"] = [item["day"] for item in items if item["usePlatformLanguage"]]
+    rhythm["directProductMentionDays"] = [item["day"] for item in items if item["productMentionLevel"] == "clear"]
+    rhythm["normalizationRulesApplied"] = [
+        "day_1_product_intro",
+        "product_request_count_3_to_4",
+        "operator_led_count_at_least_8",
+        "platform_language_count_3_to_6",
+        "direct_product_mentions_at_most_6",
+    ]
+    return rhythm
 
 
 async def _save_step(campaign_id: str, step_name: str, output: dict | list) -> None:
@@ -290,6 +413,13 @@ Return only JSON:
   "contentPrinciple": "one guiding principle for finished-product operator-led Threads promotion",
   "operatorPersona": "human operator persona for this product account",
   "finishedProductBoundary": "how to avoid unbuilt/build-from-zero framing",
+  "rhythmStrategy": {{
+    "strategyName": "short name for the rhythm that fits this product",
+    "whyThisRhythm": "why this rhythm fits the product, target, and promotion goal",
+    "shortformEmphasis": "which human/operator situations should appear often",
+    "productRequestApproach": "how direct product asks should feel",
+    "communityApproach": "how to use 스친/스하리/반하리 naturally"
+  }},
   "avoidRules": ["rule", "..."],
   "contentMix": [
     {{"contentType": "운영자 숏폼형", "count": 9}},
@@ -307,10 +437,10 @@ async def _threads_operating_rhythm(body: PromotionCampaignRequest, target_analy
     prompt = f"""
 You are a Threads-native editorial rhythm planner.
 
-Adapt the locked operating rhythm for a 14-day campaign before any final post drafts are written.
+Create the operating rhythm for a 14-day campaign before any final post drafts are written.
 This product is already finished enough to promote. Do not frame it as an unbuilt MVP or future idea.
-The rhythm below is mandatory. You may only adapt wording in rhythmRole and toneElements to the product.
-Do not change day numbers, postFormat, ctaStrength, usePlatformLanguage, or productMentionLevel.
+Use the campaign strategy's rhythmStrategy to choose the day-by-day flow.
+Do not copy the fallback rhythm mechanically. It is only a safety reference for shape and pacing.
 
 Input:
 {_common_context(body)}
@@ -321,7 +451,7 @@ Target analysis:
 Campaign strategy:
 {strategy}
 
-Locked rhythm:
+Fallback rhythm example:
 {DEFAULT_THREADS_RHYTHM}
 
 Threads operator campaign rules:
@@ -331,6 +461,7 @@ Return only JSON:
 {{
   "operatorPersona": "specific account operator persona",
   "voicePrinciples": ["short practical rule", "..."],
+  "rhythmStrategyUsed": "how you interpreted the campaign strategy into the 14-day rhythm",
   "productRequestDays": [4, 8, 12],
   "platformLanguageDays": [3, 6, 10, 13],
   "directProductMentionDays": [1, 4, 8, 12],
@@ -351,12 +482,13 @@ Return only JSON:
 Rules for calendarRhythm:
 - It must contain exactly 14 objects.
 - Day 1 must be postFormat "product_intro".
-- The output must preserve the locked rhythm's day-by-day postFormat exactly.
-- The output must preserve the locked rhythm's ctaStrength exactly.
-- The output must preserve the locked rhythm's usePlatformLanguage exactly.
-- The output must preserve the locked rhythm's productMentionLevel exactly.
-- Product request posts must be days 4, 8, and 12.
-- Platform language must be used only on days 3, 4, 5, 10, and 13.
+- Choose day 2-14 postFormat based on the campaign strategy.
+- Include 3-4 product_request posts total, spaced roughly every 3-4 days.
+- Include at least 8 operator-led posts using operator_shortform, community_question, or proof_or_progress.
+- Include 3-6 days where usePlatformLanguage is true.
+- Keep direct product mentions to 4-6 days total.
+- Use postFormat values only from:
+  product_intro, operator_shortform, product_request, community_question, soft_feature, proof_or_progress.
 - Do not make every day a hard CTA.
 """
     result = await gemini.generate_json(prompt=prompt, system="Plan Threads editorial rhythm for human operator-led finished-product campaigns.", model=MODEL)
@@ -364,11 +496,7 @@ Rules for calendarRhythm:
     calendar_rhythm = rhythm.get("calendarRhythm")
     if not isinstance(calendar_rhythm, list) or len(calendar_rhythm) != CAMPAIGN_DAYS:
         raise ExternalAPIError("Gemini", "threads_operating_rhythm did not return exactly 14 calendarRhythm items")
-    rhythm["calendarRhythm"] = _merge_locked_rhythm(calendar_rhythm)
-    rhythm["productRequestDays"] = [4, 8, 12]
-    rhythm["platformLanguageDays"] = [3, 4, 5, 10, 13]
-    rhythm["directProductMentionDays"] = [1, 4, 8, 11, 12]
-    return rhythm
+    return _normalize_operating_rhythm(rhythm)
 
 
 async def _calendar_plan(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict, operating_rhythm: dict) -> list:
