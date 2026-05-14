@@ -314,7 +314,8 @@ export default function PostEditorPage() {
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors"
+            disabled={!editContent.trim() || saving}
+            className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" /> {saving ? "저장 중..." : "저장"}
           </button>
@@ -593,7 +594,8 @@ export default function PostEditorPage() {
                   setEditStatus("scheduled");
                   handleSave();
                 }}
-                className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                disabled={!editContent.trim()}
+                className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 예약하기
               </button>
@@ -602,7 +604,8 @@ export default function PostEditorPage() {
                   setEditStatus("published");
                   handleSave();
                 }}
-                className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                disabled={!editContent.trim()}
+                className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" /> 지금 발행
               </button>
