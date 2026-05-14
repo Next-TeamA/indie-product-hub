@@ -200,6 +200,17 @@ Rules:
 - Do not write build-in-public diary posts.
 - Start from realistic situations the target user faces.
 
+Line break and readability rules:
+- Write in a Threads-native layout, not as a dense paragraph.
+- Use frequent line breaks and blank lines like the reference posts in docs/promotion.
+- Split each post into 3-6 short visual blocks.
+- Each block should be 1-2 short sentences.
+- Put the hook as its own first line.
+- Separate situation, problem, product/solution, proof/example, and CTA with blank lines.
+- If listing target users, benefits, examples, or steps, use numbered lines or bullet lines.
+- Put the final question or CTA in its own final block.
+- Avoid one long paragraph. Do not return content as a single dense block.
+
 Input:
 {_common_context(body)}
 
@@ -216,9 +227,9 @@ Return only a JSON array with exactly 14 objects:
 [
   {{
     "day": 1,
-    "hook": "opening hook, one sentence",
-    "content": "post body without repeating the hook",
-    "draft": "hook + newline + body"
+    "hook": "opening hook as one short standalone line",
+    "content": "body text with frequent line breaks and blank lines, without repeating the hook",
+    "draft": "hook + blank line + content"
   }}
 ]
 """
@@ -274,6 +285,25 @@ Review rules:
 - Keep Threads length and tone.
 - Do not default to build-in-public diary tone.
 
+Threads formatting review rules:
+- Rewrite each final post so it reads like real Threads reference posts from docs/promotion.
+- Preserve the meaning, campaign day, CTA, and product facts.
+- Do not compress the body into one paragraph.
+- Ensure each post has frequent line breaks and blank lines.
+- The hook must be a standalone first line and must not be repeated in content.
+- Split content into 3-6 short visual blocks.
+- Each visual block should contain 1-2 short sentences at most.
+- Separate these parts with blank lines when present:
+  1. situation or pain
+  2. personal/context line
+  3. product or solution
+  4. concrete example/proof
+  5. soft CTA/question
+- If there are 3 or more examples, target users, benefits, or steps, format them as numbered or bullet lines.
+- Put the CTA/question as the final standalone block.
+- Avoid corporate, essay-like, newsletter-like, or ad-like formatting.
+- A post with no blank lines should fail review unless it is intentionally shorter than 3 lines.
+
 Return only JSON:
 {{
   "passed": true,
@@ -290,9 +320,9 @@ Return only JSON:
       "coreMessage": "",
       "cta": "",
       "assignedInfo": "",
-      "hook": "",
-      "content": "",
-      "draft": ""
+      "hook": "standalone first line, not repeated in content",
+      "content": "formatted body with blank lines and short Threads-style blocks",
+      "draft": "hook + blank line + content"
     }}
   ]
 }}
@@ -356,6 +386,45 @@ def _same_text(a: str, b: str) -> bool:
     return bool(compact_a and compact_b and (compact_a == compact_b or compact_a.startswith(compact_b) or compact_b.startswith(compact_a)))
 
 
+def _format_threads_content(content: str) -> str:
+    """Add Threads-style breathing room when the model returns dense text."""
+    cleaned = content.strip()
+    if not cleaned:
+        return cleaned
+
+    non_empty_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    if len(non_empty_lines) >= 3 and "\n\n" in cleaned:
+        return cleaned
+
+    list_pattern = re.compile(r"(?=(?:\d+[\.)]|[-*])\s+)")
+    if list_pattern.search(cleaned):
+        cleaned = list_pattern.sub("\n", cleaned)
+
+    sentences = re.split(r"(?<=[.!?。！？]|[다요죠까네])\s+", cleaned)
+    sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
+    if len(sentences) <= 2:
+        return "\n\n".join(non_empty_lines) if len(non_empty_lines) > 1 else cleaned
+
+    blocks: list[str] = []
+    current: list[str] = []
+    cta_markers = ("?", "까요", "주세요", "어때", "어떻게 생각", "댓글", "확인", "써보", "알려")
+
+    for sentence in sentences:
+        is_cta = any(marker in sentence for marker in cta_markers)
+        if is_cta and current:
+            blocks.append(" ".join(current))
+            current = []
+        current.append(sentence)
+        if is_cta or len(current) == 2:
+            blocks.append(" ".join(current))
+            current = []
+
+    if current:
+        blocks.append(" ".join(current))
+
+    return "\n\n".join(blocks)
+
+
 def _scheduled_at_for_day(day: int) -> str:
     now = datetime.now(SEOUL)
     target = (now + timedelta(days=day)).replace(
@@ -410,6 +479,7 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
             elif draft and _same_text(hook, content):
                 _, content = _split_hook_and_content(draft, topic)
             content = _remove_repeated_hook(hook, content) or topic or body.one_line_description
+            content = _format_threads_content(content)
             posts_payload.append({
                 "project_id": project_id,
                 "user_id": user_id,

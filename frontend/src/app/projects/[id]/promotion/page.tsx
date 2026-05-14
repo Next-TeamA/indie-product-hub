@@ -4,6 +4,7 @@ import { useCallback, useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "motion/react";
 import {
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -11,6 +12,7 @@ import {
   Trash2,
   Loader2,
   Sparkles,
+  MessagesSquare,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -98,6 +100,7 @@ export default function PromotionPage() {
   const [promos, setPromos] = useState<Promotion[]>([]);
   const [activatingSchedule, setActivatingSchedule] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
+  const [viewMode, setViewMode] = useState<"calendar" | "feed">("calendar");
 
   const refreshPromos = useCallback(() => {
     listPromotions(projectId).then(setPromos).catch(console.error);
@@ -122,6 +125,19 @@ export default function PromotionPage() {
       (map[p.date] ??= []).push(p);
     }
     return map;
+  }, [promos]);
+
+  const feedPosts = useMemo(() => {
+    return [...promos].sort((a, b) => {
+      if (a.campaign_id && b.campaign_id && a.campaign_id === b.campaign_id) {
+        return (a.campaign_day ?? 999) - (b.campaign_day ?? 999);
+      }
+      return (
+        a.date.localeCompare(b.date) ||
+        a.time.localeCompare(b.time) ||
+        (a.campaign_day ?? 999) - (b.campaign_day ?? 999)
+      );
+    });
   }, [promos]);
 
   const prevMonth = () => {
@@ -272,6 +288,35 @@ export default function PromotionPage() {
         </div>
       </motion.div>
 
+      <div className="px-8 pb-4 shrink-0">
+        <div className="inline-flex rounded-full border border-slate-100 bg-slate-50 p-1">
+          <button
+            onClick={() => setViewMode("calendar")}
+            className={cn(
+              "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
+              viewMode === "calendar"
+                ? "bg-white text-slate-800 shadow-sm"
+                : "text-slate-400 hover:text-slate-600",
+            )}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            캘린더 보기
+          </button>
+          <button
+            onClick={() => setViewMode("feed")}
+            className={cn(
+              "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
+              viewMode === "feed"
+                ? "bg-white text-slate-800 shadow-sm"
+                : "text-slate-400 hover:text-slate-600",
+            )}
+          >
+            <MessagesSquare className="h-3.5 w-3.5" />
+            피드 보기
+          </button>
+        </div>
+      </div>
+
       {/* Stats bar */}
       <div className="border-y border-slate-50 px-8 py-3 flex items-center gap-8 text-[12px] font-semibold shrink-0">
         <div className="flex items-center gap-2 text-slate-400">
@@ -308,9 +353,10 @@ export default function PromotionPage() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Calendar */}
-        <div className="flex-1 flex flex-col overflow-y-auto px-6 py-4">
+      {viewMode === "calendar" ? (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Calendar */}
+          <div className="flex-1 flex flex-col overflow-y-auto px-6 py-4">
           {/* Weekday row */}
           <div className="grid grid-cols-7 mb-2">
             {WEEKDAYS.map((d) => (
@@ -388,15 +434,15 @@ export default function PromotionPage() {
               );
             })}
           </div>
-        </div>
+          </div>
 
-        {/* Right panel (Selected Day Info) */}
-        <motion.aside
-          className="w-80 shrink-0 border-l border-slate-50 flex flex-col overflow-y-auto bg-slate-50/30"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1, duration: 0.5, ease: EASE_OUT_EXPO }}
-        >
+          {/* Right panel (Selected Day Info) */}
+          <motion.aside
+            className="w-80 shrink-0 border-l border-slate-50 flex flex-col overflow-y-auto bg-slate-50/30"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1, duration: 0.5, ease: EASE_OUT_EXPO }}
+          >
           <div className="p-6">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-1.5">
               선택한 날
@@ -534,8 +580,135 @@ export default function PromotionPage() {
               </div>
             </div>
           </div>
-        </motion.aside>
-      </div>
+          </motion.aside>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto bg-white px-4">
+          <div className="mx-auto w-full max-w-[720px] border-x border-slate-100">
+            {feedPosts.length > 0 ? (
+              feedPosts.map((post) => {
+                const pm = PLATFORM[post.platform];
+                const textLength = [post.hook, post.content].filter(Boolean).join("\n\n").length;
+                return (
+                  <article
+                    key={post.id}
+                    className="border-b border-slate-100 bg-white px-6 py-5"
+                  >
+                    <div className="flex gap-3">
+                      <div className="relative flex shrink-0 flex-col items-center">
+                        <div className="z-10 flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-[16px] font-bold text-white ring-4 ring-white">
+                          리
+                        </div>
+                        <div className="mt-2 w-px flex-1 bg-slate-200" />
+                      </div>
+
+                      <div className="min-w-0 flex-1 pb-1">
+                        <div className="mb-1 flex items-start gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <span className="text-[14px] font-bold text-slate-900">
+                                @리갈약속
+                              </span>
+                              <span className="text-[12px] font-semibold text-slate-400">
+                                {toKoDate(post.date)} {post.time}
+                              </span>
+                              {post.campaign_day && (
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                  Day {post.campaign_day}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                                Threads
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                  STATUS[post.status].bg,
+                                  STATUS[post.status].text,
+                                )}
+                              >
+                                {STATUS[post.status].label}
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                  pm.chipBg,
+                                  pm.chipText,
+                                )}
+                              >
+                                {pm.label}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-1">
+                            <Link
+                              href={`/projects/${projectId}/promotion/post/${post.id}`}
+                              className="flex h-8 items-center gap-1.5 rounded-full border border-slate-100 px-3 text-[12px] font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                            >
+                              상세 보기
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                            <button
+                              onClick={() => handleDeletePost(post.id)}
+                              className="flex h-8 w-8 items-center justify-center rounded-full border border-rose-100 text-rose-500 transition-colors hover:bg-rose-50"
+                              aria-label="홍보글 삭제"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-1">
+                          <p className="text-[17px] font-bold leading-7 text-slate-900">
+                            {post.hook}
+                          </p>
+                          <p className="mt-3 whitespace-pre-line text-[15px] font-medium leading-7 text-slate-700">
+                            {post.content}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-5 text-slate-400">
+                          <button className="text-[13px] font-semibold hover:text-slate-600">
+                            좋아요
+                          </button>
+                          <button className="text-[13px] font-semibold hover:text-slate-600">
+                            댓글
+                          </button>
+                          <button className="text-[13px] font-semibold hover:text-slate-600">
+                            공유
+                          </button>
+                          <span className="ml-auto text-[12px] font-bold text-slate-300">
+                            {textLength} / 500
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="px-8 py-16 text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                  <MessagesSquare className="h-5 w-5" />
+                </div>
+                <p className="text-[14px] font-bold text-slate-500">
+                  아직 표시할 홍보글이 없습니다.
+                </p>
+                <Link
+                  href={`/projects/${projectId}/promotion/campaign/new`}
+                  className="mt-4 inline-flex h-9 items-center gap-2 rounded-full bg-slate-900 px-4 text-[13px] font-bold text-white transition-colors hover:bg-slate-800"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  2주 전략 생성
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
