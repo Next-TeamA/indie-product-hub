@@ -169,7 +169,7 @@ export function LandingPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE }}
       >
-        <span className="text-[18px] font-black tracking-tight text-slate-900 uppercase">
+        <span className="logo-text text-[18px] text-slate-900">
           Launch<span className="text-blue-500">.</span>Pad
         </span>
         <div className="flex items-center gap-3">

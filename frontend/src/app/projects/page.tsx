@@ -160,9 +160,9 @@ export default function ProjectsPage() {
     <div className="min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
       {/* 1. Header */}
       <header className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
-        <div className="text-lg font-bold tracking-tighter text-slate-900 uppercase">
-          Indie Product Hub
-        </div>
+        <span className="logo-text text-[17px] text-slate-900">
+          Launch<span className="text-blue-500">.</span>Pad
+        </span>
         <Link
           href="/projects/new"
           className="bg-slate-900 text-white flex items-center gap-2 text-[13px] font-semibold h-10 px-5 rounded-full hover:bg-slate-800 transition-all"
