@@ -340,7 +340,7 @@ export default function PostEditorPage() {
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full px-4 py-3 text-[14px] font-medium rounded-2xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none shadow-sm placeholder:text-slate-300"
+                className="w-full px-4 py-3 text-[14px] font-medium text-slate-800 rounded-2xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none shadow-sm placeholder:text-slate-300"
                 placeholder={"전달하고 싶은 내용을 입력하세요."}
                 rows={4}
               />
@@ -389,7 +389,7 @@ export default function PostEditorPage() {
               <input
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
-                className="w-full h-11 px-4 text-[14px] font-medium rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm placeholder:text-slate-300"
+                className="w-full h-11 px-4 text-[14px] font-medium text-slate-800 rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm placeholder:text-slate-300"
                 placeholder="링크나 참고 내용을 입력하세요"
               />
             </Field>
