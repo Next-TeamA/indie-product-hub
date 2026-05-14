@@ -364,7 +364,9 @@ async def get_promotion_info(
         .maybe_single()
         .execute()
     )
-    return result.data or {}
+    if result is None or result.data is None:
+        return {}
+    return result.data
 
 
 async def _get_github_context(user_id: str, project: dict) -> str | None:

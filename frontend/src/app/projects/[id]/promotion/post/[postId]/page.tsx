@@ -11,7 +11,6 @@ import {
   Sparkles,
   Send,
   X,
-  Image as ImageIcon,
   RefreshCw,
   Bookmark,
   Star,
@@ -314,7 +313,8 @@ export default function PostEditorPage() {
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors"
+            disabled={!editContent.trim() || saving}
+            className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" /> {saving ? "저장 중..." : "저장"}
           </button>
@@ -340,7 +340,7 @@ export default function PostEditorPage() {
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full px-4 py-3 text-[14px] font-medium rounded-2xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none shadow-sm placeholder:text-slate-300"
+                className="w-full px-4 py-3 text-[14px] font-medium text-slate-800 rounded-2xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none shadow-sm placeholder:text-slate-300"
                 placeholder={"전달하고 싶은 내용을 입력하세요."}
                 rows={4}
               />
@@ -389,7 +389,7 @@ export default function PostEditorPage() {
               <input
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
-                className="w-full h-11 px-4 text-[14px] font-medium rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm placeholder:text-slate-300"
+                className="w-full h-11 px-4 text-[14px] font-medium text-slate-800 rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm placeholder:text-slate-300"
                 placeholder="링크나 참고 내용을 입력하세요"
               />
             </Field>
@@ -399,28 +399,25 @@ export default function PostEditorPage() {
                 {(Object.keys(PLATFORM_META) as Platform[]).map((p) => {
                   const meta = PLATFORM_META[p];
                   const on = selectedPlatforms.includes(p);
+                  const supported = p === "threads" || p === "x";
                   return (
                     <button
                       key={p}
-                      onClick={() => togglePlatform(p)}
+                      onClick={() => supported && togglePlatform(p)}
+                      disabled={!supported}
                       className={cn(
                         "px-4 py-2 rounded-xl text-[12px] font-bold transition-all shadow-sm border",
-                        on
-                          ? `${meta.bg} ${meta.text} border-transparent`
-                          : "bg-white border-slate-100 text-slate-300",
+                        !supported
+                          ? "bg-slate-50 border-slate-100 text-slate-200 cursor-not-allowed"
+                          : on
+                            ? `${meta.bg} ${meta.text} border-transparent`
+                            : "bg-white border-slate-100 text-slate-300",
                       )}
                     >
-                      {meta.name}
+                      {meta.name}{!supported && " (준비 중)"}
                     </button>
                   );
                 })}
-              </div>
-            </Field>
-
-            <Field label="스크린샷">
-              <div className="w-full h-32 rounded-2xl border-2 border-dashed border-slate-100 bg-white flex flex-col items-center justify-center gap-2 text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
-                <ImageIcon className="w-6 h-6 opacity-30" />
-                <span className="text-[12px] font-medium">이미지 업로드</span>
               </div>
             </Field>
 
@@ -527,13 +524,6 @@ export default function PostEditorPage() {
                   placeholder="본문 내용을 입력하세요..."
                 />
 
-                <div className="aspect-[1.91/1] w-full rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-2.5">
-                  <ImageIcon className="w-7 h-7 text-slate-200" />
-                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">
-                    Media Placeholder
-                  </span>
-                </div>
-
                 <div className="flex flex-wrap gap-2.5">
                   {editHashtags.map((tag) => (
                     <span
@@ -593,7 +583,8 @@ export default function PostEditorPage() {
                   setEditStatus("scheduled");
                   handleSave();
                 }}
-                className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                disabled={!editContent.trim()}
+                className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 예약하기
               </button>
@@ -602,7 +593,8 @@ export default function PostEditorPage() {
                   setEditStatus("published");
                   handleSave();
                 }}
-                className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                disabled={!editContent.trim()}
+                className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" /> 지금 발행
               </button>
@@ -614,7 +606,7 @@ export default function PostEditorPage() {
       {/* ── 템플릿 모달 창 ── */}
       <AnimatePresence>
         {showTemplateModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -687,7 +679,7 @@ export default function PostEditorPage() {
                           {tpl.platform}
                         </p>
                       </div>
-                      <div className="bg-slate-50/50 rounded-xl p-3.5 border border-slate-50 text-[11px] text-slate-500 leading-relaxed font-mono whitespace-pre-wrap line-clamp-[8]">
+                      <div className="bg-slate-50/50 rounded-xl p-3.5 border border-slate-50 text-[11px] text-slate-500 leading-relaxed font-mono whitespace-pre-wrap line-clamp-8">
                         {tpl.content}
                       </div>
                     </div>
