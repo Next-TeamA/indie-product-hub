@@ -2,8 +2,8 @@
 
 import { motion } from "motion/react";
 import { Check, ExternalLink } from "lucide-react";
-import { useState } from "react";
-import { connectAccount } from "@/lib/api/accounts";
+import { useState, useEffect } from "react";
+import { connectAccount, listAccounts } from "@/lib/api/accounts";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
@@ -26,6 +26,27 @@ interface SnsStepProps {
 export function SnsStep({ onNext, onBack, onBeforeOAuth }: SnsStepProps) {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [connecting, setConnecting] = useState<string | null>(null);
+
+  // Check already connected accounts on mount (after OAuth redirect)
+  useEffect(() => {
+    async function checkConnected() {
+      try {
+        const accounts = await listAccounts();
+        const state: Record<string, boolean> = {};
+        for (const a of accounts) {
+          if (a.provider === "x" || a.provider === "threads") {
+            state[a.provider] = true;
+          }
+        }
+        if (Object.keys(state).length > 0) {
+          setConnected(state);
+        }
+      } catch {
+        // not logged in or no accounts
+      }
+    }
+    checkConnected();
+  }, []);
 
   const handleConnect = async (provider: string) => {
     setConnecting(provider);
