@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from app.core.supabase import supabase, safe_maybe_single
 from app.integrations import gemini
+from app.workspace.skill_loader import get_skill_prompt
 
 
 # ─── 1. GitHub push -> Promotion draft ───
@@ -63,7 +64,7 @@ Return JSON: {{"hook": "...", "content": "...", "hashtags": ["..."]}}
     try:
         result = await gemini.generate_json(
             prompt=prompt,
-            system="You write social media posts for indie developers sharing their build progress. Never use emojis. Be specific about what changed. Sound like a real person, not a brand.",
+            system=get_skill_prompt("promotion") or "You write social media posts for indie developers. Never use emojis. Be specific. Sound like a real person.",
         )
 
         # Save as draft
@@ -268,7 +269,7 @@ Return JSON: {{"highlights": ["..."], "concerns": ["..."], "recommendations": ["
 
     report = await gemini.generate_json(
         prompt=prompt,
-        system="You write weekly product reports for indie developers. Be direct, data-driven, actionable. Never use emojis.",
+        system=get_skill_prompt("weekly_report") or "You write weekly product reports. Be direct, data-driven, actionable. Never use emojis.",
     )
 
     return {

@@ -58,6 +58,13 @@ async def create_project(body: ProjectCreate, user: dict = Depends(get_current_u
         "description": body.description or "",
     }).execute()
 
+    # Initialize workspace with skills and knowledge structure
+    try:
+        from app.workspace.workspace_init import init_workspace
+        await init_workspace(project["id"], body.name, body.description or "")
+    except Exception:
+        pass  # Workspace init is non-critical
+
     return project
 
 

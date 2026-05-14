@@ -123,6 +123,15 @@ async def _get_performance_summary(ctx: AgentContext) -> dict:
     }
 
 
+async def _get_promotion_references(ctx: AgentContext, slot_type: str = "", limit: int = 3) -> dict:
+    """Get reference post templates by slot type."""
+    query = supabase.table("promotion_references").select("slot_type, title, hook_text, body_text, cta_text, voice_persona, good_points")
+    if slot_type:
+        query = query.eq("slot_type", slot_type)
+    result = query.limit(limit).execute()
+    return {"references": result.data or []}
+
+
 def register_sns_tools():
     register_tool("sns_stored_metrics", "Get stored SNS metrics snapshots (zero API cost)",
         {"limit": {"type": "integer", "description": "Max snapshots"}},
@@ -155,3 +164,8 @@ def register_sns_tools():
 
     register_tool("sns_performance_summary", "Get aggregated SNS performance stats",
         {}, _get_performance_summary, "sns")
+
+    register_tool("sns_promotion_references", "Get reference post templates by slot type for writing guidance",
+        {"slot_type": {"type": "string", "description": "Slot type: feature_intro, problem_raising, feedback_request, update_share, dev_insights, launch"},
+         "limit": {"type": "integer", "description": "Max references (default 3)"}},
+        _get_promotion_references, "sns")

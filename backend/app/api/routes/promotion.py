@@ -15,40 +15,15 @@ from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 from app.integrations.github_api import github_client
 from app.models.promotion import PromotionRequest, PromotionPostCreate, PromotionInfoUpsert
+from app.workspace.skill_loader import get_skill_prompt
 
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
 
-SYSTEM_PROMPT = """You are a marketing copywriter specialized in indie products and startups.
 
-Rules:
-- Write in the language the user requests. Default to Korean if not specified.
-- Never use emojis. Never.
-- Be authentic, not salesy. Indie hackers value honesty over hype.
-- Include specific product details, not generic marketing speak.
-- The hook must grab attention in the first line (it's what shows in feeds before "see more").
-- Match the platform's culture and constraints.
-- Avoid cliches like "game-changer", "revolutionary", "next-level".
-- Sound like a real person sharing something they built, not a brand account.
-
-Platform guidelines:
-- X (Twitter): Max 280 chars. Short, punchy. Use threads for longer content. No hashtag spam (1-2 max).
-- Threads: Max 500 chars. Conversational, community-oriented. Can be longer and more personal.
-- Bluesky: Max 300 chars. Tech-savvy audience. Authentic, minimal.
-
-Tone options:
-- friendly: Casual, approachable, like talking to a friend at a coffee shop
-- professional: Polished but not corporate. Think "founder update email"
-- humorous: Witty and self-aware. Not forced jokes.
-- informative: Data-driven, specific. Numbers and results.
-
-Content type guidelines:
-- launch: Focus on the problem solved, not feature lists. "I was frustrated with X, so I built Y"
-- update: What changed and why users should care. Concrete improvements.
-- retrospective: Honest reflection. Numbers, lessons learned, what's next.
-- qa: Answer a question users actually ask. Not self-promotional FAQ.
-- tip: Actionable advice related to your product's domain.
-- milestone: Celebrate authentically. Share the journey, not just the number.
-"""
+def _get_promotion_system_prompt() -> str:
+    """Load promotion system prompt from skill file."""
+    skill_content = get_skill_prompt("promotion")
+    return f"You are a marketing copywriter specialized in indie products.\n\n{skill_content}" if skill_content else "You are a marketing copywriter. Write authentic, non-salesy promotional content."
 
 
 @router.get("/history")
@@ -137,21 +112,58 @@ async def generate_promotion(
     if body.template:
         platform_hint = f"\nPlatform: {body.template}"
 
+    # Fetch reference examples matching the content type
+    ref_examples = ""
+    try:
+        # Infer slot type from message
+        slot_type = None
+        msg_lower = body.message.lower()
+        if any(w in msg_lower for w in ["출시", "launch", "런칭"]):
+            slot_type = "launch"
+        elif any(w in msg_lower for w in ["피드백", "feedback", "의견"]):
+            slot_type = "feedback_request"
+        elif any(w in msg_lower for w in ["업데이트", "update", "개선"]):
+            slot_type = "update_share"
+        elif any(w in msg_lower for w in ["문제", "problem", "고민", "힘든"]):
+            slot_type = "problem_raising"
+        else:
+            slot_type = "feature_intro"
+
+        refs = (
+            supabase.table("promotion_references")
+            .select("hook_text, body_text, cta_text, good_points")
+            .eq("slot_type", slot_type)
+            .limit(3)
+            .execute()
+        )
+        if refs.data:
+            ref_lines = []
+            for r in refs.data:
+                ref_lines.append(f"- Hook: {r['hook_text']} | Structure: {r['body_text']} | CTA: {r.get('cta_text', 'N/A')} | Good: {', '.join(r.get('good_points', []))}")
+            ref_examples = f"\n\nReference patterns for this post type ({slot_type}):\n" + "\n".join(ref_lines)
+    except Exception:
+        pass
+
     prompt = f"""
 {chr(10).join(context_parts)}
 {platform_hint}
+{ref_examples}
 
 User request: {body.message}
 
-Generate promotional content. Return as JSON:
+Generate promotional content following the Playbook rules and reference patterns above.
+Use the 5-Part Arc: Hook -> Context -> Solution -> Proof -> CTA.
+Match the slot type and voice persona to the request.
+
+Return as JSON:
 {{
-  "hook": "Opening line that grabs attention (1 sentence)",
-  "content": "Main body of the post",
+  "hook": "Opening line that grabs attention (1 sentence, follow hook formulas from playbook)",
+  "content": "Main body following the 5-part arc structure",
   "hashtags": ["tag1", "tag2"]
 }}
 """
 
-    result = await gemini.generate_json(prompt=prompt, system=SYSTEM_PROMPT)
+    result = await gemini.generate_json(prompt=prompt, system=_get_promotion_system_prompt())
 
     # Save AI response
     import json
