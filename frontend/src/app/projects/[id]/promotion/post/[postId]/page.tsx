@@ -225,7 +225,8 @@ export default function PostEditorPage() {
     }
   }, [projectInfo, projectId, message, tone, contentType, reference, activePlatform]);
 
-  const handleSave = async () => {
+  const handleSave = async (targetStatus?: "draft" | "scheduled" | "published") => {
+    const status = targetStatus || editStatus;
     setSaving(true);
     try {
       const postData = {
@@ -239,12 +240,12 @@ export default function PostEditorPage() {
 
       if (isNew) {
         const created = await createPromotion(projectId, postData);
-        if (editStatus === "published") {
+        if (status === "published") {
           await publishPromotion(projectId, created.id);
         }
       } else if (promotion) {
         await updatePromotion(projectId, promotion.id, postData);
-        if (editStatus === "published" && promotion.status !== "published") {
+        if (status === "published" && promotion.status !== "published") {
           await publishPromotion(projectId, promotion.id);
         }
       }
@@ -605,20 +606,14 @@ export default function PostEditorPage() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => {
-                  setEditStatus("scheduled");
-                  handleSave();
-                }}
+                onClick={() => handleSave("scheduled")}
                 disabled={!editContent.trim()}
                 className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 예약하기
               </button>
               <button
-                onClick={() => {
-                  setEditStatus("published");
-                  handleSave();
-                }}
+                onClick={() => handleSave("published")}
                 disabled={!editContent.trim()}
                 className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >
