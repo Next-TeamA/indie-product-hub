@@ -191,7 +191,7 @@ async def oauth_callback(provider: str, code: str, state: str):
         on_conflict="user_id,provider,provider_user_id",
     ).execute()
 
-    return RedirectResponse(url=f"{settings.frontend_url}/settings?connected={provider}")
+    return RedirectResponse(url=f"{settings.frontend_url}/projects?connected={provider}")
 
 
 @router.delete("/{account_id}", status_code=204)
