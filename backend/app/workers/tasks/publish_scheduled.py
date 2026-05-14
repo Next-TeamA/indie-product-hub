@@ -68,7 +68,7 @@ async def publish_scheduled_posts():
 
             supabase.table("promotion_posts").update({
                 "status": "published",
-                "published_at": "now()",
+                "published_at": datetime.now(timezone.utc).isoformat(),
                 "external_post_id": str(external_id),
             }).eq("id", post_id).execute()
 

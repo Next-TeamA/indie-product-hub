@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Routes that require authentication
+const PROTECTED_ROUTES = ["/projects", "/settings"];
+// Routes that should redirect to /projects if already logged in
+const AUTH_ROUTES = ["/login"];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -25,8 +30,22 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 세션 갱신 — 이 호출이 쿠키를 refresh합니다
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
+
+  // Protected routes: redirect to /login if not authenticated
+  if (!user && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Auth routes: redirect to /projects if already logged in
+  if (user && AUTH_ROUTES.some(route => pathname === route)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/projects";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }

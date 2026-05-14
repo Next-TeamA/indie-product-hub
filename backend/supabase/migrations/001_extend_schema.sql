@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS market_insights (
 CREATE TABLE IF NOT EXISTS deployment_logs (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id        uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  platform          text NOT NULL CHECK (platform IN ('vercel', 'railway')),
+  platform          text NOT NULL CHECK (platform IN ('vercel', 'railway', 'github')),
   deployment_id     text NOT NULL,
   deployment_url    text,
   commit_sha        text,

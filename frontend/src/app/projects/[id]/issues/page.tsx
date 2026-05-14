@@ -194,11 +194,10 @@ export default function IssuesPage() {
   }));
 
   const openCount = issueData.filter((i) => i.status !== "resolved").length;
-  const deploySuccessRate = Math.round(
-    (deployData.filter((d) => d.status === "success").length /
-      deployData.filter((d) => d.status !== "running").length) *
-      100,
-  );
+  const completedDeploys = deployData.filter((d) => d.status !== "running").length;
+  const deploySuccessRate = completedDeploys > 0
+    ? Math.round((deployData.filter((d) => d.status === "success").length / completedDeploys) * 100)
+    : 0;
 
   return (
     <div className="px-10 py-10 w-full min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
