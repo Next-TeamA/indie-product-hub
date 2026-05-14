@@ -38,7 +38,7 @@ async def _get_x_tweets(ctx: AgentContext, max_results: int = 20) -> dict:
     token = ctx.tokens.get("x")
     if not token:
         return {"error": "X (Twitter) not connected."}
-    tweets = await x_client.get_user_tweets(token, max_results=max_results)
+    tweets = await x_client.get_user_tweets_with_metrics(token, max_results=max_results)
     return {"tweets": tweets}
 
 
@@ -65,7 +65,7 @@ async def _get_threads_posts(ctx: AgentContext, limit: int = 20) -> dict:
     )
     if not account.data:
         return {"error": "Threads account not found."}
-    posts = await threads_client.get_user_posts(token, account.data["provider_user_id"], limit=limit)
+    posts = await threads_client.get_user_posts_with_insights(token, account.data["provider_user_id"], limit=limit)
     return {"posts": posts}
 
 
