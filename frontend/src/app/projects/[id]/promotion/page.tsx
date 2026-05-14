@@ -16,6 +16,7 @@ import Link from "next/link";
 import {
   activateScheduledPromotions,
   listPromotions,
+  deleteAllPromotions,
   deletePromotion,
   type Promotion,
   type Platform,
@@ -96,6 +97,7 @@ export default function PromotionPage() {
   const [selected, setSelected] = useState<string>(todayStr);
   const [promos, setPromos] = useState<Promotion[]>([]);
   const [activatingSchedule, setActivatingSchedule] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
 
   const refreshPromos = useCallback(() => {
     listPromotions(projectId).then(setPromos).catch(console.error);
@@ -153,6 +155,26 @@ export default function PromotionPage() {
       console.error("Activate scheduled posts failed:", e);
     } finally {
       setActivatingSchedule(false);
+    }
+  };
+
+  const handleDeleteAllPosts = async () => {
+    const deletableCount = promos.filter((p) => p.status !== "publishing").length;
+    if (deletableCount === 0) return;
+
+    const confirmed = window.confirm(
+      `홍보 캘린더의 게시물 ${deletableCount}개를 모두 삭제할까요?\n이미 SNS에 올라간 게시물은 외부 플랫폼에서는 삭제되지 않고, 캘린더 기록만 삭제됩니다.`,
+    );
+    if (!confirmed) return;
+
+    setClearingAll(true);
+    try {
+      await deleteAllPromotions(projectId);
+      setPromos((prev) => prev.filter((p) => p.status === "publishing"));
+    } catch (e) {
+      console.error("Delete all promotion posts failed:", e);
+    } finally {
+      setClearingAll(false);
     }
   };
 
@@ -235,6 +257,18 @@ export default function PromotionPage() {
             <Plus className="w-4 h-4" />
             홍보 등록
           </Link>
+          <button
+            onClick={handleDeleteAllPosts}
+            disabled={promos.length === 0 || promos.every((p) => p.status === "publishing") || clearingAll}
+            className="flex items-center gap-2 h-9 px-4 rounded-full border border-rose-100 bg-white text-rose-500 text-[13px] font-semibold hover:bg-rose-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {clearingAll ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            전체 삭제{promos.length > 0 ? ` (${promos.length})` : ""}
+          </button>
         </div>
       </motion.div>
 

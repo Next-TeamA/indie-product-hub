@@ -290,6 +290,24 @@ async def activate_scheduled_posts(
     return {"updated": len(result.data or [])}
 
 
+@router.delete("/posts")
+async def delete_all_posts(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Delete all local promotion calendar posts except ones currently publishing."""
+    result = (
+        supabase.table("promotion_posts")
+        .delete()
+        .eq("project_id", project_id)
+        .eq("user_id", user["id"])
+        .neq("status", "publishing")
+        .execute()
+    )
+    return {"deleted": len(result.data or [])}
+
+
 @router.patch("/posts/{post_id}")
 async def update_post(
     project_id: str,

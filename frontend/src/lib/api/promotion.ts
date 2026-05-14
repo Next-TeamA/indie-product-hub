@@ -123,6 +123,12 @@ export async function deletePromotion(projectId: string, postId: string): Promis
   });
 }
 
+export async function deleteAllPromotions(projectId: string): Promise<{ deleted: number }> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts`, {
+    method: "DELETE",
+  });
+}
+
 export async function publishPromotion(projectId: string, postId: string): Promise<{ status: string; post_id: string }> {
   return apiFetch(`/api/projects/${projectId}/promotion/posts/${postId}/publish`, {
     method: "POST",
