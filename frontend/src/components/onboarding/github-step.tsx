@@ -131,7 +131,7 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
           </motion.button>
         ) : (
           <>
-            {/* Connected badge + reconnect */}
+            {/* Connected badge + manage permissions */}
             <div className="flex items-center justify-between h-10 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
               <div className="flex items-center gap-3">
                 <Check className="w-4 h-4 text-emerald-500" />
@@ -139,13 +139,14 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
                   GitHub 연결됨
                 </span>
               </div>
-              <button
-                onClick={handleConnect}
-                disabled={connecting}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+              <a
+                href="https://github.com/settings/connections/applications/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                {connecting ? "연결 중..." : "재연결"}
-              </button>
+                조직 권한 관리
+              </a>
             </div>
 
             {/* Search */}

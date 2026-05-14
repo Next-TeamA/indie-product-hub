@@ -149,13 +149,14 @@ export default function ProjectSettingsPage() {
             {connectedProviders.github ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-emerald-600 font-medium">연결됨</span>
-                <button
-                  onClick={() => handleConnect("github")}
-                  disabled={connecting === "github"}
+                <a
+                  href="https://github.com/settings/connections/applications/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  {connecting === "github" ? "..." : "재연결"}
-                </button>
+                  조직 권한 관리
+                </a>
               </div>
             ) : (
               <button
