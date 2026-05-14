@@ -1,13 +1,17 @@
-"""Periodic task: sync SNS metrics for published posts."""
+"""Periodic task: sync SNS metrics for published posts.
+Also detects posts deleted externally (on Threads/X) and marks them.
+"""
 
 from app.core.supabase import supabase, safe_maybe_single
 from app.core.encryption import decrypt_token
+from app.core.exceptions import ExternalAPIError
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 
 
 async def sync_sns_metrics():
     """Pull latest metrics for all published posts with external IDs.
+    If the external platform returns 404/not-found, mark the post as deleted.
     Run every 30 minutes via scheduler.
     """
     posts = (
@@ -34,7 +38,6 @@ async def sync_sns_metrics():
             token = decrypt_token(account["access_token"])
 
             if post["platform"] == "x":
-                # get_tweet_metrics returns flat dict with impressions, likes, etc.
                 metrics = await x_client.get_tweet_metrics(token, post["external_post_id"])
                 supabase.table("sns_metrics_snapshots").insert({
                     "post_id": post["id"],
@@ -50,7 +53,6 @@ async def sync_sns_metrics():
                 }).execute()
 
             elif post["platform"] == "threads":
-                # get_post_insights returns flat dict with views, likes, etc.
                 metrics = await threads_client.get_post_insights(token, post["external_post_id"])
                 supabase.table("sns_metrics_snapshots").insert({
                     "post_id": post["id"],
@@ -62,5 +64,14 @@ async def sync_sns_metrics():
                     "quotes": metrics.get("quotes", 0),
                 }).execute()
 
+        except ExternalAPIError as e:
+            # 404 or similar = post was deleted on the platform
+            err_msg = str(e).lower()
+            if "404" in err_msg or "not found" in err_msg or "does not exist" in err_msg:
+                supabase.table("promotion_posts").update({
+                    "status": "failed",
+                    "publish_error": "Post deleted externally on the platform",
+                }).eq("id", post["id"]).execute()
+            continue
         except Exception:
-            continue  # Skip failed posts, continue with others
+            continue
