@@ -51,7 +51,16 @@ async def create_project(body: ProjectCreate, user: dict = Depends(get_current_u
         "status": "preparing",
     }
     result = supabase.table("projects").insert(data).execute()
-    return result.data[0]
+    project = result.data[0]
+
+    # Auto-create promotion info so the promotion page never crashes
+    supabase.table("project_promotion_info").insert({
+        "project_id": project["id"],
+        "service_name": body.name,
+        "description": body.description or "",
+    }).execute()
+
+    return project
 
 
 @router.patch("/{project_id}")
