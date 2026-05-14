@@ -65,6 +65,19 @@ export async function createPromotion(projectId: string, data: PromotionCreateIn
   });
 }
 
+export async function updatePromotion(projectId: string, postId: string, data: Partial<PromotionCreateInput>): Promise<Promotion> {
+  return apiFetch<Promotion>(`/api/projects/${projectId}/promotion/posts/${postId}`, {
+    method: "PATCH",
+    body: data,
+  });
+}
+
+export async function deletePromotion(projectId: string, postId: string): Promise<void> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts/${postId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function publishPromotion(projectId: string, postId: string): Promise<{ status: string; post_id: string }> {
   return apiFetch(`/api/projects/${projectId}/promotion/posts/${postId}/publish`, {
     method: "POST",
