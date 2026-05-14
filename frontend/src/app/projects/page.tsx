@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { updateProject, deleteProject } from "@/lib/api/projects";
 import { listAllEvents, createEvent, deleteEvent, type CalendarEvent } from "@/lib/api/events";
+import { listPromotions, type Promotion } from "@/lib/api/promotion";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
 
@@ -40,6 +41,21 @@ const toDateStr = (y: number, m: number, d: number) =>
 const toMonthStr = (y: number, m: number) =>
   `${y}-${String(m + 1).padStart(2, "0")}`;
 
+type CalendarItem = CalendarEvent & {
+  source?: "event" | "promotion";
+  promotion_id?: string;
+  promotion_status?: Promotion["status"];
+};
+
+const isCalendarPromotion = (promotion: Promotion) =>
+  !!promotion.scheduled_at && ["draft", "scheduled", "publishing"].includes(promotion.status);
+
+const isFuturePromotion = (promotion: Promotion, todayStr: string) =>
+  isCalendarPromotion(promotion) && promotion.date >= todayStr;
+
+const promotionTitle = (promotion: Promotion) =>
+  promotion.hook.trim() || promotion.content.split("\n").find(Boolean)?.trim() || "예약된 홍보글";
+
 // ─── 메인 컴포넌트 ─────────────────────────────────────────
 
 export default function ProjectsPage() {
@@ -47,16 +63,6 @@ export default function ProjectsPage() {
   const user = useUser();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { projects: apiProjects, mutate } = useProjects();
-
-  const projectList = apiProjects.map(p => ({
-    id: p.id,
-    name: p.name,
-    description: p.description ?? "",
-    logo_url: p.logo_url,
-    lastActivity: new Date(p.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
-    promotionCount: 0,
-    issueCount: 0,
-  }));
 
   // ── 프로젝트 편집 ──
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
@@ -76,8 +82,8 @@ export default function ProjectsPage() {
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const [current, setCurrent] = useState(new Date(today.getFullYear(), today.getMonth()));
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [calEvents, setCalEvents] = useState<Record<string, CalendarEvent[]>>({});
-  const [calLoading, setCalLoading] = useState(false);
+  const [calEvents, setCalEvents] = useState<Record<string, CalendarItem[]>>({});
+  const [scheduledPromotionsByProject, setScheduledPromotionsByProject] = useState<Record<string, Promotion[]>>({});
 
   // ── 일정 추가 모달 ──
   const [showEventModal, setShowEventModal] = useState(false);
@@ -92,25 +98,81 @@ export default function ProjectsPage() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
+  const projectList = apiProjects.map(p => ({
+    id: p.id,
+    name: p.name,
+    description: p.description ?? "",
+    logo_url: p.logo_url,
+    lastActivity: new Date(p.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+    promotionCount: scheduledPromotionsByProject[p.id]?.filter(promotion => isFuturePromotion(promotion, todayStr)).length ?? 0,
+    issueCount: 0,
+  }));
+
   // ── 캘린더 이벤트 로드 ──
   const loadCalEvents = useCallback(async (y: number, m: number) => {
-    setCalLoading(true);
     try {
-      const data = await listAllEvents(toMonthStr(y, m));
-      const grouped: Record<string, CalendarEvent[]> = {};
+      const monthStr = toMonthStr(y, m);
+      const [data, promotionEntries] = await Promise.all([
+        listAllEvents(monthStr),
+        Promise.allSettled(
+          apiProjects.map(async project => ({
+            project,
+            promotions: await listPromotions(project.id),
+          })),
+        ),
+      ]);
+      const grouped: Record<string, CalendarItem[]> = {};
       data.forEach(e => {
         if (!grouped[e.date]) grouped[e.date] = [];
-        grouped[e.date].push(e);
+        grouped[e.date].push({ ...e, source: "event" });
       });
+
+      const nextPromotionsByProject: Record<string, Promotion[]> = {};
+      promotionEntries.forEach(entry => {
+        if (entry.status !== "fulfilled") return;
+        const { project, promotions } = entry.value;
+        const scheduledPromotions = promotions.filter(isCalendarPromotion);
+        nextPromotionsByProject[project.id] = scheduledPromotions;
+
+        scheduledPromotions
+          .filter(promotion => promotion.date.startsWith(monthStr))
+          .forEach(promotion => {
+            const event: CalendarItem = {
+              id: `promotion-${promotion.id}`,
+              project_id: project.id,
+              project_name: project.name,
+              title: promotionTitle(promotion),
+              event_type: "promotion",
+              date: promotion.date,
+              time: promotion.time || null,
+              description: promotion.status === "scheduled" ? "예약 발행 대기 중" : "홍보 캘린더에 등록된 예약 예정 글",
+              created_at: promotion.created_at,
+              source: "promotion",
+              promotion_id: promotion.id,
+              promotion_status: promotion.status,
+            };
+            if (!grouped[event.date]) grouped[event.date] = [];
+            grouped[event.date].push(event);
+          });
+      });
+
+      Object.values(grouped).forEach(events => {
+        events.sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
+      });
+
+      setScheduledPromotionsByProject(nextPromotionsByProject);
       setCalEvents(grouped);
     } catch {
       // 조용히 실패 (프로젝트 없을 때 등)
-    } finally {
-      setCalLoading(false);
     }
-  }, []);
+  }, [apiProjects]);
 
-  useEffect(() => { loadCalEvents(year, month); }, [year, month, loadCalEvents]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadCalEvents(year, month);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [year, month, loadCalEvents]);
 
   // ── 이미지 업로드 ──
   const handleImageUpload = async (file: File) => {
@@ -400,21 +462,44 @@ export default function ProjectsPage() {
                 {(calEvents[selectedDate] ?? []).length > 0 ? (
                   (calEvents[selectedDate] ?? []).map(e => {
                     const type = EVENT_TYPES.find(t => t.value === e.event_type);
+                    const isPromotion = e.source === "promotion";
                     return (
-                      <div key={e.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm border-l-4 border-l-slate-800 group relative">
+                      <div key={e.id} className={cn("bg-white rounded-2xl border border-slate-100 p-4 shadow-sm border-l-4 group relative", isPromotion ? "border-l-blue-500" : "border-l-slate-800")}>
                         <div className="flex items-center gap-2 mb-1.5">
                           <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md", type?.badge)}>{type?.label}</span>
+                          {isPromotion && e.promotion_status === "draft" && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600">예약 예정</span>
+                          )}
                           {e.time && <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{e.time}</span>}
                           {e.project_name && <span className="text-[10px] text-slate-300 ml-auto">{e.project_name}</span>}
                         </div>
-                        <p className="text-[14px] font-bold text-slate-800">{e.title}</p>
+                        {isPromotion && e.promotion_id ? (
+                          <Link
+                            href={`/projects/${e.project_id}/promotion/post/${e.promotion_id}`}
+                            className="text-[14px] font-bold text-slate-800 hover:text-blue-600 transition-colors pr-7 block"
+                          >
+                            {e.title}
+                          </Link>
+                        ) : (
+                          <p className="text-[14px] font-bold text-slate-800 pr-7">{e.title}</p>
+                        )}
                         {e.description && <p className="text-[12px] font-medium text-slate-500 mt-1 leading-relaxed">{e.description}</p>}
-                        <button
-                          onClick={() => handleDeleteEvent(e.project_id, e.id)}
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg text-slate-300 hover:text-rose-500"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isPromotion && e.promotion_id ? (
+                          <Link
+                            href={`/projects/${e.project_id}/promotion/post/${e.promotion_id}`}
+                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg text-slate-300 hover:text-blue-500"
+                            title="홍보글 열기"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteEvent(e.project_id, e.id)}
+                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg text-slate-300 hover:text-rose-500"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     );
                   })
@@ -540,7 +625,7 @@ export default function ProjectsPage() {
               <div className="text-center">
                 <h2 className="text-[18px] font-bold text-slate-800 mb-2">정말 삭제하시겠습니까?</h2>
                 <p className="text-[13px] font-medium text-slate-500 leading-relaxed">
-                  <span className="font-bold text-slate-700">"{deleteTarget.name}"</span> 프로젝트와<br />
+                  <span className="font-bold text-slate-700">&quot;{deleteTarget.name}&quot;</span> 프로젝트와<br />
                   모든 관련 데이터가 영구적으로 삭제됩니다.
                 </p>
               </div>

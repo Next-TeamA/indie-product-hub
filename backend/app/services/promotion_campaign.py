@@ -22,6 +22,136 @@ CAMPAIGN_DAYS = 14
 DEFAULT_POST_HOUR = 19
 SEOUL = ZoneInfo("Asia/Seoul")
 PROMOTION_SKILL = get_skill_prompt("promotion")
+THREADS_OPERATOR_CAMPAIGN_SKILL = get_skill_prompt("threads_operator_campaign")
+
+DEFAULT_THREADS_RHYTHM = [
+    {
+        "day": 1,
+        "postFormat": "product_intro",
+        "rhythmRole": "제품과 계정의 정체성을 처음 분명히 알린다",
+        "toneElements": ["명확함", "사람다움", "첫인사"],
+        "ctaStrength": "medium",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "clear",
+    },
+    {
+        "day": 2,
+        "postFormat": "operator_shortform",
+        "rhythmRole": "제품을 알리는 일이 민망한 운영자의 혼잣말",
+        "toneElements": ["민망함", "자조", "홍보 어색함"],
+        "ctaStrength": "none",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "implied",
+    },
+    {
+        "day": 3,
+        "postFormat": "community_question",
+        "rhythmRole": "타겟 사용자를 직접 부르고 친구를 찾는다",
+        "toneElements": ["외로움", "타겟 호출", "친목"],
+        "ctaStrength": "low",
+        "usePlatformLanguage": True,
+        "productMentionLevel": "none",
+    },
+    {
+        "day": 4,
+        "postFormat": "product_request",
+        "rhythmRole": "한 번 써봐달라고 솔직하게 부탁한다",
+        "toneElements": ["부탁", "초기 사용자 찾기", "피드백 요청"],
+        "ctaStrength": "high",
+        "usePlatformLanguage": True,
+        "productMentionLevel": "clear",
+    },
+    {
+        "day": 5,
+        "postFormat": "operator_shortform",
+        "rhythmRole": "반응 없는 계정 운영의 현실을 짧게 보여준다",
+        "toneElements": ["반응 없음", "자조", "계속 해보기"],
+        "ctaStrength": "low",
+        "usePlatformLanguage": True,
+        "productMentionLevel": "implied",
+    },
+    {
+        "day": 6,
+        "postFormat": "operator_shortform",
+        "rhythmRole": "제품 운영이 일상에 섞인 장면을 보여준다",
+        "toneElements": ["생활감", "운영자 일상", "짧은 혼잣말"],
+        "ctaStrength": "none",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "implied",
+    },
+    {
+        "day": 7,
+        "postFormat": "proof_or_progress",
+        "rhythmRole": "작은 운영 사실이나 작은 성취를 공유한다",
+        "toneElements": ["작은 성취", "운영일지", "꾸준함"],
+        "ctaStrength": "low",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "implied",
+    },
+    {
+        "day": 8,
+        "postFormat": "product_request",
+        "rhythmRole": "두 번째 제품 요청. 타겟에게 직접 써봐달라고 말한다",
+        "toneElements": ["직접 요청", "피드백", "사람다운 부탁"],
+        "ctaStrength": "high",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "clear",
+    },
+    {
+        "day": 9,
+        "postFormat": "operator_shortform",
+        "rhythmRole": "제품을 만든 이유보다 알리는 일이 어렵다는 감정을 보여준다",
+        "toneElements": ["힘듦", "마케팅 어려움", "솔직함"],
+        "ctaStrength": "none",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "implied",
+    },
+    {
+        "day": 10,
+        "postFormat": "community_question",
+        "rhythmRole": "댓글 허들이 낮은 질문으로 대화를 만든다",
+        "toneElements": ["쉬운 질문", "스친 찾기", "공감"],
+        "ctaStrength": "low",
+        "usePlatformLanguage": True,
+        "productMentionLevel": "none",
+    },
+    {
+        "day": 11,
+        "postFormat": "soft_feature",
+        "rhythmRole": "기능을 기능표가 아니라 실제 상황 속에서 살짝 보여준다",
+        "toneElements": ["상황 기반", "짧은 기능 노출", "실용성"],
+        "ctaStrength": "medium",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "clear",
+    },
+    {
+        "day": 12,
+        "postFormat": "product_request",
+        "rhythmRole": "세 번째 제품 요청. 피드백과 사용을 구체적으로 부탁한다",
+        "toneElements": ["간절함", "피드백 요청", "초기 운영자"],
+        "ctaStrength": "high",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "clear",
+    },
+    {
+        "day": 13,
+        "postFormat": "operator_shortform",
+        "rhythmRole": "계정 성장이나 맞팔 문화에 기대는 가벼운 친목 글",
+        "toneElements": ["구걸", "친목", "살짝 처절함"],
+        "ctaStrength": "medium",
+        "usePlatformLanguage": True,
+        "productMentionLevel": "implied",
+    },
+    {
+        "day": 14,
+        "postFormat": "operator_shortform",
+        "rhythmRole": "2주 운영의 마무리와 다음 글 예고를 사람처럼 남긴다",
+        "toneElements": ["운영일지", "다음 예고", "작은 고마움"],
+        "ctaStrength": "low",
+        "usePlatformLanguage": False,
+        "productMentionLevel": "implied",
+    },
+]
 
 CONTENT_TYPE_MAP = {
     "문제 공감형": "qa",
@@ -36,6 +166,13 @@ CONTENT_TYPE_MAP = {
     "직접 CTA형": "launch",
     "질문형": "qa",
     "팁 제공형": "tip",
+    "운영자 숏폼형": "qa",
+    "제품 요청형": "launch",
+    "제품 소개형": "launch",
+    "정보/기능형": "tip",
+    "커뮤니티 질문형": "qa",
+    "부드러운 기능형": "update",
+    "운영일지/작은 성취형": "milestone",
 }
 
 
@@ -68,6 +205,25 @@ def _ensure_list(value: object, step: str) -> list:
     if not isinstance(value, list):
         raise ExternalAPIError("Gemini", f"{step} returned non-array JSON")
     return value
+
+
+def _merge_locked_rhythm(calendar_rhythm: list) -> list:
+    """Preserve the fixed campaign rhythm while keeping model-written role details."""
+    model_by_day = {
+        int(item.get("day", 0)): item
+        for item in calendar_rhythm
+        if isinstance(item, dict)
+    }
+    merged = []
+    for locked in DEFAULT_THREADS_RHYTHM:
+        item = model_by_day.get(locked["day"], {})
+        merged.append({
+            **item,
+            **locked,
+            "rhythmRole": item.get("rhythmRole") or locked["rhythmRole"],
+            "toneElements": item.get("toneElements") or locked["toneElements"],
+        })
+    return merged
 
 
 async def _save_step(campaign_id: str, step_name: str, output: dict | list) -> None:
@@ -103,8 +259,11 @@ async def _campaign_strategy(body: PromotionCampaignRequest, target_analysis: di
     prompt = f"""
 You are a campaign strategist for finished SaaS/product promotion.
 
-Do not create build-in-public developer diary content.
-Create a 14-day Threads campaign strategy for strategic product promotion.
+Create a 14-day Threads campaign strategy for a finished product.
+Do not write as if the product is unbuilt, still only an idea, or being built from scratch.
+However, the campaign should use operator-led short posts where the human behind the product is visible.
+The operator may talk about promotion struggles, low engagement, asking for feedback, finding users,
+awkwardness, small wins, and running an already-finished product.
 
 Input:
 {_common_context(body)}
@@ -112,29 +271,31 @@ Input:
 Target analysis:
 {target_analysis}
 
+Threads operator campaign rules:
+{THREADS_OPERATOR_CAMPAIGN_SKILL or "No Threads operator campaign document is available. Still prioritize human operator-led Threads posts."}
+
 Content type options:
-- 문제 공감형
-- 논쟁형
-- 체크리스트형
-- 상황극형
-- 비교형
-- 실수/실패 사례형
-- 기능 소개형
-- 가치 제안형
-- 후기/가상 후기형
-- 직접 CTA형
-- 질문형
-- 팁 제공형
+- 제품 소개형
+- 운영자 숏폼형
+- 제품 요청형
+- 커뮤니티 질문형
+- 부드러운 기능형
+- 운영일지/작은 성취형
 
 Return only JSON:
 {{
   "goal": "campaign goal",
   "duration": "14 days",
   "overallMood": "overall mood",
-  "contentPrinciple": "one guiding principle",
+  "contentPrinciple": "one guiding principle for finished-product operator-led Threads promotion",
+  "operatorPersona": "human operator persona for this product account",
+  "finishedProductBoundary": "how to avoid unbuilt/build-from-zero framing",
   "avoidRules": ["rule", "..."],
   "contentMix": [
-    {{"contentType": "문제 공감형", "count": 2}}
+    {{"contentType": "운영자 숏폼형", "count": 9}},
+    {{"contentType": "제품 요청형", "count": 3}},
+    {{"contentType": "제품 소개형", "count": 1}},
+    {{"contentType": "정보/기능형", "count": 1}}
   ]
 }}
 """
@@ -142,13 +303,14 @@ Return only JSON:
     return _ensure_dict(result, "campaign_strategy")
 
 
-async def _calendar_plan(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict) -> list:
+async def _threads_operating_rhythm(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict) -> dict:
     prompt = f"""
-You are a 14-day SNS editorial calendar planner.
+You are a Threads-native editorial rhythm planner.
 
-Plan exactly 14 different Threads posts. Do not write final drafts yet.
-Each day must have a different topic angle, hook style, and message.
-Do not repeat the same product benefit every day.
+Adapt the locked operating rhythm for a 14-day campaign before any final post drafts are written.
+This product is already finished enough to promote. Do not frame it as an unbuilt MVP or future idea.
+The rhythm below is mandatory. You may only adapt wording in rhythmRole and toneElements to the product.
+Do not change day numbers, postFormat, ctaStrength, usePlatformLanguage, or productMentionLevel.
 
 Input:
 {_common_context(body)}
@@ -159,17 +321,98 @@ Target analysis:
 Campaign strategy:
 {strategy}
 
+Locked rhythm:
+{DEFAULT_THREADS_RHYTHM}
+
+Threads operator campaign rules:
+{THREADS_OPERATOR_CAMPAIGN_SKILL or "No Threads operator campaign document is available. Follow operator-led shortform principles."}
+
+Return only JSON:
+{{
+  "operatorPersona": "specific account operator persona",
+  "voicePrinciples": ["short practical rule", "..."],
+  "productRequestDays": [4, 8, 12],
+  "platformLanguageDays": [3, 6, 10, 13],
+  "directProductMentionDays": [1, 4, 8, 12],
+  "calendarRhythm": [
+    {{
+      "day": 1,
+      "postFormat": "product_intro",
+      "rhythmRole": "why this day exists in the 14-day flow",
+      "toneElements": ["clear", "human"],
+      "ctaStrength": "medium",
+      "usePlatformLanguage": false,
+      "productMentionLevel": "clear"
+    }}
+  ],
+  "reviewChecklist": ["rule to verify at the end", "..."]
+}}
+
+Rules for calendarRhythm:
+- It must contain exactly 14 objects.
+- Day 1 must be postFormat "product_intro".
+- The output must preserve the locked rhythm's day-by-day postFormat exactly.
+- The output must preserve the locked rhythm's ctaStrength exactly.
+- The output must preserve the locked rhythm's usePlatformLanguage exactly.
+- The output must preserve the locked rhythm's productMentionLevel exactly.
+- Product request posts must be days 4, 8, and 12.
+- Platform language must be used only on days 3, 4, 5, 10, and 13.
+- Do not make every day a hard CTA.
+"""
+    result = await gemini.generate_json(prompt=prompt, system="Plan Threads editorial rhythm for human operator-led finished-product campaigns.", model=MODEL)
+    rhythm = _ensure_dict(result, "threads_operating_rhythm")
+    calendar_rhythm = rhythm.get("calendarRhythm")
+    if not isinstance(calendar_rhythm, list) or len(calendar_rhythm) != CAMPAIGN_DAYS:
+        raise ExternalAPIError("Gemini", "threads_operating_rhythm did not return exactly 14 calendarRhythm items")
+    rhythm["calendarRhythm"] = _merge_locked_rhythm(calendar_rhythm)
+    rhythm["productRequestDays"] = [4, 8, 12]
+    rhythm["platformLanguageDays"] = [3, 4, 5, 10, 13]
+    rhythm["directProductMentionDays"] = [1, 4, 8, 11, 12]
+    return rhythm
+
+
+async def _calendar_plan(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict, operating_rhythm: dict) -> list:
+    prompt = f"""
+You are a 14-day SNS editorial calendar planner.
+
+Plan exactly 14 different Threads posts. Do not write final drafts yet.
+Each day must have a different topic angle, hook style, and message.
+Do not repeat the same product benefit every day.
+Follow the operating rhythm exactly for postFormat, CTA strength, platform-language usage, and product mention level.
+Day 1 must introduce the product clearly.
+The campaign should not pretend the product is unbuilt or still being made from scratch.
+
+Input:
+{_common_context(body)}
+
+Target analysis:
+{target_analysis}
+
+Campaign strategy:
+{strategy}
+
+Threads operating rhythm:
+{operating_rhythm}
+
+Threads operator campaign rules:
+{THREADS_OPERATOR_CAMPAIGN_SKILL or "No Threads operator campaign document is available. Follow operator-led shortform principles."}
+
 Return only a JSON array with exactly 14 objects:
 [
   {{
     "day": 1,
-    "contentType": "문제 공감형",
+    "postFormat": "product_intro",
+    "contentType": "제품 소개형",
     "postGoal": "what this post should achieve",
     "topic": "specific topic",
     "hookStyle": "specific hook technique",
     "coreMessage": "one core message",
     "cta": "clear CTA",
-    "assignedInfo": "which input/context this post uses"
+    "assignedInfo": "which input/context this post uses",
+    "toneElements": ["human tone element", "..."],
+    "ctaStrength": "none | low | medium | high",
+    "usePlatformLanguage": false,
+    "productMentionLevel": "none | implied | clear"
   }}
 ]
 """
@@ -180,25 +423,57 @@ Return only a JSON array with exactly 14 objects:
     return plan
 
 
-async def _draft_posts(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict, calendar: list) -> list:
+async def _draft_posts(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict, operating_rhythm: dict, calendar: list) -> list:
     prompt = f"""
-You are a Threads copywriter for finished product promotion.
+You are a Threads copywriter for finished-product operator-led promotion.
 
 Write actual post drafts for the 14-day calendar.
 
-Promotion writing skill:
+Promotion writing reference:
 {PROMOTION_SKILL or "No promotion skill document is available. Follow the rules below."}
+
+Use the promotion writing reference only for product_intro, product_request, and soft_feature posts.
+For operator_shortform, community_question, and proof_or_progress posts, ignore the 5-Part Arc and prioritize the Threads operator campaign rules.
+
+Threads operator campaign rules:
+{THREADS_OPERATOR_CAMPAIGN_SKILL or "No Threads operator campaign document is available. Follow the rules below."}
 
 Rules:
 - Korean by default unless the input clearly asks otherwise.
 - Threads tone: conversational, concrete, community-aware.
 - Each draft must be 500 characters or less.
-- Each draft must include a clear CTA.
-- Do not use emojis.
+- Follow each day's postFormat, toneElements, ctaStrength, usePlatformLanguage, and productMentionLevel.
+- Day 1 must clearly introduce the product.
+- Product request posts must ask directly but sound like a human operator asking, not an ad.
+- Operator shortform posts should lead with human feeling, operating situation, low engagement, awkwardness, small wins, or community-seeking before product explanation.
+- Use 스친, 스하리, 반하리, 맞팔, 뒷삭 only on days where usePlatformLanguage is true.
+- Do not use emojis unless they are very natural and sparse.
 - Do not sound like an ad.
+- Do not use advertising phrases like "지금 바로", "확인해보세요", "경험해보세요", "무료로 체험", "마법", "꿀팁", "심폐소생술", "새 생명", "알아서 척척", "더 이상".
 - Do not use cliches like "혁신적인", "최고의", "생산성을 극대화", "게임 체인저".
-- Do not write build-in-public diary posts.
+- Do not write as if the product is unbuilt, still just an idea, or being built from scratch.
+- You may write operator-led posts about running, promoting, asking for feedback, and finding users for an already-finished product.
 - Start from realistic situations the target user faces.
+- Do not write polished educational posts, checklist posts, fake testimonials, or corporate campaign copy unless the day's postFormat explicitly asks for it.
+- Do not end every post with a product CTA.
+- Mention the product name only when productMentionLevel is "clear"; otherwise imply the context without naming it.
+
+Format-specific rules:
+- product_intro: introduce product name, who it is for, and what it does. Keep it human, not corporate.
+- operator_shortform: 2-6 short lines. No feature list. No formal CTA. It should feel like the operator posted a thought.
+- community_question: call a specific group and ask one easy question. Use platform language if allowed.
+- product_request: ask people to try it or give feedback. It can feel a bit desperate, but never like a landing-page CTA.
+- soft_feature: show one feature through one realistic moment. Do not list multiple features.
+- proof_or_progress: share one small operating fact, tiny win, or honest status.
+
+Bad style example:
+"IndieOps의 핵심 가치를 지금 바로 확인해보세요."
+
+Good style example:
+"이거 한 번만 써봐줄 사람 있나...
+
+아직 큰 말은 못하겠고
+진짜 필요한 사람한테 맞는지만 보고 싶음"
 
 Line break and readability rules:
 - Write in a Threads-native layout, not as a dense paragraph.
@@ -220,6 +495,9 @@ Target analysis:
 Campaign strategy:
 {strategy}
 
+Threads operating rhythm:
+{operating_rhythm}
+
 Calendar:
 {calendar}
 
@@ -240,7 +518,7 @@ Return only a JSON array with exactly 14 objects:
     return drafts
 
 
-async def _review_campaign(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict, calendar: list, drafts: list) -> dict:
+async def _review_campaign(body: PromotionCampaignRequest, target_analysis: dict, strategy: dict, operating_rhythm: dict, calendar: list, drafts: list) -> dict:
     merged = []
     draft_by_day = {int(d.get("day", 0)): d for d in drafts if isinstance(d, dict)}
     for item in calendar:
@@ -257,7 +535,7 @@ async def _review_campaign(body: PromotionCampaignRequest, target_analysis: dict
         })
 
     prompt = f"""
-You are the final editor for a 14-day product promotion campaign.
+You are the final editor for a 14-day finished-product Threads operator campaign.
 
 Review and revise the campaign so it passes all rules.
 
@@ -270,6 +548,12 @@ Target analysis:
 Campaign strategy:
 {strategy}
 
+Threads operating rhythm:
+{operating_rhythm}
+
+Threads operator campaign rules:
+{THREADS_OPERATOR_CAMPAIGN_SKILL or "No Threads operator campaign document is available. Follow operator-led shortform principles."}
+
 Draft calendar:
 {merged}
 
@@ -279,11 +563,20 @@ Review rules:
 - Do not repeat feature introductions.
 - Each post should use a different hook style or content type.
 - Avoid ad-like expressions.
+- Remove advertising phrases like "지금 바로", "확인해보세요", "경험해보세요", "무료로 체험", "마법", "꿀팁", "심폐소생술", "새 생명", "알아서 척척", "더 이상".
 - Avoid "혁신적인", "최고의", "생산성을 극대화", "게임 체인저".
 - Start from realistic target-user situations.
-- Every post needs a clear CTA.
+- CTA strength must match each post's role. Not every post needs a hard CTA.
 - Keep Threads length and tone.
-- Do not default to build-in-public diary tone.
+- Do not write as if the product is unbuilt or still being made from scratch.
+- Preserve operator-led human posts about running, promoting, finding users, getting feedback, awkwardness, low engagement, and small wins.
+- Day 1 must clearly introduce the product.
+- Across the 14 posts, 9-10 should feel like operator-led shortform posts.
+- Across the 14 posts, 3-4 should be product request posts, spaced roughly every 3-4 posts.
+- Threads culture terms like 스친, 스하리, 반하리, 맞팔, 뒷삭 should appear in 3-6 posts only.
+- Product request posts should sound like human requests, not corporate ad copy.
+- Operator shortform posts must not contain feature lists, fake testimonials, educational article structure, or landing-page CTA endings.
+- If a post sounds like a polished campaign ad, rewrite it as a short operator post even if the meaning becomes less comprehensive.
 
 Threads formatting review rules:
 - Rewrite each final post so it reads like real Threads reference posts from docs/promotion.
@@ -313,13 +606,18 @@ Return only JSON:
   "finalCalendar": [
     {{
       "day": 1,
-      "contentType": "문제 공감형",
+      "postFormat": "product_intro",
+      "contentType": "제품 소개형",
       "postGoal": "",
       "topic": "",
       "hookStyle": "",
       "coreMessage": "",
       "cta": "",
       "assignedInfo": "",
+      "toneElements": ["human tone element", "..."],
+      "ctaStrength": "none | low | medium | high",
+      "usePlatformLanguage": false,
+      "productMentionLevel": "none | implied | clear",
       "hook": "standalone first line, not repeated in content",
       "content": "formatted body with blank lines and short Threads-style blocks",
       "draft": "hook + blank line + content"
@@ -457,13 +755,16 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
         strategy = await _campaign_strategy(body, target_analysis)
         await _save_step(campaign_id, "campaign_strategy", strategy)
 
-        calendar = await _calendar_plan(body, target_analysis, strategy)
+        operating_rhythm = await _threads_operating_rhythm(body, target_analysis, strategy)
+        await _save_step(campaign_id, "threads_operating_rhythm", operating_rhythm)
+
+        calendar = await _calendar_plan(body, target_analysis, strategy, operating_rhythm)
         await _save_step(campaign_id, "calendar_planning", calendar)
 
-        drafts = await _draft_posts(body, target_analysis, strategy, calendar)
+        drafts = await _draft_posts(body, target_analysis, strategy, operating_rhythm, calendar)
         await _save_step(campaign_id, "draft_writing", drafts)
 
-        review = await _review_campaign(body, target_analysis, strategy, calendar, drafts)
+        review = await _review_campaign(body, target_analysis, strategy, operating_rhythm, calendar, drafts)
         await _save_step(campaign_id, "review", review)
 
         final_calendar = review["finalCalendar"]
@@ -496,6 +797,7 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
                 "campaign_id": campaign_id,
                 "campaign_day": day,
                 "campaign_meta": {
+                    "postFormat": raw.get("postFormat", ""),
                     "contentType": raw.get("contentType", ""),
                     "postGoal": raw.get("postGoal", ""),
                     "topic": topic,
@@ -503,6 +805,10 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
                     "coreMessage": raw.get("coreMessage", ""),
                     "cta": raw.get("cta", ""),
                     "assignedInfo": raw.get("assignedInfo", ""),
+                    "toneElements": raw.get("toneElements", []),
+                    "ctaStrength": raw.get("ctaStrength", ""),
+                    "usePlatformLanguage": raw.get("usePlatformLanguage", False),
+                    "productMentionLevel": raw.get("productMentionLevel", ""),
                 },
             })
 
@@ -512,7 +818,10 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
         updated = supabase.table("promotion_campaigns").update({
             "status": "completed",
             "target_analysis": target_analysis,
-            "campaign_strategy": strategy,
+            "campaign_strategy": {
+                **strategy,
+                "threadsOperatingRhythm": operating_rhythm,
+            },
             "final_calendar": final_calendar,
             "post_ids": [p["id"] for p in posts],
             "completed_at": datetime.now(timezone.utc).isoformat(),

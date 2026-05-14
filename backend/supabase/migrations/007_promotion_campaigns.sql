@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS promotion_campaign_steps (
   step_name    text NOT NULL CHECK (step_name IN (
     'target_analysis',
     'campaign_strategy',
+    'threads_operating_rhythm',
     'calendar_planning',
     'draft_writing',
     'review'

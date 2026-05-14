@@ -263,8 +263,8 @@ export default function NewPromotionCampaignPage() {
             </div>
             <h2 className="text-[16px] font-bold text-slate-900">생성 결과</h2>
             <p className="mt-2 text-[13px] font-medium leading-6 text-slate-500">
-              홍보 에이전트가 타겟 분석, 2주 캠페인 전략, 14일 콘텐츠 캘린더,
-              Threads 초안, 최종 검수를 순서대로 실행합니다.
+              홍보 에이전트가 타겟 분석, 2주 캠페인 전략, Threads 운영 리듬,
+              14일 콘텐츠 캘린더, Threads 초안, 최종 검수를 순서대로 실행합니다.
             </p>
             <div className="mt-5 space-y-2 text-[12px] font-semibold text-slate-500">
               <p>Day 1은 내일 오후 7시로 배치됩니다.</p>
