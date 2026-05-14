@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useState, useEffect, useCallback } from "react";
+import { useReducer, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/lib/api/projects";
 import { AnimatePresence, motion } from "motion/react";
@@ -135,16 +135,20 @@ export default function NewProjectPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const createInFlightRef = useRef(false);
   const currentIndex = STEPS.indexOf(state.stage);
   const router = useRouter();
 
   // Restore state from sessionStorage on mount (after OAuth redirect)
   useEffect(() => {
-    const saved = loadAndClearState();
-    if (saved) {
-      dispatch({ type: "restore", payload: saved });
-    }
-    setReady(true);
+    const timer = window.setTimeout(() => {
+      const saved = loadAndClearState();
+      if (saved) {
+        dispatch({ type: "restore", payload: saved });
+      }
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Save state to sessionStorage before OAuth redirect
@@ -153,6 +157,8 @@ export default function NewProjectPage() {
   }, [state]);
 
   async function handleSnsComplete(data: { selectedSns: string[] }) {
+    if (createInFlightRef.current || isCreating || createdProjectId) return;
+    createInFlightRef.current = true;
     setIsCreating(true);
     try {
       const project = await createProject({
@@ -170,6 +176,7 @@ export default function NewProjectPage() {
       dispatch({ type: "sns_done", payload: data });
     } catch (e) {
       console.error("Failed to create project:", e);
+      createInFlightRef.current = false;
     } finally {
       setIsCreating(false);
     }
@@ -232,6 +239,7 @@ export default function NewProjectPage() {
               onNext={handleSnsComplete}
               onBack={() => dispatch({ type: "back" })}
               onBeforeOAuth={saveBeforeOAuth}
+              isSubmitting={isCreating}
             />
           )}
           {state.stage === "complete" && (

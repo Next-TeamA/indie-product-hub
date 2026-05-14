@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -9,6 +9,8 @@ import {
   Save,
   Sparkles,
   Send,
+  CalendarDays,
+  Clock3,
   X,
   RefreshCw,
   Bookmark,
@@ -155,12 +157,15 @@ export default function PostEditorPage() {
 
   const [scheduleDate, setScheduleDate] = useState(urlDate);
   const [scheduleTime, setScheduleTime] = useState("09:00");
+  const scheduleDateInputRef = useRef<HTMLInputElement>(null);
+  const scheduleTimeInputRef = useRef<HTMLInputElement>(null);
 
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -338,6 +343,16 @@ export default function PostEditorPage() {
     setSelectedPlatforms((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
     );
+  };
+
+  const openPicker = (input: HTMLInputElement | null) => {
+    if (!input) return;
+    input.focus();
+    try {
+      input.showPicker?.();
+    } catch {
+      // Some browsers only support focus for date/time inputs.
+    }
   };
 
   const pm = PLATFORM_META[activePlatform];
@@ -527,29 +542,6 @@ export default function PostEditorPage() {
               </div>
             </Field>
 
-            <Field label="예약 날짜 · 시간">
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={scheduleDate}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => setScheduleDate(e.target.value)}
-                  className="flex-1 min-w-0 h-11 px-3 text-[13px] font-medium text-slate-800 rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
-                />
-                <input
-                  type="time"
-                  value={scheduleTime}
-                  onChange={(e) => setScheduleTime(e.target.value)}
-                  className="w-36 shrink-0 h-11 px-3 text-[13px] font-medium text-slate-800 rounded-xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
-                />
-              </div>
-              {scheduleDate && (
-                <p className="text-[11px] font-medium text-blue-500 mt-0.5">
-                  예약하기 클릭 시 이 날짜에 등록됩니다
-                </p>
-              )}
-            </Field>
-
             <div className="mt-4 p-6 rounded-[24px] bg-blue-50/50 border border-blue-100/50 shadow-inner">
               <p className="text-[14px] font-bold text-blue-900 mb-1">
                 AI 홍보글 생성
@@ -700,24 +692,123 @@ export default function PostEditorPage() {
           <div className="px-8 py-5 border-t border-slate-50 bg-white flex items-center justify-end shrink-0">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => handleSave("scheduled")}
-                disabled={!editContent.trim() || !scheduleDate}
-                className="px-5 h-11 rounded-xl text-[13px] font-bold text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title={!scheduleDate ? "예약 날짜를 선택해주세요" : ""}
-              >
-                예약하기
-              </button>
-              <button
-                onClick={() => handleSave("published")}
+                onClick={() => setShowScheduleModal(true)}
                 disabled={!editContent.trim()}
                 className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" /> 지금 발행
+                <CalendarDays className="w-4 h-4" /> 발행 예약
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showScheduleModal && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
+              onClick={() => setShowScheduleModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+              className="relative z-10 w-full max-w-md rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_12px_48px_-16px_rgba(0,0,0,0.16)]"
+            >
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
+                    Schedule
+                  </p>
+                  <h2 className="text-[20px] font-bold tracking-tight text-slate-900">
+                    발행 예약
+                  </h2>
+                  <p className="mt-2 text-[13px] font-medium leading-6 text-slate-500">
+                    선택한 날짜와 시간에 이 게시물이 발행되도록 예약합니다.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowScheduleModal(false)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4">
+                <label className="block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    예약 날짜
+                  </span>
+                  <div
+                    onClick={() => openPicker(scheduleDateInputRef.current)}
+                    className="mt-2 flex h-12 cursor-pointer items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 transition-all focus-within:ring-2 focus-within:ring-blue-100"
+                  >
+                    <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
+                    <input
+                      ref={scheduleDateInputRef}
+                      type="date"
+                      value={scheduleDate}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-slate-800 outline-none"
+                    />
+                  </div>
+                </label>
+
+                <label className="block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    예약 시간
+                  </span>
+                  <div
+                    onClick={() => openPicker(scheduleTimeInputRef.current)}
+                    className="mt-2 flex h-12 cursor-pointer items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 transition-all focus-within:ring-2 focus-within:ring-blue-100"
+                  >
+                    <Clock3 className="h-4 w-4 shrink-0 text-slate-400" />
+                    <input
+                      ref={scheduleTimeInputRef}
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-slate-800 outline-none"
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                  onClick={() => setShowScheduleModal(false)}
+                  className="h-11 rounded-xl px-5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-slate-50 sm:mr-auto"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => handleSave("published")}
+                  disabled={!editContent.trim() || saving}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white px-5 text-[13px] font-bold text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <Send className="h-4 w-4" />
+                  지금 발행
+                </button>
+                <button
+                  onClick={() => handleSave("scheduled")}
+                  disabled={!editContent.trim() || !scheduleDate || saving}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  {saving ? "예약 중..." : "예약하기"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── 템플릿 모달 창 ── */}
       <AnimatePresence>

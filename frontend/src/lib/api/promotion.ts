@@ -24,6 +24,9 @@ export type Promotion = {
   published_at: string | null;
   external_post_id: string | null;
   publish_error: string | null;
+  campaign_id?: string | null;
+  campaign_day?: number | null;
+  campaign_meta?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   // Computed for calendar view
@@ -47,6 +50,43 @@ export type PromotionGenerateInput = {
   message: string;
   template?: string;
 };
+
+export type PromotionCampaignInput = {
+  project_name: string;
+  one_line_description: string;
+  target_user: string;
+  problem: string;
+  core_value: string;
+  main_features: string;
+  promotion_goal: string;
+  channel: "threads";
+  tone_preference: string;
+  additional_context: string;
+};
+
+export type PromotionCampaignResult = {
+  campaign: {
+    id: string;
+    project_id: string;
+    user_id: string;
+    input: PromotionCampaignInput;
+    target_analysis: Record<string, unknown>;
+    campaign_strategy: Record<string, unknown>;
+    final_calendar: Record<string, unknown>[];
+    status: "generating" | "completed" | "failed";
+    created_at: string;
+    updated_at: string;
+  };
+  posts: Promotion[];
+};
+
+export type LatestPromotionCampaign = {
+  id: string;
+  input: PromotionCampaignInput;
+  status: "generating" | "completed" | "failed";
+  created_at: string;
+  updated_at: string;
+} | null;
 
 // --- Promotion Posts API ---
 
@@ -83,8 +123,20 @@ export async function deletePromotion(projectId: string, postId: string): Promis
   });
 }
 
+export async function deleteAllPromotions(projectId: string): Promise<{ deleted: number }> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts`, {
+    method: "DELETE",
+  });
+}
+
 export async function publishPromotion(projectId: string, postId: string): Promise<{ status: string; post_id: string }> {
   return apiFetch(`/api/projects/${projectId}/promotion/posts/${postId}/publish`, {
+    method: "POST",
+  });
+}
+
+export async function activateScheduledPromotions(projectId: string): Promise<{ updated: number }> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts/activate-scheduled`, {
     method: "POST",
   });
 }
@@ -108,6 +160,20 @@ export async function getPromotionHistory(projectId: string): Promise<{
   created_at: string;
 }[]> {
   return apiFetch(`/api/projects/${projectId}/promotion/history`);
+}
+
+export async function createPromotionCampaign(
+  projectId: string,
+  data: PromotionCampaignInput,
+): Promise<PromotionCampaignResult> {
+  return apiFetch(`/api/projects/${projectId}/promotion/campaigns`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function getLatestPromotionCampaign(projectId: string): Promise<LatestPromotionCampaign> {
+  return apiFetch(`/api/projects/${projectId}/promotion/campaigns/latest`);
 }
 
 // --- Project Promotion Info ---

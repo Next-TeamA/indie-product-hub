@@ -45,3 +45,21 @@ class PromotionMessage(BaseModel):
 
 class PromotionResponse(BaseModel):
     message: PromotionMessage
+
+
+class PromotionCampaignRequest(BaseModel):
+    project_name: str = Field(..., min_length=1, max_length=120)
+    one_line_description: str = Field(..., min_length=1, max_length=500)
+    target_user: str = Field(..., min_length=1, max_length=500)
+    problem: str = Field(..., min_length=1, max_length=1000)
+    core_value: str = Field(..., min_length=1, max_length=1000)
+    main_features: str = Field(..., min_length=1, max_length=1500)
+    promotion_goal: str = Field(..., min_length=1, max_length=500)
+    channel: Literal["threads"] = "threads"
+    tone_preference: str = Field("친근함", max_length=100)
+    additional_context: str = Field("", max_length=2000)
+
+
+class PromotionCampaignResponse(BaseModel):
+    campaign: dict
+    posts: list[dict]

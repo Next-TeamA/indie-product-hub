@@ -14,7 +14,14 @@ from app.integrations import gemini
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 from app.integrations.github_api import github_client
-from app.models.promotion import PromotionRequest, PromotionPostCreate, PromotionInfoUpsert
+from app.models.promotion import (
+    PromotionRequest,
+    PromotionPostCreate,
+    PromotionInfoUpsert,
+    PromotionCampaignRequest,
+    PromotionCampaignResponse,
+)
+from app.services.promotion_campaign import create_campaign
 from app.workspace.skill_loader import get_skill_prompt
 
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
@@ -177,6 +184,40 @@ Return as JSON:
     return {"message": saved.data[0], "generated": result}
 
 
+@router.post("/campaigns", response_model=PromotionCampaignResponse)
+@limiter.limit("3/hour")
+async def create_promotion_campaign(
+    request: Request,
+    project_id: str,
+    body: PromotionCampaignRequest,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Generate a two-week Threads campaign and save 14 dated drafts."""
+    return await create_campaign(project_id, user["id"], body)
+
+
+@router.get("/campaigns/latest")
+async def get_latest_promotion_campaign(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Get the latest campaign input so the strategy form can be reused."""
+    result = (
+        supabase.table("promotion_campaigns")
+        .select("id, input, status, created_at, updated_at")
+        .eq("project_id", project_id)
+        .eq("user_id", user["id"])
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        return None
+    return result.data[0]
+
+
 @router.post("/posts")
 async def create_post(
     project_id: str,
@@ -226,6 +267,45 @@ async def list_posts(
         query = query.eq("platform", platform)
     result = query.execute()
     return result.data
+
+
+@router.post("/posts/activate-scheduled")
+async def activate_scheduled_posts(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Turn all future dated drafts into scheduled posts in one action."""
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        supabase.table("promotion_posts")
+        .update({"status": "scheduled"})
+        .eq("project_id", project_id)
+        .eq("user_id", user["id"])
+        .eq("status", "draft")
+        .not_.is_("scheduled_at", "null")
+        .gt("scheduled_at", now)
+        .execute()
+    )
+    return {"updated": len(result.data or [])}
+
+
+@router.delete("/posts")
+async def delete_all_posts(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Delete all local promotion calendar posts except ones currently publishing."""
+    result = (
+        supabase.table("promotion_posts")
+        .delete()
+        .eq("project_id", project_id)
+        .eq("user_id", user["id"])
+        .neq("status", "publishing")
+        .execute()
+    )
+    return {"deleted": len(result.data or [])}
 
 
 @router.patch("/posts/{post_id}")
