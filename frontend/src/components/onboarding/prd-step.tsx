@@ -30,7 +30,7 @@ export function PrdStep({ onNext }: PrdStepProps) {
   const [description, setDescription] = useState("");
   const [prd, setPrd] = useState("");
 
-  const isValid = name.trim().length >= 2;
+  const isValid = name.trim().length >= 1;
 
   return (
     <motion.div
