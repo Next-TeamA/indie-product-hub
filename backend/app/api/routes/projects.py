@@ -43,6 +43,10 @@ async def create_project(body: ProjectCreate, user: dict = Depends(get_current_u
         "description": body.description,
         "prd": body.prd,
         "github_repo_url": body.github_repo_url,
+        "github_repo_owner": body.github_repo_owner,
+        "github_repo_name": body.github_repo_name,
+        "deploy_platform": body.deploy_platform,
+        "deploy_project_id": body.deploy_project_id,
         "sns_channels": body.sns_channels,
         "status": "preparing",
     }

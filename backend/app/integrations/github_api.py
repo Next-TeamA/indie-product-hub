@@ -59,6 +59,13 @@ class GitHubAPIClient:
     async def get_user(self, token: str) -> dict:
         return await self._request(token, "GET", "/user")
 
+    async def list_repos(self, token: str, per_page: int = 100) -> list:
+        """List repos the authenticated user has access to, sorted by recent push."""
+        return await self._request(
+            token, "GET", "/user/repos",
+            params={"per_page": per_page, "sort": "pushed", "direction": "desc"},
+        )
+
     async def get_repo(self, token: str, owner: str, repo: str) -> dict:
         return await self._request(token, "GET", f"/repos/{owner}/{repo}")
 

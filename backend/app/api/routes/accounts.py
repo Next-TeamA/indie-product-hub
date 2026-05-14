@@ -70,6 +70,96 @@ async def list_accounts(user: dict = Depends(get_current_user)):
     return result.data
 
 
+@router.get("/github/repos")
+async def list_github_repos(user: dict = Depends(get_current_user)):
+    """List GitHub repos accessible by the user's connected GitHub account."""
+    account = (
+        supabase.table("connected_accounts")
+        .select("access_token")
+        .eq("user_id", user["id"])
+        .eq("provider", "github")
+        .eq("is_active", True)
+        .maybe_single()
+        .execute()
+    )
+    if not account.data:
+        raise AppError("GitHub account not connected", 400)
+
+    from app.core.encryption import decrypt_token
+    token = decrypt_token(account.data["access_token"])
+    repos = await github_client.list_repos(token)
+    return [
+        {
+            "id": r["id"],
+            "full_name": r["full_name"],
+            "owner": r["owner"]["login"],
+            "name": r["name"],
+            "description": r.get("description"),
+            "private": r["private"],
+            "language": r.get("language"),
+            "updated_at": r.get("pushed_at"),
+        }
+        for r in repos
+    ]
+
+
+@router.get("/vercel/projects")
+async def list_vercel_projects(user: dict = Depends(get_current_user)):
+    """List Vercel projects accessible by the user's connected Vercel account."""
+    account = (
+        supabase.table("connected_accounts")
+        .select("access_token")
+        .eq("user_id", user["id"])
+        .eq("provider", "vercel")
+        .eq("is_active", True)
+        .maybe_single()
+        .execute()
+    )
+    if not account.data:
+        raise AppError("Vercel account not connected", 400)
+
+    from app.core.encryption import decrypt_token
+    token = decrypt_token(account.data["access_token"])
+    projects = await vercel_client.list_projects(token)
+    return [
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "framework": p.get("framework"),
+            "updated_at": p.get("updatedAt"),
+        }
+        for p in projects
+    ]
+
+
+@router.get("/railway/projects")
+async def list_railway_projects(user: dict = Depends(get_current_user)):
+    """List Railway projects accessible by the user's connected Railway account."""
+    account = (
+        supabase.table("connected_accounts")
+        .select("access_token")
+        .eq("user_id", user["id"])
+        .eq("provider", "railway")
+        .eq("is_active", True)
+        .maybe_single()
+        .execute()
+    )
+    if not account.data:
+        raise AppError("Railway account not connected", 400)
+
+    from app.core.encryption import decrypt_token
+    token = decrypt_token(account.data["access_token"])
+    projects = await railway_client.list_projects(token)
+    return [
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "description": p.get("description"),
+        }
+        for p in projects
+    ]
+
+
 @router.get("/connect/{provider}")
 async def connect_account(provider: str, user: dict = Depends(get_current_user)):
     state = secrets.token_urlsafe(32)

@@ -8,14 +8,15 @@ import { X } from "lucide-react";
 import { Stepper } from "@/components/onboarding/stepper";
 import { PrdStep } from "@/components/onboarding/prd-step";
 import { GithubStep } from "@/components/onboarding/github-step";
+import { DeployStep } from "@/components/onboarding/deploy-step";
 import { SnsStep } from "@/components/onboarding/sns-step";
 import { CompleteStep } from "@/components/onboarding/complete-step";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
-type Stage = "prd" | "github" | "sns" | "complete";
+type Stage = "prd" | "github" | "deploy" | "sns" | "complete";
 
-const STEPS: Stage[] = ["prd", "github", "sns", "complete"];
+const STEPS: Stage[] = ["prd", "github", "deploy", "sns", "complete"];
 
 type State = {
   stage: Stage;
@@ -23,6 +24,10 @@ type State = {
   projectDescription: string;
   prd: string;
   repoUrl: string;
+  github_repo_owner: string;
+  github_repo_name: string;
+  deploy_platform: string;
+  deploy_project_id: string;
   selectedSns: string[];
 };
 
@@ -31,7 +36,18 @@ type Action =
       type: "prd_done";
       payload: { name: string; description: string; prd: string };
     }
-  | { type: "github_done"; payload: { repoUrl: string } }
+  | {
+      type: "github_done";
+      payload: {
+        repoUrl: string;
+        github_repo_owner: string;
+        github_repo_name: string;
+      };
+    }
+  | {
+      type: "deploy_done";
+      payload: { deploy_platform: string; deploy_project_id: string };
+    }
   | { type: "sns_done"; payload: { selectedSns: string[] } }
   | { type: "back" };
 
@@ -48,8 +64,17 @@ function reducer(state: State, action: Action): State {
     case "github_done":
       return {
         ...state,
-        stage: "sns",
+        stage: "deploy",
         repoUrl: action.payload.repoUrl,
+        github_repo_owner: action.payload.github_repo_owner,
+        github_repo_name: action.payload.github_repo_name,
+      };
+    case "deploy_done":
+      return {
+        ...state,
+        stage: "sns",
+        deploy_platform: action.payload.deploy_platform,
+        deploy_project_id: action.payload.deploy_project_id,
       };
     case "sns_done":
       return {
@@ -73,6 +98,10 @@ const initialState: State = {
   projectDescription: "",
   prd: "",
   repoUrl: "",
+  github_repo_owner: "",
+  github_repo_name: "",
+  deploy_platform: "",
+  deploy_project_id: "",
   selectedSns: [],
 };
 
@@ -91,6 +120,10 @@ export default function NewProjectPage() {
         description: state.projectDescription || undefined,
         prd: state.prd || undefined,
         github_repo_url: state.repoUrl || undefined,
+        github_repo_owner: state.github_repo_owner || undefined,
+        github_repo_name: state.github_repo_name || undefined,
+        deploy_platform: state.deploy_platform || undefined,
+        deploy_project_id: state.deploy_project_id || undefined,
         sns_channels: data.selectedSns,
       });
       setCreatedProjectId(project.id);
@@ -142,6 +175,14 @@ export default function NewProjectPage() {
               onBack={() => dispatch({ type: "back" })}
             />
           )}
+          {state.stage === "deploy" && (
+            <DeployStep
+              onNext={(data) =>
+                dispatch({ type: "deploy_done", payload: data })
+              }
+              onBack={() => dispatch({ type: "back" })}
+            />
+          )}
           {state.stage === "sns" && (
             <SnsStep
               onNext={handleSnsComplete}
@@ -149,7 +190,10 @@ export default function NewProjectPage() {
             />
           )}
           {state.stage === "complete" && (
-            <CompleteStep projectName={state.projectName} projectId={createdProjectId} />
+            <CompleteStep
+              projectName={state.projectName}
+              projectId={createdProjectId}
+            />
           )}
         </motion.div>
       </AnimatePresence>
