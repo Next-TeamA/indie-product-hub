@@ -339,7 +339,7 @@ export default function PostEditorPage() {
             <Trash2 className="w-4 h-4" />
           </button>
           <button
-            onClick={handleSave}
+            onClick={() => handleSave()}
             disabled={!editContent.trim() || saving}
             className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
