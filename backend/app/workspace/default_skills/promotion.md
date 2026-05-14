@@ -12,6 +12,11 @@ triggers:
   - marketing
   - launch
   - announce
+  - 홍보
+  - 게시물
+  - 글
+  - 작성
+  - 발행
 tools_needed:
   - sns_promotion_references
   - sns_published_posts

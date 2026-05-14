@@ -43,29 +43,53 @@ def parse_skill(raw: str, file_path: str = "") -> SkillFile | None:
     frontmatter_text = match.group(1)
     body = match.group(2).strip()
 
-    # Parse frontmatter (simple key: value parsing, no YAML dependency)
+    # Parse frontmatter (simple YAML-like parsing, no dependency)
     meta: dict = {}
+    current_key: str | None = None
+    current_list: list[str] = []
+
     for line in frontmatter_text.strip().split("\n"):
-        line = line.strip()
-        if not line or ":" not in line:
+        stripped = line.strip()
+        if not stripped:
             continue
-        key, _, value = line.partition(":")
+
+        # Check if this is a list item (  - value)
+        if stripped.startswith("- ") and current_key:
+            current_list.append(stripped[2:].strip())
+            continue
+
+        # If we were collecting a list, save it
+        if current_key and current_list:
+            meta[current_key] = current_list
+            current_list = []
+            current_key = None
+
+        if ":" not in stripped:
+            continue
+
+        key, _, value = stripped.partition(":")
         key = key.strip()
         value = value.strip()
 
-        # Handle list values like ["a", "b"]
-        if value.startswith("["):
+        if not value:
+            # Start of a list block
+            current_key = key
+            current_list = []
+        elif value.startswith("["):
+            # Inline list like ["a", "b"]
             try:
-                # Replace single quotes with double for JSON parsing
                 meta[key] = json.loads(value.replace("'", '"'))
             except json.JSONDecodeError:
                 meta[key] = []
         else:
-            # Handle numeric values
             try:
                 meta[key] = int(value)
             except ValueError:
                 meta[key] = value
+
+    # Don't forget the last list
+    if current_key and current_list:
+        meta[current_key] = current_list
 
     return SkillFile(
         name=meta.get("name", "Unknown"),

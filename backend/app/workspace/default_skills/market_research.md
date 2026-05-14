@@ -9,6 +9,11 @@ triggers:
   - opportunity
   - analysis
   - intelligence
+  - 시장
+  - 경쟁사
+  - 트렌드
+  - 동향
+  - 분석
 tools_needed:
   - market_web_search
   - market_stored_insights

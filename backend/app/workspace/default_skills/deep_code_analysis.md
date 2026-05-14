@@ -10,6 +10,10 @@ triggers:
   - stack trace
   - line
   - source
+  - 코드
+  - 버그
+  - 원인
+  - 추적
 tools_needed:
   - github_get_file_content
   - github_get_commit_diff

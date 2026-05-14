@@ -8,6 +8,10 @@ triggers:
   - current
   - latest
   - news
+  - 검색
+  - 찾아
+  - 최신
+  - 뉴스
 tools_needed:
   - market_web_search
 max_iterations: 3

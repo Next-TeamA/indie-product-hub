@@ -6,6 +6,10 @@ triggers:
   - check
   - status
   - monitor
+  - 상태
+  - 점검
+  - 헬스
+  - 모니터
 tools_needed:
   - deploy_get_logs
   - deploy_stats

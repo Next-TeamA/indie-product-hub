@@ -7,6 +7,10 @@ triggers:
   - summary
   - recap
   - overview
+  - 주간
+  - 리포트
+  - 요약
+  - 보고서
 tools_needed:
   - sns_performance_summary
   - deploy_stats

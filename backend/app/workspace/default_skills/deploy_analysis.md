@@ -10,6 +10,10 @@ triggers:
   - crash
   - CI
   - CD
+  - 배포
+  - 빌드
+  - 에러
+  - 실패
 tools_needed:
   - deploy_get_logs
   - deploy_vercel_events
