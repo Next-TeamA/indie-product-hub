@@ -24,6 +24,9 @@ export type Promotion = {
   published_at: string | null;
   external_post_id: string | null;
   publish_error: string | null;
+  campaign_id?: string | null;
+  campaign_day?: number | null;
+  campaign_meta?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   // Computed for calendar view
@@ -46,6 +49,35 @@ export type PromotionCreateInput = {
 export type PromotionGenerateInput = {
   message: string;
   template?: string;
+};
+
+export type PromotionCampaignInput = {
+  project_name: string;
+  one_line_description: string;
+  target_user: string;
+  problem: string;
+  core_value: string;
+  main_features: string;
+  promotion_goal: string;
+  channel: "threads";
+  tone_preference: string;
+  additional_context: string;
+};
+
+export type PromotionCampaignResult = {
+  campaign: {
+    id: string;
+    project_id: string;
+    user_id: string;
+    input: PromotionCampaignInput;
+    target_analysis: Record<string, unknown>;
+    campaign_strategy: Record<string, unknown>;
+    final_calendar: Record<string, unknown>[];
+    status: "generating" | "completed" | "failed";
+    created_at: string;
+    updated_at: string;
+  };
+  posts: Promotion[];
 };
 
 // --- Promotion Posts API ---
@@ -89,6 +121,12 @@ export async function publishPromotion(projectId: string, postId: string): Promi
   });
 }
 
+export async function activateScheduledPromotions(projectId: string): Promise<{ updated: number }> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts/activate-scheduled`, {
+    method: "POST",
+  });
+}
+
 // --- AI Generation ---
 
 export async function generatePromotion(projectId: string, data: PromotionGenerateInput): Promise<{
@@ -108,6 +146,16 @@ export async function getPromotionHistory(projectId: string): Promise<{
   created_at: string;
 }[]> {
   return apiFetch(`/api/projects/${projectId}/promotion/history`);
+}
+
+export async function createPromotionCampaign(
+  projectId: string,
+  data: PromotionCampaignInput,
+): Promise<PromotionCampaignResult> {
+  return apiFetch(`/api/projects/${projectId}/promotion/campaigns`, {
+    method: "POST",
+    body: data,
+  });
 }
 
 // --- Project Promotion Info ---

@@ -1,18 +1,20 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "motion/react";
 import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Settings,
   ArrowRight,
   Trash2,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import {
+  activateScheduledPromotions,
   listPromotions,
   deletePromotion,
   type Promotion,
@@ -93,10 +95,15 @@ export default function PromotionPage() {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selected, setSelected] = useState<string>(todayStr);
   const [promos, setPromos] = useState<Promotion[]>([]);
+  const [activatingSchedule, setActivatingSchedule] = useState(false);
+
+  const refreshPromos = useCallback(() => {
+    listPromotions(projectId).then(setPromos).catch(console.error);
+  }, [projectId]);
 
   useEffect(() => {
-    listPromotions(projectId).then(setPromos).catch(console.error);
-  }, [projectId, viewYear, viewMonth]);
+    refreshPromos();
+  }, [refreshPromos, viewYear, viewMonth]);
 
   // Build calendar cells
   const firstDow = new Date(viewYear, viewMonth, 1).getDay();
@@ -137,6 +144,18 @@ export default function PromotionPage() {
     }
   };
 
+  const handleActivateScheduled = async () => {
+    setActivatingSchedule(true);
+    try {
+      await activateScheduledPromotions(projectId);
+      refreshPromos();
+    } catch (e) {
+      console.error("Activate scheduled posts failed:", e);
+    } finally {
+      setActivatingSchedule(false);
+    }
+  };
+
   // Stats
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
@@ -154,6 +173,9 @@ export default function PromotionPage() {
     .sort(
       (a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time),
     )[0];
+  const futureDraftCount = promos.filter(
+    (p) => p.status === "draft" && p.scheduled_at && p.date >= todayStr,
+  ).length;
 
   // Selected day
   const selectedPosts = byDate[selected] ?? [];
@@ -200,6 +222,13 @@ export default function PromotionPage() {
             </button>
           </div>
           <Link
+            href={`/projects/${projectId}/promotion/campaign/new`}
+            className="flex items-center gap-2 h-9 px-4 rounded-full border border-blue-100 bg-blue-50 text-blue-600 text-[13px] font-semibold hover:bg-blue-100 transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            2주 홍보 콘텐츠 전략 생성
+          </Link>
+          <Link
             href={`/projects/${projectId}/promotion/post/new`}
             className="flex items-center gap-2 h-9 px-4 rounded-full bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
           >
@@ -228,9 +257,19 @@ export default function PromotionPage() {
             </span>
           </div>
         )}
-        <button className="ml-auto flex items-center gap-1.5 text-slate-300 hover:text-slate-500 transition-colors">
-          <Settings className="w-3.5 h-3.5" />
-          <span className="text-[11px] uppercase tracking-wider">설정</span>
+        <button
+          onClick={handleActivateScheduled}
+          disabled={futureDraftCount === 0 || activatingSchedule}
+          className="ml-auto flex items-center gap-1.5 text-slate-300 hover:text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {activatingSchedule ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="w-3.5 h-3.5" />
+          )}
+          <span className="text-[11px] uppercase tracking-wider">
+            예약 발행 켜기{futureDraftCount > 0 ? ` (${futureDraftCount})` : ""}
+          </span>
         </button>
       </div>
 
