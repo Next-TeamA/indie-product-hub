@@ -10,7 +10,7 @@ from app.core.exceptions import ExternalAPIError
 
 class VercelAPIClient:
     BASE_URL = "https://api.vercel.com"
-    AUTH_URL = "https://vercel.com/integrations/new"
+    AUTH_URL = "https://vercel.com/integrations/launchpad/new"
     TOKEN_URL = "https://api.vercel.com/v2/oauth/access_token"
 
     def get_auth_url(self, state: str) -> str:
