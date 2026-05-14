@@ -9,6 +9,10 @@ export type Project = {
   description: string | null;
   prd: string | null;
   github_repo_url: string | null;
+  github_repo_owner: string | null;
+  github_repo_name: string | null;
+  deploy_platform: string | null;
+  deploy_project_id: string | null;
   sns_channels: string[];
   status: string;
   created_at: string;
@@ -20,6 +24,10 @@ export type ProjectCreateInput = {
   description?: string;
   prd?: string;
   github_repo_url?: string;
+  github_repo_owner?: string;
+  github_repo_name?: string;
+  deploy_platform?: string;
+  deploy_project_id?: string;
   sns_channels?: string[];
 };
 

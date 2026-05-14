@@ -1,9 +1,14 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Check, Link2 } from "lucide-react";
-import { useState } from "react";
-import { connectAccount } from "@/lib/api/accounts";
+import { Check, Search, Lock, Globe } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  connectAccount,
+  listAccounts,
+  listGitHubRepos,
+  type GitHubRepo,
+} from "@/lib/api/accounts";
 
 function GithubIcon({ className }: { className?: string }) {
   return (
@@ -14,44 +19,100 @@ function GithubIcon({ className }: { className?: string }) {
 }
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
+const stagger = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+};
 const item = {
   hidden: { opacity: 0, y: 12, filter: "blur(6px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE_OUT_EXPO } },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.5, ease: EASE_OUT_EXPO },
+  },
 };
 
 interface GithubStepProps {
-  onNext: (data: { repoUrl: string }) => void;
+  onNext: (data: {
+    repoUrl: string;
+    github_repo_owner: string;
+    github_repo_name: string;
+  }) => void;
   onBack: () => void;
 }
 
 export function GithubStep({ onNext, onBack }: GithubStepProps) {
-  const [repoUrl, setRepoUrl] = useState("");
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [repos, setRepos] = useState<GitHubRepo[]>([]);
+  const [search, setSearch] = useState("");
+  const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+
+  // Check if GitHub is already connected + load repos
+  useEffect(() => {
+    async function init() {
+      try {
+        const accounts = await listAccounts();
+        const github = accounts.find((a) => a.provider === "github");
+        if (github) {
+          setConnected(true);
+          const repoList = await listGitHubRepos();
+          setRepos(repoList);
+        }
+      } catch {
+        // not connected
+      } finally {
+        setLoading(false);
+      }
+    }
+    init();
+  }, []);
 
   const handleConnect = async () => {
     setConnecting(true);
     try {
       const { auth_url } = await connectAccount("github");
-      // OAuth redirect -- user will come back after authorization
       window.location.href = auth_url;
-    } catch (e) {
-      console.error("GitHub connect failed:", e);
+    } catch {
       setConnecting(false);
     }
   };
 
+  const filtered = repos.filter((r) =>
+    r.full_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="relative z-10 w-full max-w-lg mx-auto px-6 flex items-center justify-center min-h-[200px]">
+        <div className="w-6 h-6 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <motion.div className="relative z-10 w-full max-w-lg mx-auto px-6" variants={stagger} initial="hidden" animate="show">
+    <motion.div
+      className="relative z-10 w-full max-w-lg mx-auto px-6"
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+    >
       <motion.div variants={item} className="mb-2">
         <p className="h-eyebrow">STEP 2</p>
       </motion.div>
 
-      <motion.h2 variants={item} className="h-title mb-3">GitHub 연동</motion.h2>
+      <motion.h2 variants={item} className="h-title mb-3">
+        GitHub 레포지토리
+      </motion.h2>
 
       <motion.p variants={item} className="text-lede mb-8">
-        레포지토리를 연결하면 배포 로그, 이슈를 자동으로 추적합니다.
+        {connected
+          ? "이 프로젝트에 연결할 레포지토리를 선택하세요."
+          : "GitHub 계정을 연결하면 레포지토리를 선택할 수 있습니다."}
       </motion.p>
 
       <motion.div variants={item} className="flex flex-col gap-4">
@@ -67,50 +128,116 @@ export function GithubStep({ onNext, onBack }: GithubStepProps) {
             {connecting ? "연결 중..." : "GitHub 계정 연결하기"}
           </motion.button>
         ) : (
-          <motion.div
-            className="flex items-center gap-3 h-14 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-5"
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          >
-            <Check className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-medium">GitHub 연결됨</span>
-          </motion.div>
+          <>
+            {/* Connected badge */}
+            <div className="flex items-center gap-3 h-10 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+              <Check className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-medium text-emerald-600">
+                GitHub 연결됨
+              </span>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="레포지토리 검색..."
+                className="input-hero w-full pl-11"
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+            </div>
+
+            {/* Repo list */}
+            <div className="max-h-64 overflow-y-auto rounded-2xl border border-border divide-y divide-border">
+              {filtered.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  레포지토리를 찾을 수 없습니다
+                </div>
+              ) : (
+                filtered.slice(0, 30).map((repo) => (
+                  <button
+                    key={repo.id}
+                    onClick={() => setSelectedRepo(repo)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer ${
+                      selectedRepo?.id === repo.id
+                        ? "bg-primary/5"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        selectedRepo?.id === repo.id
+                          ? "border-primary bg-primary"
+                          : "border-border"
+                      }`}
+                    >
+                      {selectedRepo?.id === repo.id && (
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">
+                          {repo.full_name}
+                        </span>
+                        {repo.private ? (
+                          <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                        ) : (
+                          <Globe className="w-3 h-3 text-muted-foreground shrink-0" />
+                        )}
+                      </div>
+                      {repo.description && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {repo.description}
+                        </p>
+                      )}
+                    </div>
+                    {repo.language && (
+                      <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
+                        {repo.language}
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </>
         )}
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-          <div className="relative flex justify-center">
-            <span className="bg-background px-3 text-xs text-muted-foreground">또는 직접 입력</span>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-muted-foreground mb-1.5 block">레포지토리 URL</label>
-          <div className="relative">
-            <input
-              type="url"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/user/repo"
-              className="input-hero w-full pl-11"
-            />
-            <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
-          </div>
-        </div>
       </motion.div>
 
-      <motion.div variants={item} className="mt-8 flex items-center justify-between">
-        <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+      <motion.div
+        variants={item}
+        className="mt-8 flex items-center justify-between"
+      >
+        <button
+          onClick={onBack}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
           ← 이전
         </button>
         <motion.button
-          onClick={() => onNext({ repoUrl })}
+          onClick={() => {
+            if (selectedRepo) {
+              onNext({
+                repoUrl: `https://github.com/${selectedRepo.full_name}`,
+                github_repo_owner: selectedRepo.owner,
+                github_repo_name: selectedRepo.name,
+              });
+            } else {
+              onNext({
+                repoUrl: "",
+                github_repo_owner: "",
+                github_repo_name: "",
+              });
+            }
+          }}
           className="btn-hero bg-primary text-primary-foreground cursor-pointer"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          다음 →
+          {selectedRepo ? "다음 →" : "건너뛰기 →"}
         </motion.button>
       </motion.div>
     </motion.div>

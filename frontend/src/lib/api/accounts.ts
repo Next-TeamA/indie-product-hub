@@ -21,3 +21,39 @@ export async function connectAccount(provider: string): Promise<{ auth_url: stri
 export async function disconnectAccount(id: string): Promise<void> {
   return apiFetch(`/api/accounts/${id}`, { method: "DELETE" });
 }
+
+export type GitHubRepo = {
+  id: number;
+  full_name: string;
+  owner: string;
+  name: string;
+  description: string | null;
+  private: boolean;
+  language: string | null;
+  updated_at: string | null;
+};
+
+export type VercelProject = {
+  id: string;
+  name: string;
+  framework: string | null;
+  updated_at: number | null;
+};
+
+export type RailwayProject = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+
+export async function listGitHubRepos(): Promise<GitHubRepo[]> {
+  return apiFetch<GitHubRepo[]>("/api/accounts/github/repos");
+}
+
+export async function listVercelProjects(): Promise<VercelProject[]> {
+  return apiFetch<VercelProject[]>("/api/accounts/vercel/projects");
+}
+
+export async function listRailwayProjects(): Promise<RailwayProject[]> {
+  return apiFetch<RailwayProject[]>("/api/accounts/railway/projects");
+}

@@ -42,7 +42,7 @@ export function SnsStep({ onNext, onBack }: SnsStepProps) {
   return (
     <motion.div className="relative z-10 w-full max-w-lg mx-auto px-6" variants={stagger} initial="hidden" animate="show">
       <motion.div variants={item} className="mb-2">
-        <p className="h-eyebrow">STEP 3</p>
+        <p className="h-eyebrow">STEP 4</p>
       </motion.div>
 
       <motion.h2 variants={item} className="h-title mb-3">SNS 채널 연동</motion.h2>
