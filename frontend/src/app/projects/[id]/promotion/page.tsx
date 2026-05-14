@@ -9,11 +9,12 @@ import {
   Plus,
   Settings,
   ArrowRight,
-  Calendar as CalendarIcon,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import {
   listPromotions,
+  deletePromotion,
   type Promotion,
   type Platform,
   type PromotionStatus,
@@ -127,6 +128,15 @@ export default function PromotionPage() {
     } else setViewMonth((m) => m + 1);
   };
 
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await deletePromotion(projectId, postId);
+      setPromos((prev) => prev.filter((p) => p.id !== postId));
+    } catch (e) {
+      console.error("Delete failed:", e);
+    }
+  };
+
   // Stats
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
@@ -148,6 +158,7 @@ export default function PromotionPage() {
   // Selected day
   const selectedPosts = byDate[selected] ?? [];
   const primaryPost = selectedPosts[0];
+  const selectedIsPast = selected < todayStr;
 
   return (
     <div className="w-full flex flex-col h-dvh bg-white selection:bg-slate-800 selection:text-white">
@@ -252,15 +263,20 @@ export default function PromotionPage() {
               const dateStr = toDateStr(viewYear, viewMonth, day);
               const isToday = dateStr === todayStr;
               const isSel = dateStr === selected;
+              const isPast = dateStr < todayStr;
               const dayPosts = byDate[dateStr] ?? [];
 
               return (
                 <div
                   key={dateStr}
-                  onClick={() => setSelected(dateStr)}
+                  onClick={() => !isPast && setSelected(dateStr)}
                   className={cn(
-                    "border-r border-b border-slate-50 min-h-[100px] p-2 cursor-pointer transition-all duration-200",
-                    isSel ? "bg-blue-50/30" : "hover:bg-slate-50/50",
+                    "border-r border-b border-slate-50 min-h-[100px] p-2 transition-all duration-200",
+                    isPast
+                      ? "opacity-40 cursor-default bg-slate-50/20"
+                      : isSel
+                        ? "bg-blue-50/30 cursor-pointer"
+                        : "hover:bg-slate-50/50 cursor-pointer",
                   )}
                 >
                   <div className="mb-2">
@@ -356,25 +372,35 @@ export default function PromotionPage() {
                     hero shot
                   </span>
                 </div>
-                {/* Detail Link */}
-                <Link
-                  href={`/projects/${projectId}/promotion/post/${primaryPost.id}`}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-100 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  상세 보기 <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                {/* Detail Link + Delete */}
+                <div className="flex gap-2">
+                  <Link
+                    href={`/projects/${projectId}/promotion/post/${primaryPost.id}`}
+                    className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-slate-100 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    상세 보기 <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    onClick={() => handleDeletePost(primaryPost.id)}
+                    className="w-10 h-10 rounded-xl border border-slate-100 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-white/50 border border-dashed border-slate-200 rounded-[20px] p-8 mb-5 text-center">
                 <p className="text-[13px] font-medium text-slate-400">
                   예정된 게시물이 없습니다.
                 </p>
-                <Link
-                  href={`/projects/${projectId}/promotion/post/new`}
-                  className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-bold text-blue-500 hover:underline"
-                >
-                  <Plus className="w-3.5 h-3.5" />첫 홍보글 만들기
-                </Link>
+                {!selectedIsPast && (
+                  <Link
+                    href={`/projects/${projectId}/promotion/post/new?date=${selected}`}
+                    className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-bold text-blue-500 hover:underline"
+                  >
+                    <Plus className="w-3.5 h-3.5" />첫 홍보글 만들기
+                  </Link>
+                )}
               </div>
             )}
 
@@ -387,25 +413,32 @@ export default function PromotionPage() {
                 {selectedPosts.slice(1).map((post) => {
                   const pm = PLATFORM[post.platform];
                   return (
-                    <Link
-                      key={post.id}
-                      href={`/projects/${projectId}/promotion/post/${post.id}`}
-                      className="flex items-center gap-3 rounded-xl p-3 border border-slate-100 bg-white hover:bg-slate-50 transition-colors group"
-                    >
-                      <span
-                        className={cn(
-                          "w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
-                          pm.chipBg,
-                          pm.chipText,
-                        )}
+                    <div key={post.id} className="flex items-center gap-1">
+                      <Link
+                        href={`/projects/${projectId}/promotion/post/${post.id}`}
+                        className="flex items-center gap-3 rounded-xl p-3 border border-slate-100 bg-white hover:bg-slate-50 transition-colors group flex-1 min-w-0"
                       >
-                        {pm.label}
-                      </span>
-                      <span className="text-[12px] font-semibold text-slate-600 truncate flex-1">
-                        {post.hook}
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </Link>
+                        <span
+                          className={cn(
+                            "w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
+                            pm.chipBg,
+                            pm.chipText,
+                          )}
+                        >
+                          {pm.label}
+                        </span>
+                        <span className="text-[12px] font-semibold text-slate-600 truncate flex-1">
+                          {post.hook}
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                      </Link>
+                      <button
+                        onClick={() => handleDeletePost(post.id)}
+                        className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>

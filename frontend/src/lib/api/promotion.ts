@@ -37,8 +37,10 @@ export type PromotionCreateInput = {
   content: string;
   hashtags?: string[];
   link?: string | null;
+  images?: string[] | null;
   tone?: string;
   content_type?: string;
+  scheduled_at?: string | null;
 };
 
 export type PromotionGenerateInput = {
@@ -50,12 +52,15 @@ export type PromotionGenerateInput = {
 
 export async function listPromotions(projectId: string): Promise<Promotion[]> {
   const posts = await apiFetch<Promotion[]>(`/api/projects/${projectId}/promotion/posts`);
-  // Add date/time fields for calendar compatibility
-  return posts.map(p => ({
-    ...p,
-    date: p.created_at?.split("T")[0] ?? "",
-    time: p.created_at?.split("T")[1]?.slice(0, 5) ?? "",
-  }));
+  // Use scheduled_at for calendar display when available
+  return posts.map(p => {
+    const ref = p.scheduled_at ?? p.created_at ?? "";
+    return {
+      ...p,
+      date: ref.split("T")[0] ?? "",
+      time: ref.split("T")[1]?.slice(0, 5) ?? "",
+    };
+  });
 }
 
 export async function createPromotion(projectId: string, data: PromotionCreateInput): Promise<Promotion> {
@@ -118,6 +123,7 @@ export type ProjectPromotionInfo = {
   tone_preference: string;
   logo_url: string | null;
   updated_at: string;
+  connected_accounts?: Platform[];
 };
 
 export type ProjectPromotionInfoUpdateInput = Partial<

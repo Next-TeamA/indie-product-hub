@@ -8,6 +8,7 @@ export type Project = {
   name: string;
   description: string | null;
   prd: string | null;
+  logo_url: string | null;
   github_repo_url: string | null;
   github_repo_owner: string | null;
   github_repo_name: string | null;
@@ -23,6 +24,7 @@ export type ProjectCreateInput = {
   name: string;
   description?: string;
   prd?: string;
+  logo_url?: string;
   github_repo_url?: string;
   github_repo_owner?: string;
   github_repo_name?: string;
