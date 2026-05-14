@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.dependencies.auth import get_current_user
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -52,15 +52,13 @@ class NotificationPrefs(BaseModel):
 @router.get("/notifications")
 async def get_notifications(user: dict = Depends(get_current_user)):
     try:
-        result = (
+        data = safe_maybe_single(
             supabase.table("user_preferences")
             .select("notifications")
             .eq("user_id", user["id"])
-            .maybe_single()
-            .execute()
         )
-        if result.data and result.data.get("notifications"):
-            return result.data["notifications"]
+        if data and data.get("notifications"):
+            return data["notifications"]
     except Exception:
         pass
     return NotificationPrefs().model_dump()

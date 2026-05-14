@@ -6,7 +6,7 @@ automations that users would otherwise do manually.
 
 from datetime import datetime, timezone
 
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations import gemini
 
 
@@ -302,19 +302,17 @@ async def sync_github_issues(project_id: str, user_id: str):
     if not project.data or not project.data.get("github_repo_owner"):
         return {"synced": 0, "message": "No GitHub repo configured"}
 
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user_id)
         .eq("provider", "github")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         return {"synced": 0, "message": "No connected GitHub account"}
 
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     owner = project.data["github_repo_owner"]
     repo = project.data["github_repo_name"]
 
@@ -327,16 +325,14 @@ async def sync_github_issues(project_id: str, user_id: str):
             continue
 
         # Check if already synced (by source_ref)
-        existing = (
+        existing = safe_maybe_single(
             supabase.table("issues")
             .select("id")
             .eq("project_id", project_id)
             .eq("source", "github")
             .eq("source_ref", str(gi["number"]))
-            .maybe_single()
-            .execute()
         )
-        if existing.data:
+        if existing:
             continue
 
         # Map GitHub labels to severity

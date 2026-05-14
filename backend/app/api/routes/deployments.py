@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.project_access import verify_project_access
 from app.core.encryption import decrypt_token
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations.vercel_api import vercel_client
 from app.integrations.railway_api import railway_client
 
@@ -44,19 +44,17 @@ async def sync_deployments(
         return {"status": "skipped", "message": "No deployment platform configured"}
 
     # Get user's token for the platform
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user["id"])
         .eq("provider", platform)
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         return {"status": "skipped", "message": f"No connected {platform} account"}
 
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     background_tasks.add_task(_sync_deployments, project_id, platform, deploy_id, token)
     return {"status": "syncing"}
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.dependencies.auth import get_current_user
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.models.project import ProjectCreate, ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -22,17 +22,15 @@ async def list_projects(user: dict = Depends(get_current_user)):
 
 @router.get("/{project_id}")
 async def get_project(project_id: str, user: dict = Depends(get_current_user)):
-    result = (
+    data = safe_maybe_single(
         supabase.table("projects")
         .select("*")
         .eq("id", project_id)
         .eq("user_id", user["id"])
-        .maybe_single()
-        .execute()
     )
-    if not result.data:
+    if not data:
         raise NotFoundError("Project", project_id)
-    return result.data
+    return data
 
 
 @router.post("", status_code=201)

@@ -9,7 +9,7 @@ import re
 from fastapi import APIRouter, Request, HTTPException
 
 from app.core.config import settings
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.services.automation import create_promo_draft_from_push, create_issue_from_deploy_failure
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -53,18 +53,16 @@ async def github_webhook(request: Request):
         return {"ok": True, "skipped": "Invalid repo name"}
 
     # Safe exact match -- no ilike wildcard injection
-    project = (
+    project = safe_maybe_single(
         supabase.table("projects")
         .select("id, user_id")
         .eq("github_repo_url", f"https://github.com/{repo_name}")
-        .maybe_single()
-        .execute()
     )
-    if not project.data:
+    if not project:
         return {"ok": True, "skipped": "No matching project"}
 
-    project_id = project.data["id"]
-    user_id = project.data["user_id"]
+    project_id = project["id"]
+    user_id = project["user_id"]
 
     if event_type == "push":
         # Auto-generate promotion draft from significant pushes
@@ -133,18 +131,16 @@ async def vercel_webhook(request: Request):
     if not project_id_vercel:
         return {"ok": True}
 
-    project = (
+    project = safe_maybe_single(
         supabase.table("projects")
         .select("id, user_id")
         .eq("deploy_project_id", project_id_vercel)
-        .maybe_single()
-        .execute()
     )
-    if not project.data:
+    if not project:
         return {"ok": True, "skipped": "No matching project"}
 
-    project_id = project.data["id"]
-    user_id = project.data["user_id"]
+    project_id = project["id"]
+    user_id = project["user_id"]
 
     status_map = {
         "deployment.created": "building",
@@ -206,18 +202,16 @@ async def railway_webhook(request: Request):
     if not railway_project_id:
         return {"ok": True}
 
-    project = (
+    project = safe_maybe_single(
         supabase.table("projects")
         .select("id, user_id")
         .eq("deploy_project_id", railway_project_id)
-        .maybe_single()
-        .execute()
     )
-    if not project.data:
+    if not project:
         return {"ok": True}
 
-    project_id = project.data["id"]
-    user_id = project.data["user_id"]
+    project_id = project["id"]
+    user_id = project["user_id"]
 
     status_map = {"SUCCESS": "ready", "FAILED": "error", "CRASHED": "error", "BUILDING": "building", "DEPLOYING": "deploying"}
 

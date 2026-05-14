@@ -2,7 +2,7 @@
 
 from app.agents.context import AgentContext
 from app.agents.tools.registry import register_tool
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 
@@ -54,18 +54,16 @@ async def _get_threads_posts(ctx: AgentContext, limit: int = 20) -> dict:
     token = ctx.tokens.get("threads")
     if not token:
         return {"error": "Threads not connected."}
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("provider_user_id")
         .eq("user_id", ctx.user_id)
         .eq("provider", "threads")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         return {"error": "Threads account not found."}
-    posts = await threads_client.get_user_posts_with_insights(token, account.data["provider_user_id"], limit=limit)
+    posts = await threads_client.get_user_posts_with_insights(token, account["provider_user_id"], limit=limit)
     return {"posts": posts}
 
 
@@ -73,18 +71,16 @@ async def _get_threads_profile(ctx: AgentContext) -> dict:
     token = ctx.tokens.get("threads")
     if not token:
         return {"error": "Threads not connected."}
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("provider_user_id")
         .eq("user_id", ctx.user_id)
         .eq("provider", "threads")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         return {"error": "Threads account not found."}
-    profile = await threads_client.get_profile_insights(token, account.data["provider_user_id"])
+    profile = await threads_client.get_profile_insights(token, account["provider_user_id"])
     return profile
 
 

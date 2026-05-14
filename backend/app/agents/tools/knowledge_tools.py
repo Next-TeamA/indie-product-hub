@@ -2,7 +2,7 @@
 
 from app.agents.context import AgentContext
 from app.agents.tools.registry import register_tool
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 
 
 async def _get_category(ctx: AgentContext, category: str = "") -> dict:
@@ -13,16 +13,14 @@ async def _get_category(ctx: AgentContext, category: str = "") -> dict:
     if content:
         return {"category": category, "content": content}
     # Fallback: query DB
-    result = (
+    data = safe_maybe_single(
         supabase.table("project_knowledge")
         .select("title, content")
         .eq("project_id", ctx.project_id)
         .eq("category", category)
-        .maybe_single()
-        .execute()
     )
-    if result.data:
-        return {"category": category, "content": result.data["content"]}
+    if data:
+        return {"category": category, "content": data["content"]}
     return {"error": f"No knowledge found for category: {category}"}
 
 

@@ -12,7 +12,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Request, HTTPException
 
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.services.deep_analysis import deep_analyze_error
 
 router = APIRouter(prefix="/log-drain", tags=["log-drain"])
@@ -78,18 +78,16 @@ async def vercel_log_drain(request: Request):
             continue
 
         # Find our project
-        project = (
+        project = safe_maybe_single(
             supabase.table("projects")
             .select("id, user_id, name")
             .eq("deploy_project_id", vercel_project_id)
-            .maybe_single()
-            .execute()
         )
-        if not project.data:
+        if not project:
             continue
 
-        pid = project.data["id"]
-        uid = project.data["user_id"]
+        pid = project["id"]
+        uid = project["user_id"]
 
         # Buffer errors
         if pid not in _error_buffer:
@@ -114,7 +112,7 @@ async def vercel_log_drain(request: Request):
 
             # Run analysis in background (don't block the log drain)
             import asyncio
-            asyncio.create_task(_analyze_runtime_errors(pid, uid, project.data["name"], errors))
+            asyncio.create_task(_analyze_runtime_errors(pid, uid, project["name"], errors))
 
     return {"ok": True}
 

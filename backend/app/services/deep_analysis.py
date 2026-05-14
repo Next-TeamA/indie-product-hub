@@ -10,7 +10,7 @@ Flow:
 
 import re
 from app.core.encryption import decrypt_token
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations import gemini
 from app.integrations.github_api import github_client
 
@@ -129,19 +129,17 @@ async def deep_analyze_error(
         return await _basic_analysis(project_name, error_logs)
 
     # Get GitHub token
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user_id)
         .eq("provider", "github")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         return await _basic_analysis(project_name, error_logs)
 
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     owner = project.data["github_repo_owner"]
     repo = project.data["github_repo_name"]
 

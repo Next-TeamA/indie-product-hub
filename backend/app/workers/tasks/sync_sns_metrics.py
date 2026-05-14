@@ -1,6 +1,6 @@
 """Periodic task: sync SNS metrics for published posts."""
 
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.core.encryption import decrypt_token
 from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
@@ -21,19 +21,17 @@ async def sync_sns_metrics():
 
     for post in posts.data or []:
         try:
-            account = (
+            account = safe_maybe_single(
                 supabase.table("connected_accounts")
                 .select("access_token, provider_user_id")
                 .eq("user_id", post["user_id"])
                 .eq("provider", post["platform"])
                 .eq("is_active", True)
-                .maybe_single()
-                .execute()
             )
-            if not account.data:
+            if not account:
                 continue
 
-            token = decrypt_token(account.data["access_token"])
+            token = decrypt_token(account["access_token"])
 
             if post["platform"] == "x":
                 # get_tweet_metrics returns flat dict with impressions, likes, etc.

@@ -5,7 +5,7 @@ Runs every 6 hours via scheduler.
 """
 
 from datetime import datetime, timezone, timedelta
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.core.encryption import decrypt_token
 from app.integrations.github_api import github_client
 
@@ -32,18 +32,16 @@ async def _sync_single_project(project: dict):
     owner = project.get("github_repo_owner")
     repo = project.get("github_repo_name")
     if owner and repo:
-        account = (
+        account = safe_maybe_single(
             supabase.table("connected_accounts")
             .select("access_token")
             .eq("user_id", user_id)
             .eq("provider", "github")
             .eq("is_active", True)
-            .maybe_single()
-            .execute()
         )
-        if account.data:
+        if account:
             try:
-                token = decrypt_token(account.data["access_token"])
+                token = decrypt_token(account["access_token"])
 
                 # Commits
                 commits = await github_client.list_commits(token, owner, repo, per_page=15)

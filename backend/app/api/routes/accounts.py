@@ -12,7 +12,7 @@ from app.api.dependencies.auth import get_current_user
 from app.core.config import settings
 from app.core.encryption import encrypt_token
 from app.core.exceptions import AppError, NotFoundError
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.integrations.x_api import x_client, XAPIClient
 from app.integrations.threads_api import threads_client
 from app.integrations.github_api import github_client
@@ -36,25 +36,23 @@ def _save_state(state: str, data: dict) -> None:
 
 def _pop_state(state: str) -> dict | None:
     """Retrieve and delete OAuth state. Returns None if expired or missing."""
-    result = (
+    data = safe_maybe_single(
         supabase.table("oauth_states")
         .select("data, expires_at")
         .eq("state", state)
-        .maybe_single()
-        .execute()
     )
-    if not result.data:
+    if not data:
         return None
 
     # Delete regardless (single use)
     supabase.table("oauth_states").delete().eq("state", state).execute()
 
     # Check expiry
-    expires_at = datetime.fromisoformat(result.data["expires_at"].replace("Z", "+00:00"))
+    expires_at = datetime.fromisoformat(data["expires_at"].replace("Z", "+00:00"))
     if datetime.now(timezone.utc) > expires_at:
         return None
 
-    return result.data["data"]
+    return data["data"]
 
 
 @router.get("")
@@ -73,20 +71,18 @@ async def list_accounts(user: dict = Depends(get_current_user)):
 @router.get("/github/repos")
 async def list_github_repos(user: dict = Depends(get_current_user)):
     """List GitHub repos accessible by the user's connected GitHub account."""
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user["id"])
         .eq("provider", "github")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         raise AppError("GitHub account not connected", 400)
 
     from app.core.encryption import decrypt_token
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     repos = await github_client.list_repos(token)
     return [
         {
@@ -106,20 +102,18 @@ async def list_github_repos(user: dict = Depends(get_current_user)):
 @router.get("/vercel/projects")
 async def list_vercel_projects(user: dict = Depends(get_current_user)):
     """List Vercel projects accessible by the user's connected Vercel account."""
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user["id"])
         .eq("provider", "vercel")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         raise AppError("Vercel account not connected", 400)
 
     from app.core.encryption import decrypt_token
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     projects = await vercel_client.list_projects(token)
     return [
         {
@@ -135,20 +129,18 @@ async def list_vercel_projects(user: dict = Depends(get_current_user)):
 @router.get("/railway/projects")
 async def list_railway_projects(user: dict = Depends(get_current_user)):
     """List Railway projects accessible by the user's connected Railway account."""
-    account = (
+    account = safe_maybe_single(
         supabase.table("connected_accounts")
         .select("access_token")
         .eq("user_id", user["id"])
         .eq("provider", "railway")
         .eq("is_active", True)
-        .maybe_single()
-        .execute()
     )
-    if not account.data:
+    if not account:
         raise AppError("Railway account not connected", 400)
 
     from app.core.encryption import decrypt_token
-    token = decrypt_token(account.data["access_token"])
+    token = decrypt_token(account["access_token"])
     projects = await railway_client.list_projects(token)
     return [
         {

@@ -15,7 +15,7 @@ from google.genai import types
 
 from app.core.config import settings
 from app.core.encryption import decrypt_token
-from app.core.supabase import supabase
+from app.core.supabase import supabase, safe_maybe_single
 from app.agents.context import AgentContext, AgentResult
 
 
@@ -30,15 +30,12 @@ async def build_agent_context(
 ) -> AgentContext:
     """Load everything the agent needs to reason about a project."""
     # Project data
-    project_row = (
+    project = safe_maybe_single(
         supabase.table("projects")
         .select("*")
         .eq("id", project_id)
         .eq("user_id", user_id)
-        .maybe_single()
-        .execute()
-    )
-    project = project_row.data or {}
+    ) or {}
 
     # Knowledge base
     kb_rows = (
