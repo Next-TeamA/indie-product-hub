@@ -13,6 +13,7 @@ from app.core.encryption import decrypt_token
 from app.core.supabase import supabase, safe_maybe_single
 from app.integrations import gemini
 from app.integrations.github_api import github_client
+from app.workspace.skill_loader import get_skill_prompt
 
 
 # Regex patterns to extract file paths from error logs
@@ -250,7 +251,7 @@ If a recent commit caused it, point to the exact change.
     try:
         analysis = await gemini.generate_json(
             prompt=prompt,
-            system=DEEP_ANALYSIS_SYSTEM,
+            system=get_skill_prompt("deep_code_analysis") or DEEP_ANALYSIS_SYSTEM,
         )
         analysis["files_analyzed"] = list(file_contents.keys())
         analysis["commits_checked"] = [d["sha"] for d in recent_diffs]

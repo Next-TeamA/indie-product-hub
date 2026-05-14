@@ -89,3 +89,31 @@ def load_default_skills() -> list[SkillFile]:
         if skill:
             skills.append(skill)
     return skills
+
+
+# Cache for get_skill_prompt
+_skill_prompt_cache: dict[str, str] = {}
+
+
+def get_skill_prompt(skill_name: str) -> str:
+    """Load a specific skill's content (body) by filename for use as system prompt.
+
+    Usage:
+        prompt = get_skill_prompt("promotion")  # loads promotion.md
+        prompt = get_skill_prompt("deploy_analysis")  # loads deploy_analysis.md
+    """
+    if skill_name in _skill_prompt_cache:
+        return _skill_prompt_cache[skill_name]
+
+    skills_dir = Path(__file__).parent / "default_skills"
+    md_file = skills_dir / f"{skill_name}.md"
+    if not md_file.exists():
+        return ""
+
+    raw = md_file.read_text(encoding="utf-8")
+    skill = parse_skill(raw)
+    if not skill:
+        return ""
+
+    _skill_prompt_cache[skill_name] = skill.content
+    return skill.content

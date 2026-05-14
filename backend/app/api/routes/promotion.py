@@ -15,43 +15,15 @@ from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 from app.integrations.github_api import github_client
 from app.models.promotion import PromotionRequest, PromotionPostCreate, PromotionInfoUpsert
-from app.agents.promotion_playbook import PROMOTION_PLAYBOOK
+from app.workspace.skill_loader import get_skill_prompt
 
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
 
-SYSTEM_PROMPT = f"""You are a marketing copywriter specialized in indie products and startups.
 
-{PROMOTION_PLAYBOOK}
-
-Additional Rules:
-- Write in the language the user requests. Default to Korean if not specified.
-- IMPORTANT: Emoji usage should be minimal and natural (1-2 max). Not zero, but restrained.
-- Be authentic, not salesy. Indie hackers value honesty over hype.
-- Include specific product details, not generic marketing speak.
-- The hook must grab attention in the first line (it's what shows in feeds before "see more").
-- Match the platform's culture and constraints.
-- Avoid cliches like "game-changer", "revolutionary", "next-level".
-- Sound like a real person sharing something they built, not a brand account.
-
-Platform guidelines:
-- X (Twitter): Max 280 chars. Short, punchy. Use threads for longer content. No hashtag spam (1-2 max).
-- Threads: Max 500 chars. Conversational, community-oriented. Can be longer and more personal.
-- Bluesky: Max 300 chars. Tech-savvy audience. Authentic, minimal.
-
-Tone options:
-- friendly: Casual, approachable, like talking to a friend at a coffee shop
-- professional: Polished but not corporate. Think "founder update email"
-- humorous: Witty and self-aware. Not forced jokes.
-- informative: Data-driven, specific. Numbers and results.
-
-Content type guidelines:
-- launch: Focus on the problem solved, not feature lists. "I was frustrated with X, so I built Y"
-- update: What changed and why users should care. Concrete improvements.
-- retrospective: Honest reflection. Numbers, lessons learned, what's next.
-- qa: Answer a question users actually ask. Not self-promotional FAQ.
-- tip: Actionable advice related to your product's domain.
-- milestone: Celebrate authentically. Share the journey, not just the number.
-"""
+def _get_promotion_system_prompt() -> str:
+    """Load promotion system prompt from skill file."""
+    skill_content = get_skill_prompt("promotion")
+    return f"You are a marketing copywriter specialized in indie products.\n\n{skill_content}" if skill_content else "You are a marketing copywriter. Write authentic, non-salesy promotional content."
 
 
 @router.get("/history")
@@ -191,7 +163,7 @@ Return as JSON:
 }}
 """
 
-    result = await gemini.generate_json(prompt=prompt, system=SYSTEM_PROMPT)
+    result = await gemini.generate_json(prompt=prompt, system=_get_promotion_system_prompt())
 
     # Save AI response
     import json

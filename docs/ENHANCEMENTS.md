@@ -1,8 +1,23 @@
 # LaunchPad 고도화 기능 요약
 
-## 1. 자율 AI 에이전트 시스템
+## 1. Skill 기반 자율 AI 에이전트 시스템
 
-프로젝트별로 동작하는 자율 AI 에이전트. 사용자가 질문하면 에이전트가 스스로 어떤 도구를 호출할지 판단하고, 데이터를 수집하고, 분석 결과를 도출한다.
+프로젝트별로 동작하는 자율 AI 에이전트. Claude Code의 skill 시스템에서 영감을 받아, 파일 기반 skill 아키텍처로 구현.
+
+**핵심 구조:**
+- 프로젝트별 **workspace** (Supabase Storage): skills/, knowledge/, references/ 폴더 자동 생성
+- **7개 skill 파일**: 각각 자체 설명, 규칙, 도구 목록, 예시 보유 (promotion, deploy_analysis, deep_code_analysis, market_research, weekly_report, health_check, web_search)
+- **SkillRouter**: 태스크 키워드 기반 자동 skill 선택 (비용 0)
+- 에이전트가 `load_additional_skill` 도구로 mid-loop에서 추가 skill 로드 가능
+- **모든 LLM 호출이 skill 파일에서 프롬프트 로드** -- 하드코딩 제거
+
+**기존 방식 vs 현재:**
+| 기존 | 현재 |
+|------|------|
+| 12개 LLM 호출이 각각 하드코딩된 프롬프트 | 7개 skill 파일에서 동적 로드 |
+| 지식은 Python 문자열 상수 | 구조화된 마크다운 파일 (편집 가능) |
+| 에이전트가 뭘 참고할지 결정 못 함 | 태스크 기반 자동 skill 선택 |
+| 팀이 지식 추가하려면 코드 수정 필요 | references/ 폴더에 파일 추가하면 끝 |
 
 **핵심 구조:**
 - Gemini Function Calling 기반 자율 루프 (plan -> tool call -> observe -> iterate)

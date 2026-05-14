@@ -8,6 +8,7 @@ Zero external API cost -- all computation is on our own data.
 from datetime import datetime, timezone, timedelta
 from app.core.supabase import supabase
 from app.integrations import gemini
+from app.workspace.skill_loader import get_skill_prompt
 
 
 async def generate_marketing_insights(project_id: str) -> dict:
@@ -210,10 +211,7 @@ Return 3-5 insights as JSON array. Each must have NEW information not in the "al
     try:
         insights = await gemini.generate_json(
             prompt=prompt,
-            system="You are a market analyst for indie software products. "
-                   "Use web search to find CURRENT information. "
-                   "Be specific -- names, dates, numbers. No vague generalizations. "
-                   "Never use emojis.",
+            system=get_skill_prompt("market_research") or "You are a market analyst for indie software products. Be specific. Never use emojis.",
             model="gemini-2.5-flash",
             use_search=True,
         )

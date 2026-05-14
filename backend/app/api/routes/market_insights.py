@@ -8,6 +8,7 @@ from app.core.supabase import supabase
 from app.integrations import gemini
 from app.models.promotion import InsightUpdate
 from app.core.rate_limit import limiter
+from app.workspace.skill_loader import get_skill_prompt
 
 router = APIRouter(prefix="/projects/{project_id}/insights/market", tags=["market-insights"])
 
@@ -88,7 +89,7 @@ Return as JSON array:
     try:
         insights = await gemini.generate_json(
             prompt=prompt,
-            system=MARKET_SYSTEM_PROMPT,
+            system=get_skill_prompt("market_research") or MARKET_SYSTEM_PROMPT,
             model="gemini-2.5-flash",
             use_search=True,  # Real-time web search for latest competitor/market data
         )

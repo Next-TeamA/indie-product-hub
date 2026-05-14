@@ -9,6 +9,7 @@ from app.core.supabase import supabase, safe_maybe_single
 from app.integrations import gemini
 from app.integrations.vercel_api import vercel_client
 from app.integrations.github_api import github_client
+from app.workspace.skill_loader import get_skill_prompt
 
 ANALYSIS_SYSTEM = """You are a senior DevOps engineer analyzing deployment failures.
 
@@ -154,7 +155,7 @@ Analyze this deployment failure. What went wrong, why, and how to fix it.
     try:
         analysis = await gemini.generate_json(
             prompt=prompt,
-            system=ANALYSIS_SYSTEM,
+            system=get_skill_prompt("deploy_analysis") or ANALYSIS_SYSTEM,
         )
 
         # Save analysis to deployment log
