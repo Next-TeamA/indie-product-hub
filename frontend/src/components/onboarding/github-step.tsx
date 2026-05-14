@@ -42,9 +42,10 @@ interface GithubStepProps {
     github_repo_name: string;
   }) => void;
   onBack: () => void;
+  onBeforeOAuth?: () => void;
 }
 
-export function GithubStep({ onNext, onBack }: GithubStepProps) {
+export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -75,7 +76,8 @@ export function GithubStep({ onNext, onBack }: GithubStepProps) {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const { auth_url } = await connectAccount("github");
+      onBeforeOAuth?.();
+      const { auth_url } = await connectAccount("github", "/projects/new");
       window.location.href = auth_url;
     } catch {
       setConnecting(false);
@@ -88,7 +90,7 @@ export function GithubStep({ onNext, onBack }: GithubStepProps) {
 
   if (loading) {
     return (
-      <div className="relative z-10 w-full max-w-lg mx-auto px-6 flex items-center justify-center min-h-[200px]">
+      <div className="relative z-10 w-full max-w-lg mx-auto px-6 flex items-center justify-center min-h-50">
         <div className="w-6 h-6 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" />
       </div>
     );

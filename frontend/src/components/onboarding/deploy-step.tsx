@@ -35,9 +35,10 @@ interface DeployStepProps {
     deploy_project_id: string;
   }) => void;
   onBack: () => void;
+  onBeforeOAuth?: () => void;
 }
 
-export function DeployStep({ onNext, onBack }: DeployStepProps) {
+export function DeployStep({ onNext, onBack, onBeforeOAuth }: DeployStepProps) {
   const [platform, setPlatform] = useState<Platform>(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState<
     Record<string, boolean>
@@ -76,7 +77,8 @@ export function DeployStep({ onNext, onBack }: DeployStepProps) {
   const handleConnect = async (p: "vercel" | "railway") => {
     setConnecting(true);
     try {
-      const { auth_url } = await connectAccount(p);
+      onBeforeOAuth?.();
+      const { auth_url } = await connectAccount(p, "/projects/new");
       window.location.href = auth_url;
     } catch {
       setConnecting(false);
@@ -114,7 +116,7 @@ export function DeployStep({ onNext, onBack }: DeployStepProps) {
 
   if (loading) {
     return (
-      <div className="relative z-10 w-full max-w-lg mx-auto px-6 flex items-center justify-center min-h-[200px]">
+      <div className="relative z-10 w-full max-w-lg mx-auto px-6 flex items-center justify-center min-h-50">
         <div className="w-6 h-6 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" />
       </div>
     );

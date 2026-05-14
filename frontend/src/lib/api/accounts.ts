@@ -14,8 +14,9 @@ export async function listAccounts(): Promise<ConnectedAccount[]> {
   return apiFetch<ConnectedAccount[]>("/api/accounts");
 }
 
-export async function connectAccount(provider: string): Promise<{ auth_url: string; state: string }> {
-  return apiFetch("/api/accounts/connect/" + provider);
+export async function connectAccount(provider: string, returnTo?: string): Promise<{ auth_url: string; state: string }> {
+  const params = returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : "";
+  return apiFetch("/api/accounts/connect/" + provider + params);
 }
 
 export async function disconnectAccount(id: string): Promise<void> {
