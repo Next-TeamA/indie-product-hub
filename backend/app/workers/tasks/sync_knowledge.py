@@ -151,9 +151,30 @@ async def _sync_single_project(project: dict):
 
 
 def _upsert_knowledge(project_id: str, category: str, title: str, content: str):
+    """Write to both DB (hot cache) and workspace storage (source of truth)."""
     supabase.table("project_knowledge").upsert({
         "project_id": project_id,
         "category": category,
         "title": title,
         "content": content,
     }, on_conflict="project_id,category").execute()
+
+    # Also write to workspace storage
+    try:
+        from app.workspace.storage import workspace_storage
+        import asyncio
+        # Map category to knowledge file path
+        file_map = {
+            "commit_activity": "knowledge/commits.md",
+            "pr_activity": "knowledge/prs.md",
+            "deploy_history": "knowledge/deploy_history.md",
+            "sns_performance": "knowledge/sns_metrics.md",
+            "market_context": "knowledge/market_context.md",
+            "project_readme": "README.md",
+        }
+        file_path = file_map.get(category)
+        if file_path:
+            loop = asyncio.get_event_loop()
+            loop.create_task(workspace_storage.write_file(project_id, file_path, f"# {title}\n\n{content}"))
+    except Exception:
+        pass  # Storage write is non-critical

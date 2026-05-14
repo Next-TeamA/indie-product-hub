@@ -15,14 +15,17 @@ from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 from app.integrations.github_api import github_client
 from app.models.promotion import PromotionRequest, PromotionPostCreate, PromotionInfoUpsert
+from app.agents.promotion_playbook import PROMOTION_PLAYBOOK
 
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
 
-SYSTEM_PROMPT = """You are a marketing copywriter specialized in indie products and startups.
+SYSTEM_PROMPT = f"""You are a marketing copywriter specialized in indie products and startups.
 
-Rules:
+{PROMOTION_PLAYBOOK}
+
+Additional Rules:
 - Write in the language the user requests. Default to Korean if not specified.
-- Never use emojis. Never.
+- IMPORTANT: Emoji usage should be minimal and natural (1-2 max). Not zero, but restrained.
 - Be authentic, not salesy. Indie hackers value honesty over hype.
 - Include specific product details, not generic marketing speak.
 - The hook must grab attention in the first line (it's what shows in feeds before "see more").
@@ -137,16 +140,53 @@ async def generate_promotion(
     if body.template:
         platform_hint = f"\nPlatform: {body.template}"
 
+    # Fetch reference examples matching the content type
+    ref_examples = ""
+    try:
+        # Infer slot type from message
+        slot_type = None
+        msg_lower = body.message.lower()
+        if any(w in msg_lower for w in ["출시", "launch", "런칭"]):
+            slot_type = "launch"
+        elif any(w in msg_lower for w in ["피드백", "feedback", "의견"]):
+            slot_type = "feedback_request"
+        elif any(w in msg_lower for w in ["업데이트", "update", "개선"]):
+            slot_type = "update_share"
+        elif any(w in msg_lower for w in ["문제", "problem", "고민", "힘든"]):
+            slot_type = "problem_raising"
+        else:
+            slot_type = "feature_intro"
+
+        refs = (
+            supabase.table("promotion_references")
+            .select("hook_text, body_text, cta_text, good_points")
+            .eq("slot_type", slot_type)
+            .limit(3)
+            .execute()
+        )
+        if refs.data:
+            ref_lines = []
+            for r in refs.data:
+                ref_lines.append(f"- Hook: {r['hook_text']} | Structure: {r['body_text']} | CTA: {r.get('cta_text', 'N/A')} | Good: {', '.join(r.get('good_points', []))}")
+            ref_examples = f"\n\nReference patterns for this post type ({slot_type}):\n" + "\n".join(ref_lines)
+    except Exception:
+        pass
+
     prompt = f"""
 {chr(10).join(context_parts)}
 {platform_hint}
+{ref_examples}
 
 User request: {body.message}
 
-Generate promotional content. Return as JSON:
+Generate promotional content following the Playbook rules and reference patterns above.
+Use the 5-Part Arc: Hook -> Context -> Solution -> Proof -> CTA.
+Match the slot type and voice persona to the request.
+
+Return as JSON:
 {{
-  "hook": "Opening line that grabs attention (1 sentence)",
-  "content": "Main body of the post",
+  "hook": "Opening line that grabs attention (1 sentence, follow hook formulas from playbook)",
+  "content": "Main body following the 5-part arc structure",
   "hashtags": ["tag1", "tag2"]
 }}
 """
