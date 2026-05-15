@@ -341,6 +341,27 @@ async def activate_scheduled_posts(
     return {"updated": len(result.data or [])}
 
 
+@router.post("/posts/deactivate-scheduled")
+async def deactivate_scheduled_posts(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Turn future scheduled posts back into drafts while keeping their scheduled_at."""
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        supabase.table("promotion_posts")
+        .update({"status": "draft"})
+        .eq("project_id", project_id)
+        .eq("user_id", user["id"])
+        .eq("status", "scheduled")
+        .not_.is_("scheduled_at", "null")
+        .gt("scheduled_at", now)
+        .execute()
+    )
+    return {"updated": len(result.data or [])}
+
+
 @router.delete("/posts")
 async def delete_all_posts(
     project_id: str,

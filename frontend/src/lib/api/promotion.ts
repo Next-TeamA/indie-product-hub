@@ -193,6 +193,12 @@ export async function activateScheduledPromotions(projectId: string): Promise<{ 
   });
 }
 
+export async function deactivateScheduledPromotions(projectId: string): Promise<{ updated: number }> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts/deactivate-scheduled`, {
+    method: "POST",
+  });
+}
+
 // --- AI Generation ---
 
 export async function generatePromotion(projectId: string, data: PromotionGenerateInput): Promise<{

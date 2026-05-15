@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import {
   activateScheduledPromotions,
+  deactivateScheduledPromotions,
   listPromotions,
   deleteAllPromotions,
   deletePromotion,
@@ -163,13 +164,17 @@ export default function PromotionPage() {
     }
   };
 
-  const handleActivateScheduled = async () => {
+  const handleToggleScheduled = async () => {
     setActivatingSchedule(true);
     try {
-      await activateScheduledPromotions(projectId);
+      if (scheduleToggleOn) {
+        await deactivateScheduledPromotions(projectId);
+      } else {
+        await activateScheduledPromotions(projectId);
+      }
       refreshPromos();
     } catch (e) {
-      console.error("Activate scheduled posts failed:", e);
+      console.error("Toggle scheduled posts failed:", e);
     } finally {
       setActivatingSchedule(false);
     }
@@ -219,6 +224,7 @@ export default function PromotionPage() {
     (p) => p.status === "scheduled" && p.date >= todayStr,
   ).length;
   const scheduleToggleOn = futureDraftCount === 0 && scheduledCount > 0;
+  const canToggleSchedule = futureDraftCount > 0 || scheduledCount > 0;
 
   // Selected day
   const selectedPosts = byDate[selected] ?? [];
@@ -341,13 +347,18 @@ export default function PromotionPage() {
           </div>
         )}
         <button
-          onClick={handleActivateScheduled}
-          disabled={futureDraftCount === 0 || activatingSchedule}
+          onClick={handleToggleScheduled}
+          disabled={!canToggleSchedule || activatingSchedule}
           aria-pressed={scheduleToggleOn}
           className="ml-auto flex items-center gap-3 rounded-full px-1 py-0.5 text-slate-400 transition-colors hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="text-[11px] font-bold uppercase tracking-wider">
-            예약 발행{futureDraftCount > 0 ? ` ${futureDraftCount}` : ""}
+            예약 발행
+            {scheduleToggleOn
+              ? ` 켜짐 ${scheduledCount}`
+              : futureDraftCount > 0
+                ? ` 대기 ${futureDraftCount}`
+                : ""}
           </span>
           <span
             className={cn(
