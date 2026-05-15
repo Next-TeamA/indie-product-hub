@@ -101,6 +101,7 @@ export default function PromotionPage() {
   const [activatingSchedule, setActivatingSchedule] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
   const [viewMode, setViewMode] = useState<"calendar" | "feed">("calendar");
+  const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
 
   const refreshPromos = useCallback(() => {
     listPromotions(projectId).then(setPromos).catch(console.error);
@@ -555,32 +556,69 @@ export default function PromotionPage() {
                 </p>
                 {selectedPosts.slice(1).map((post) => {
                   const pm = PLATFORM[post.platform];
+                  const sm = STATUS[post.status];
+                  const isExpanded = expandedPostId === post.id;
                   return (
-                    <div key={post.id} className="flex items-center gap-1">
-                      <Link
-                        href={`/projects/${projectId}/promotion/post/${post.id}`}
-                        className="flex items-center gap-3 rounded-xl p-3 border border-slate-100 bg-white hover:bg-slate-50 transition-colors group flex-1 min-w-0"
-                      >
-                        <span
-                          className={cn(
-                            "w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
-                            pm.chipBg,
-                            pm.chipText,
-                          )}
+                    <div key={post.id} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setExpandedPostId(isExpanded ? null : post.id)}
+                          className="flex items-center gap-3 rounded-xl p-3 border border-slate-100 bg-white hover:bg-slate-50 transition-colors group flex-1 min-w-0 text-left"
                         >
-                          {pm.label}
-                        </span>
-                        <span className="text-[12px] font-semibold text-slate-600 truncate flex-1">
-                          {post.hook}
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
-                      </Link>
-                      <button
-                        onClick={() => handleDeletePost(post.id)}
-                        className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                          <span
+                            className={cn(
+                              "w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
+                              pm.chipBg,
+                              pm.chipText,
+                            )}
+                          >
+                            {pm.label}
+                          </span>
+                          <span className="text-[12px] font-semibold text-slate-600 truncate flex-1">
+                            {post.hook || post.content}
+                          </span>
+                          <ChevronRight
+                            className={cn(
+                              "w-3.5 h-3.5 text-slate-300 transition-all shrink-0",
+                              isExpanded ? "rotate-90 text-slate-500" : "group-hover:text-slate-500",
+                            )}
+                          />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePost(post.id)}
+                          className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <div className="mx-0 rounded-xl border border-slate-100 bg-slate-50 p-3 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", sm.bg, sm.text)}>
+                              {sm.label}
+                            </span>
+                            <Link
+                              href={`/projects/${projectId}/promotion/post/${post.id}`}
+                              className="text-[10px] font-semibold text-blue-500 hover:underline flex items-center gap-0.5"
+                            >
+                              편집 <ArrowRight className="w-2.5 h-2.5" />
+                            </Link>
+                          </div>
+                          {post.hook && (
+                            <p className="text-[12px] font-bold text-slate-700 leading-snug">
+                              {post.hook}
+                            </p>
+                          )}
+                          <p className="text-[12px] text-slate-600 leading-relaxed whitespace-pre-wrap">
+                            {post.content}
+                          </p>
+                          {post.hashtags && post.hashtags.length > 0 && (
+                            <p className="text-[11px] text-blue-400 font-medium">
+                              {post.hashtags.map((t) => `#${t}`).join(" ")}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
