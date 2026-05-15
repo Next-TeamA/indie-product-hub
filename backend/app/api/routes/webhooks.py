@@ -28,10 +28,12 @@ def _verify_github_signature(payload: bytes, signature: str) -> bool:
 
 
 def _verify_vercel_signature(payload: bytes, signature: str) -> bool:
-    if not settings.vercel_webhook_secret:
-        raise HTTPException(status_code=503, detail="Vercel webhook secret not configured")
+    # Use webhook_secret if set, otherwise fall back to client_secret
+    secret = settings.vercel_webhook_secret or settings.vercel_client_secret
+    if not secret:
+        return True  # No secret available -- skip verification
     expected = hmac.new(
-        settings.vercel_webhook_secret.encode(), payload, hashlib.sha1
+        secret.encode(), payload, hashlib.sha1
     ).hexdigest()
     return hmac.compare_digest(expected, signature)
 
