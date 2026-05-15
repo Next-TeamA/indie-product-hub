@@ -137,6 +137,7 @@ export default function PostEditorPage() {
   );
   const [loading, setLoading] = useState(!isNew);
   const [snsConnected, setSnsConnected] = useState(false);
+  const [snsUsernames, setSnsUsernames] = useState<Record<string, string>>({});
 
   const [editHook, setEditHook] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -194,6 +195,11 @@ export default function PostEditorPage() {
           logo_url: info?.logo_url || null,
           updated_at: info?.updated_at || "",
         });
+        const usernames: Record<string, string> = {};
+        for (const a of accounts) {
+          if (a.provider_username) usernames[a.provider] = a.provider_username;
+        }
+        setSnsUsernames(usernames);
         const hasSns = accounts.some(
           (a) => (a.provider === "threads" || a.provider === "x") && a.is_active,
         );
@@ -627,7 +633,7 @@ export default function PostEditorPage() {
                   <div className="flex-1">
                     <p className="text-[16px] font-bold text-slate-900">
                       @
-                      {(projectInfo?.service_name || "product")
+                      {snsUsernames[activePlatform] || (projectInfo?.service_name || "product")
                         .toLowerCase()
                         .replace(/\s/g, "")}
                     </p>
