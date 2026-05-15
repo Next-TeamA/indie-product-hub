@@ -56,8 +56,11 @@ async def threads_mentions(
     if not account:
         return {"mentions": [], "count": 0}
     token = decrypt_token(account["access_token"])
-    mentions = await threads_client.get_mentions(token, account["provider_user_id"], limit=limit)
-    return {"mentions": mentions, "count": len(mentions)}
+    try:
+        mentions = await threads_client.get_mentions(token, account["provider_user_id"], limit=limit)
+        return {"mentions": mentions, "count": len(mentions)}
+    except ExternalAPIError:
+        return {"mentions": [], "count": 0}
 
 
 @router.get("/metrics")

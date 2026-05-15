@@ -124,11 +124,12 @@ async def vercel_webhook(request: Request):
     payload = await request.json()
     event_type = payload.get("type", "")
 
-    if event_type not in ("deployment.created", "deployment.succeeded", "deployment.error"):
+    if event_type not in ("deployment.created", "deployment.ready", "deployment.error", "deployment.canceled"):
         return {"ok": True}
 
-    deployment = payload.get("payload", {}).get("deployment", payload.get("payload", {}))
-    project_id_vercel = deployment.get("projectId", "")
+    inner = payload.get("payload", {})
+    deployment = inner.get("deployment", inner)
+    project_id_vercel = deployment.get("projectId") or inner.get("projectId", "")
 
     if not project_id_vercel:
         return {"ok": True}
@@ -146,8 +147,9 @@ async def vercel_webhook(request: Request):
 
     status_map = {
         "deployment.created": "building",
-        "deployment.succeeded": "ready",
+        "deployment.ready": "ready",
         "deployment.error": "error",
+        "deployment.canceled": "cancelled",
     }
 
     supabase.table("deployment_logs").insert({
