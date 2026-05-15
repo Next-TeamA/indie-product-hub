@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useParams } from "next/navigation";
 import { useMarketingInsights, useOperationsInsights, useMarketInsights } from "@/hooks/use-insights";
 import { useThreadsMentions } from "@/hooks/use-sns-metrics";
+import { syncSnsMetrics } from "@/lib/api/sns-metrics";
 import {
   TrendingUp,
   TrendingDown,
@@ -21,6 +22,7 @@ import {
   MessageCircle,
   Star,
   AtSign,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -85,9 +87,22 @@ type Tab = "marketing" | "operations";
 export default function InsightsPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>("marketing");
+  const [syncing, setSyncing] = useState(false);
 
   // API hooks
-  const { data: marketingData } = useMarketingInsights(projectId);
+  const { data: marketingData, mutate: mutateMarketing } = useMarketingInsights(projectId);
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      await syncSnsMetrics(projectId);
+      // 백엔드가 background task로 수집하므로 잠시 후 리프레시
+      await new Promise((r) => setTimeout(r, 3000));
+      await mutateMarketing();
+    } finally {
+      setSyncing(false);
+    }
+  }, [projectId, mutateMarketing]);
   const { data: opsData } = useOperationsInsights(projectId);
   const { insights: marketInsights, generate: generateInsights } = useMarketInsights(projectId);
   const { mentions: threadsMentions } = useThreadsMentions(projectId);
@@ -167,6 +182,20 @@ export default function InsightsPage() {
             </h1>
           </div>
 
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold transition-all border cursor-pointer",
+                syncing
+                  ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed"
+                  : "bg-white text-slate-500 border-slate-200 hover:text-slate-700 hover:border-slate-300 shadow-sm",
+              )}
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
+              {syncing ? "동기화 중..." : "동기화"}
+            </button>
           <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner">
             {[
               { id: "marketing", label: "홍보 인사이트", icon: Megaphone },
@@ -186,6 +215,7 @@ export default function InsightsPage() {
                 {label}
               </button>
             ))}
+          </div>
           </div>
         </motion.div>
 

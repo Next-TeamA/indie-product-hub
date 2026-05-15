@@ -67,13 +67,18 @@ export default function DashboardPage() {
   const [activeMetric, setActiveMetric] = useState("impressions");
 
   // Build stats from API data
+  // Normalize daily_impressions to percentage heights for chart
+  const dailyRaw = marketingData?.daily_impressions ?? [];
+  const dailyMax = Math.max(...dailyRaw, 1);
+  const dailyPct = dailyRaw.map((v: number) => Math.round((v / dailyMax) * 100));
+
   const promoStats = marketingData ? [
     {
       id: "impressions", label: "총 노출",
       value: (marketingData.totals?.impressions ?? 0).toLocaleString(),
       change: marketingData.changes?.impressions ? `${marketingData.changes.impressions > 0 ? "+" : ""}${marketingData.changes.impressions}%` : "--",
       up: (marketingData.changes?.impressions ?? 0) >= 0,
-      data: [] as number[], // time-series from API when available
+      data: dailyPct,
       color: "bg-blue-400/30", text: "text-blue-600",
     },
     {
@@ -81,7 +86,7 @@ export default function DashboardPage() {
       value: (marketingData.totals?.clicks ?? 0).toLocaleString(),
       change: marketingData.changes?.clicks ? `${marketingData.changes.clicks > 0 ? "+" : ""}${marketingData.changes.clicks}%` : "--",
       up: (marketingData.changes?.clicks ?? 0) >= 0,
-      data: [] as number[],
+      data: dailyPct,
       color: "bg-indigo-400/30", text: "text-indigo-600",
     },
     {
@@ -89,7 +94,7 @@ export default function DashboardPage() {
       value: `${marketingData.engagement_rate ?? 0}%`,
       change: "--",
       up: true,
-      data: [] as number[],
+      data: dailyPct,
       color: "bg-rose-400/30", text: "text-rose-600",
     },
     {
@@ -97,7 +102,7 @@ export default function DashboardPage() {
       value: (marketingData.totals?.likes ?? 0).toLocaleString(),
       change: marketingData.changes?.likes ? `${marketingData.changes.likes > 0 ? "+" : ""}${marketingData.changes.likes}%` : "--",
       up: (marketingData.changes?.likes ?? 0) >= 0,
-      data: [] as number[],
+      data: dailyPct,
       color: "bg-emerald-400/30", text: "text-emerald-600",
     },
   ] : EMPTY_STATS;

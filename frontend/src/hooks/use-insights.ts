@@ -6,7 +6,7 @@ export function useMarketingInsights(projectId: string) {
   const { data, error, isLoading, mutate } = useSWR(
     `projects/${projectId}/insights/marketing`,
     () => getMarketingInsights(projectId),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, refreshInterval: 5 * 60 * 1000 }
   );
   return { data, error, isLoading, mutate };
 }
