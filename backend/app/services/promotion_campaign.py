@@ -201,6 +201,7 @@ def _common_context(body: PromotionCampaignRequest) -> str:
     return f"""
 Project name: {body.project_name}
 One-line description: {body.one_line_description}
+Project link: {body.project_url or "N/A"}
 Expected target user: {body.target_user}
 Problem to solve: {body.problem}
 Core value: {body.core_value}
@@ -714,6 +715,8 @@ Rules:
 - Do not write polished educational posts, checklist posts, fake testimonials, or corporate campaign copy unless the day's postFormat explicitly asks for it.
 - Do not end every post with a product CTA.
 - Mention the product name only when productMentionLevel is "clear"; otherwise imply the context without naming it.
+- Do not write URLs directly in the hook, content, or draft. The system attaches the project link only to selected CTA-role posts.
+- If a post needs a CTA, write the human request text only.
 
 Format-specific rules:
 - product_intro: introduce product name, who it is for, and what it does. Keep it human, not corporate.
@@ -828,6 +831,8 @@ Review rules:
 - Keep Threads length and tone.
 - Do not write as if the product is unbuilt or still being made from scratch.
 - Do not mention internal generation windows or endings: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
+- Remove any URLs from final copy. The system attaches the project link only to selected CTA-role posts.
+- CTA posts should contain the human request text, not the raw link.
 - Preserve operator-led human posts about running, promoting, finding users, getting feedback, awkwardness, low engagement, and small wins.
 - Day 1 must clearly introduce the product.
 - Day 14 must be rewritten if it sounds like a closing, recap, wrap-up, goodbye, final promise, or "campaign is over" post.
@@ -898,6 +903,44 @@ def _post_content_type(content_type: str | None) -> str:
     if not content_type:
         return "tip"
     return CONTENT_TYPE_MAP.get(content_type, "tip")
+
+
+URL_PATTERN = re.compile(r"(?:https?://|www\.)\S+", re.IGNORECASE)
+
+
+def _remove_urls(value: str) -> str:
+    cleaned = URL_PATTERN.sub("", value).strip()
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned
+
+
+def _campaign_project_url(body: PromotionCampaignRequest) -> str:
+    url = (body.project_url or "").strip()
+    if not url:
+        return ""
+    if not re.match(r"^https?://", url, re.IGNORECASE):
+        return f"https://{url}"
+    return url
+
+
+def _campaign_link_rule(raw: dict, day: int) -> str:
+    post_format = str(raw.get("postFormat", "")).strip().lower()
+    cta_strength = str(raw.get("ctaStrength", "")).strip().lower()
+    if day == 1 and post_format == "product_intro":
+        return "day1_product_intro"
+    if post_format == "product_request":
+        return "product_request"
+    if cta_strength == "high":
+        return "high_cta"
+    return ""
+
+
+def _campaign_post_link(body: PromotionCampaignRequest, raw: dict, day: int) -> str | None:
+    url = _campaign_project_url(body)
+    if not url:
+        return None
+    return url if _campaign_link_rule(raw, day) else None
 
 
 def _split_hook_and_content(draft: str, topic: str) -> tuple[str, str]:
@@ -1176,14 +1219,19 @@ def _insert_campaign_posts(project_id: str, user_id: str, body: PromotionCampaig
             hook, content = _split_hook_and_content(draft, topic)
         elif draft and _same_text(hook, content):
             _, content = _split_hook_and_content(draft, topic)
+        hook = _remove_urls(hook)
         content = _remove_repeated_hook(hook, content) or topic or body.one_line_description
+        content = _remove_urls(content)
         content = _format_threads_content(content)
+        link = _campaign_post_link(body, raw, day)
+        link_rule = _campaign_link_rule(raw, day)
         posts_payload.append({
             "project_id": project_id,
             "user_id": user_id,
             "platform": body.channel,
             "hook": hook,
             "content": content or topic or body.one_line_description,
+            "link": link,
             "hashtags": [],
             "tone": "friendly",
             "content_type": _post_content_type(raw.get("contentType")),
@@ -1206,6 +1254,8 @@ def _insert_campaign_posts(project_id: str, user_id: str, body: PromotionCampaig
                 "ctaStrength": raw.get("ctaStrength", ""),
                 "usePlatformLanguage": raw.get("usePlatformLanguage", False),
                 "productMentionLevel": raw.get("productMentionLevel", ""),
+                "linkAttached": bool(link),
+                "linkRule": link_rule,
             },
         })
 
@@ -1247,52 +1297,7 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
         await _save_step(campaign_id, "review", review)
 
         final_calendar = review["finalCalendar"]
-        posts_payload = []
-        for raw in final_calendar:
-            day = int(raw.get("day", len(posts_payload) + 1))
-            draft = str(raw.get("draft", "")).strip()
-            topic = str(raw.get("topic", "")).strip()
-            hook = str(raw.get("hook", "")).strip()
-            content = str(raw.get("content", "")).strip()
-            if not hook or not content:
-                hook, content = _split_hook_and_content(draft, topic)
-            elif draft and _same_text(hook, content):
-                _, content = _split_hook_and_content(draft, topic)
-            content = _remove_repeated_hook(hook, content) or topic or body.one_line_description
-            content = _format_threads_content(content)
-            posts_payload.append({
-                "project_id": project_id,
-                "user_id": user_id,
-                "platform": body.channel,
-                "hook": hook,
-                "content": content or topic or body.one_line_description,
-                "hashtags": [],
-                "tone": "friendly",
-                "content_type": _post_content_type(raw.get("contentType")),
-                "status": "draft",
-                "scheduled_at": _scheduled_at_for_day(day),
-                "ai_prompt": "2-week promotion campaign",
-                "ai_model": MODEL,
-                "campaign_id": campaign_id,
-                "campaign_day": day,
-                "campaign_meta": {
-                    "postFormat": raw.get("postFormat", ""),
-                    "contentType": raw.get("contentType", ""),
-                    "postGoal": raw.get("postGoal", ""),
-                    "topic": topic,
-                    "hookStyle": raw.get("hookStyle", ""),
-                    "coreMessage": raw.get("coreMessage", ""),
-                    "cta": raw.get("cta", ""),
-                    "assignedInfo": raw.get("assignedInfo", ""),
-                    "toneElements": raw.get("toneElements", []),
-                    "ctaStrength": raw.get("ctaStrength", ""),
-                    "usePlatformLanguage": raw.get("usePlatformLanguage", False),
-                    "productMentionLevel": raw.get("productMentionLevel", ""),
-                },
-            })
-
-        posts_result = supabase.table("promotion_posts").insert(posts_payload).execute()
-        posts = posts_result.data or []
+        posts = _insert_campaign_posts(project_id, user_id, body, campaign_id, final_calendar)
 
         updated = supabase.table("promotion_campaigns").update({
             "status": "completed",

@@ -516,6 +516,9 @@ async def _do_publish(user_id: str, post_data: dict):
     post_id = post_data["id"]
     platform = post_data["platform"]
     text = post_data.get("hook", "") + "\n\n" + post_data["content"]
+    link = (post_data.get("link") or "").strip()
+    if link:
+        text += "\n\n" + link
     if post_data.get("hashtags"):
         text += "\n\n" + " ".join(f"#{tag}" for tag in post_data["hashtags"])
     # Get first image URL if available

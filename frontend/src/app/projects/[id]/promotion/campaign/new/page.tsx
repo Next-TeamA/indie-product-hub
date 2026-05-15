@@ -27,6 +27,7 @@ import { getProject } from "@/lib/api/projects";
 const initialForm: PromotionCampaignInput = {
   project_name: "",
   one_line_description: "",
+  project_url: "",
   target_user: "",
   problem: "",
   core_value: "",
@@ -48,6 +49,7 @@ function readSavedForm(projectId: string): Partial<PromotionCampaignInput> {
     return {
       project_name: parsed.project_name,
       one_line_description: parsed.one_line_description,
+      project_url: parsed.project_url ?? "",
       target_user: parsed.target_user,
       problem: parsed.problem,
       core_value: parsed.core_value,
@@ -439,6 +441,7 @@ export default function NewPromotionCampaignPage() {
           ...initialForm,
           project_name: info?.service_name || project.name || "",
           one_line_description: info?.description || project.description || "",
+          project_url: info?.site_url || "",
           target_user: info?.target_user || "",
           core_value: info?.key_values || "",
           additional_context: project.prd || "",
@@ -609,6 +612,16 @@ export default function NewPromotionCampaignPage() {
                   }
                   placeholder="서비스를 한 문장으로 설명해주세요"
                   required
+                />
+              </Field>
+
+              <Field label="프로젝트 링크" helper="선택">
+                <input
+                  className={inputClass}
+                  value={form.project_url ?? ""}
+                  onChange={(e) => setValue("project_url", e.target.value)}
+                  placeholder="https://example.com"
+                  inputMode="url"
                 />
               </Field>
 

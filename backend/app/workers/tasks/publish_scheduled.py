@@ -85,6 +85,9 @@ async def publish_scheduled_posts():
 
             token = decrypt_token(account.data["access_token"])
             text = (post.get("hook") or "") + "\n\n" + post["content"]
+            link = (post.get("link") or "").strip()
+            if link:
+                text += "\n\n" + link
             if post.get("hashtags"):
                 text += "\n\n" + " ".join(f"#{tag}" for tag in post["hashtags"])
 

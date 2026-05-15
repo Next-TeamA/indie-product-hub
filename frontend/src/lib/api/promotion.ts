@@ -54,6 +54,7 @@ export type PromotionGenerateInput = {
 export type PromotionCampaignInput = {
   project_name: string;
   one_line_description: string;
+  project_url: string;
   target_user: string;
   problem: string;
   core_value: string;
