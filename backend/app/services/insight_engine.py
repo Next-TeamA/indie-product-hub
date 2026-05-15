@@ -73,9 +73,14 @@ async def generate_marketing_insights(project_id: str) -> dict:
     # Calculate week-over-week changes
     changes = {}
     for key in tw_totals:
-        prev = max(lw_totals.get(key, 0), 1)
+        prev = lw_totals.get(key, 0)
         curr = tw_totals[key]
-        changes[key] = round((curr - prev) / prev * 100, 1)
+        if prev == 0 and curr == 0:
+            changes[key] = 0.0
+        elif prev == 0:
+            changes[key] = 100.0  # new data where there was none
+        else:
+            changes[key] = round((curr - prev) / prev * 100, 1)
 
     # Engagement rate
     total_impressions = max(tw_totals["impressions"], 1)

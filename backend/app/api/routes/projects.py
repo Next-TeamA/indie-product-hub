@@ -17,7 +17,18 @@ async def list_projects(user: dict = Depends(get_current_user)):
         .order("created_at", desc=True)
         .execute()
     )
-    return result.data
+    # Enrich with issue counts
+    projects = result.data or []
+    for proj in projects:
+        issues = (
+            supabase.table("issues")
+            .select("id", count="exact")
+            .eq("project_id", proj["id"])
+            .neq("status", "resolved")
+            .execute()
+        )
+        proj["open_issue_count"] = issues.count if issues.count is not None else 0
+    return projects
 
 
 @router.get("/{project_id}")
