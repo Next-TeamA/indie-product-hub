@@ -130,11 +130,13 @@ export default function InsightsPage() {
 
   // Build news from market insights or fallback
   const newsData = marketInsights.length > 0
-    ? marketInsights.slice(0, 4).map(mi => ({
+    ? marketInsights.slice(0, 6).map(mi => ({
         title: mi.title,
-        source: mi.insight_type === "competitor" ? "Competitor" : mi.insight_type === "trend" ? "Trend" : "Market",
+        summary: mi.summary,
+        action: mi.detail,
+        source: mi.insight_type === "competitor" ? "경쟁사" : mi.insight_type === "trend" ? "트렌드" : mi.insight_type === "opportunity" ? "기회" : mi.insight_type === "threat" ? "위협" : "시장",
         time: new Date(mi.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
-        relevance: mi.is_urgent ? "높음" as const : "중간" as const,
+        relevance: mi.is_urgent ? "높음" as const : mi.relevance_score > 0.7 ? "높음" as const : "중간" as const,
         image: "",
         tag: mi.insight_type,
       }))

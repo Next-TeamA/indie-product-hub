@@ -10,7 +10,7 @@ from app.workers.tasks.refresh_tokens import refresh_expiring_tokens
 from app.workers.tasks.weekly_report import generate_weekly_reports
 from app.workers.tasks.cleanup import cleanup_expired_oauth_states
 from app.workers.tasks.sync_knowledge import sync_project_knowledge
-from app.workers.tasks.agent_tasks import daily_project_health_check
+from app.workers.tasks.agent_tasks import daily_project_health_check, daily_market_analysis
 
 scheduler = AsyncIOScheduler()
 
@@ -79,6 +79,14 @@ def setup_scheduler():
         daily_project_health_check,
         CronTrigger(hour=9, minute=30),
         id="daily_health_check",
+        replace_existing=True,
+    )
+
+    # Daily agent market analysis: 10:00 UTC (uses accumulated knowledge + Threads + web search)
+    scheduler.add_job(
+        daily_market_analysis,
+        CronTrigger(hour=10, minute=0),
+        id="daily_market_analysis",
         replace_existing=True,
     )
 
