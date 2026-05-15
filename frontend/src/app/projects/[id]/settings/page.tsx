@@ -9,6 +9,7 @@ import { updateProject } from "@/lib/api/projects";
 import {
   listAccounts,
   connectAccount,
+  disconnectAccount,
   listGitHubRepos,
   listVercelProjects,
   listRailwayProjects,
@@ -149,14 +150,20 @@ export default function ProjectSettingsPage() {
             {connectedProviders.github ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-emerald-600 font-medium">연결됨</span>
-                <a
-                  href="https://github.com/settings/connections/applications/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                <button
+                  onClick={async () => {
+                    try {
+                      const accounts = await listAccounts();
+                      const github = accounts.find((a) => a.provider === "github");
+                      if (github) await disconnectAccount(github.id);
+                    } catch {}
+                    handleConnect("github");
+                  }}
+                  disabled={connecting === "github"}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  조직 권한 관리
-                </a>
+                  {connecting === "github" ? "연결 중..." : "조직 권한 관리"}
+                </button>
               </div>
             ) : (
               <button
