@@ -127,16 +127,36 @@ async def generate_marketing_insights(project_id: str) -> dict:
         )
         daily_impressions.append(day_total)
 
-    # Platform breakdown
+    # Platform breakdown with detailed metrics
     platform_data = {}
     for p in posts.data or []:
         plat = p.get("platform", "unknown")
         if plat not in platform_data:
-            platform_data[plat] = {"posts": 0, "impressions": 0, "engagement": 0}
+            platform_data[plat] = {
+                "posts": 0, "impressions": 0, "engagement": 0,
+                "likes": 0, "replies": 0, "reposts": 0, "clicks": 0, "views": 0,
+            }
         platform_data[plat]["posts"] += 1
         if p["id"] in post_metrics:
             platform_data[plat]["impressions"] += post_metrics[p["id"]]["impressions"]
             platform_data[plat]["engagement"] += post_metrics[p["id"]]["engagement"]
+
+    # Aggregate per-platform metrics from snapshots
+    for m in tw:
+        pid = m.get("post_id")
+        if not pid:
+            continue
+        # Find which platform this post belongs to
+        for p in posts.data or []:
+            if p["id"] == pid:
+                plat = p.get("platform", "unknown")
+                if plat in platform_data:
+                    platform_data[plat]["likes"] += m.get("likes", 0)
+                    platform_data[plat]["replies"] += m.get("replies", 0)
+                    platform_data[plat]["reposts"] += m.get("reposts", 0)
+                    platform_data[plat]["clicks"] += m.get("url_clicks", 0)
+                    platform_data[plat]["views"] += m.get("views", 0)
+                break
 
     return {
         "period": {"from": week_ago, "to": now.isoformat()},
