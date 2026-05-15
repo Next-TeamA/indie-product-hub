@@ -338,7 +338,8 @@ export default function PostEditorPage() {
           await publishPromotion(projectId, promotion.id);
         }
       }
-      const msg = status === "published" ? "발행 완료" : status === "scheduled" ? "예약 완료" : "저장 완료";
+
+      const msg = status === "published" ? "발행 완료!" : status === "scheduled" ? "예약 완료" : "저장 완료";
       setToast({ message: msg, type: "success" });
       setShowScheduleModal(false);
       setTimeout(() => router.push(`/projects/${projectId}/promotion`), 1200);
