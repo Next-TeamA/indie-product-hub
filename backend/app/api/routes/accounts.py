@@ -68,6 +68,12 @@ async def list_accounts(user: dict = Depends(get_current_user)):
     return result.data
 
 
+@router.get("/github/settings-url")
+async def get_github_settings_url():
+    """Return GitHub OAuth app settings URL for org permission management."""
+    return {"url": f"https://github.com/settings/connections/applications/{settings.github_client_id}"}
+
+
 @router.get("/github/repos")
 async def list_github_repos(user: dict = Depends(get_current_user)):
     """List GitHub repos accessible by the user's connected GitHub account."""
