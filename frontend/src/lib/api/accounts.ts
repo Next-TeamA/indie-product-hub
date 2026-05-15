@@ -47,6 +47,10 @@ export type RailwayProject = {
   description: string | null;
 };
 
+export async function getGitHubSettingsUrl(): Promise<{ url: string }> {
+  return apiFetch("/api/accounts/github/settings-url");
+}
+
 export async function listGitHubRepos(): Promise<GitHubRepo[]> {
   return apiFetch<GitHubRepo[]>("/api/accounts/github/repos");
 }

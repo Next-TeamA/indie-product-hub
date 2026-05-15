@@ -406,6 +406,49 @@ async def publish_post(
     return {"status": "publishing", "post_id": post_id}
 
 
+def _split_text_for_threads(text: str, max_len: int = 500) -> list[str]:
+    """Split long text into chunks for Threads thread posting.
+    Tries to split at paragraph breaks first, then sentence ends, then word boundaries.
+    """
+    if len(text) <= max_len:
+        return [text]
+
+    chunks: list[str] = []
+    remaining = text
+
+    while remaining:
+        if len(remaining) <= max_len:
+            chunks.append(remaining.strip())
+            break
+
+        # Try to split at paragraph break (\n\n)
+        cut = remaining[:max_len].rfind("\n\n")
+        if cut > max_len // 3:
+            chunks.append(remaining[:cut].strip())
+            remaining = remaining[cut:].strip()
+            continue
+
+        # Try sentence end (. ! ?)
+        for sep in [". ", "! ", "? "]:
+            cut = remaining[:max_len].rfind(sep)
+            if cut > max_len // 3:
+                chunks.append(remaining[:cut + 1].strip())
+                remaining = remaining[cut + 1:].strip()
+                break
+        else:
+            # Last resort: word boundary
+            cut = remaining[:max_len].rfind(" ")
+            if cut > max_len // 3:
+                chunks.append(remaining[:cut].strip())
+                remaining = remaining[cut:].strip()
+            else:
+                # Hard cut
+                chunks.append(remaining[:max_len].strip())
+                remaining = remaining[max_len:].strip()
+
+    return [c for c in chunks if c]
+
+
 async def _do_publish(user_id: str, post_data: dict):
     """Background task to publish to SNS platform."""
     post_id = post_data["id"]
@@ -434,9 +477,18 @@ async def _do_publish(user_id: str, post_data: dict):
             result = await x_client.post_tweet(token, text[:280])
             external_id = result["id"]
         elif platform == "threads":
-            external_id = await threads_client.create_post(
-                token, account.data["provider_user_id"], text[:500]
-            )
+            user_thread_id = account.data["provider_user_id"]
+            if len(text) <= 500:
+                external_id = await threads_client.create_post(token, user_thread_id, text)
+            else:
+                # Split into thread: first 500 chars as main post, rest as replies
+                chunks = _split_text_for_threads(text, max_len=500)
+                # Post first chunk
+                external_id = await threads_client.create_post(token, user_thread_id, chunks[0])
+                # Post remaining chunks as replies
+                parent_id = str(external_id)
+                for chunk in chunks[1:]:
+                    parent_id = str(await threads_client.create_reply(token, user_thread_id, chunk, parent_id))
         else:
             raise ExternalAPIError(platform, "Publishing not supported for this platform")
 

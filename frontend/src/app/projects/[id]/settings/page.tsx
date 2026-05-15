@@ -10,6 +10,7 @@ import {
   listAccounts,
   connectAccount,
   disconnectAccount,
+  getGitHubSettingsUrl,
   listGitHubRepos,
   listVercelProjects,
   listRailwayProjects,
@@ -153,16 +154,13 @@ export default function ProjectSettingsPage() {
                 <button
                   onClick={async () => {
                     try {
-                      const accounts = await listAccounts();
-                      const github = accounts.find((a) => a.provider === "github");
-                      if (github) await disconnectAccount(github.id);
+                      const { url } = await getGitHubSettingsUrl();
+                      window.open(url, "_blank");
                     } catch {}
-                    handleConnect("github");
                   }}
-                  disabled={connecting === "github"}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  {connecting === "github" ? "연결 중..." : "조직 권한 관리"}
+                  조직 권한 관리
                 </button>
               </div>
             ) : (

@@ -137,6 +137,7 @@ export default function PostEditorPage() {
   );
   const [loading, setLoading] = useState(!isNew);
   const [snsConnected, setSnsConnected] = useState(false);
+  const [snsUsernames, setSnsUsernames] = useState<Record<string, string>>({});
 
   const [editHook, setEditHook] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -155,8 +156,13 @@ export default function PostEditorPage() {
     "threads",
   ]);
 
-  const [scheduleDate, setScheduleDate] = useState(urlDate);
-  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const defaultDate = urlDate || new Date().toISOString().split("T")[0];
+  const defaultTime = (() => {
+    const d = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  })();
+  const [scheduleDate, setScheduleDate] = useState(defaultDate);
+  const [scheduleTime, setScheduleTime] = useState(defaultTime);
   const scheduleDateInputRef = useRef<HTMLInputElement>(null);
   const scheduleTimeInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,6 +172,7 @@ export default function PostEditorPage() {
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -188,6 +195,11 @@ export default function PostEditorPage() {
           logo_url: info?.logo_url || null,
           updated_at: info?.updated_at || "",
         });
+        const usernames: Record<string, string> = {};
+        for (const a of accounts) {
+          if (a.provider_username) usernames[a.provider] = a.provider_username;
+        }
+        setSnsUsernames(usernames);
         const hasSns = accounts.some(
           (a) => (a.provider === "threads" || a.provider === "x") && a.is_active,
         );
@@ -318,9 +330,13 @@ export default function PostEditorPage() {
           await publishPromotion(projectId, promotion.id);
         }
       }
-      router.push(`/projects/${projectId}/promotion`);
+      const msg = status === "published" ? "발행 완료" : status === "scheduled" ? "예약 완료" : "저장 완료";
+      setToast({ message: msg, type: "success" });
+      setShowScheduleModal(false);
+      setTimeout(() => router.push(`/projects/${projectId}/promotion`), 1200);
     } catch (e) {
       console.error("Save failed:", e);
+      setToast({ message: "실패했습니다. 다시 시도해 주세요.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -617,7 +633,7 @@ export default function PostEditorPage() {
                   <div className="flex-1">
                     <p className="text-[16px] font-bold text-slate-900">
                       @
-                      {(projectInfo?.service_name || "product")
+                      {snsUsernames[activePlatform] || (projectInfo?.service_name || "product")
                         .toLowerCase()
                         .replace(/\s/g, "")}
                     </p>
@@ -633,14 +649,14 @@ export default function PostEditorPage() {
                 <textarea
                   value={editHook}
                   onChange={(e) => setEditHook(e.target.value)}
-                  className="w-full text-[20px] font-extrabold leading-snug text-slate-900 bg-transparent border-none outline-none resize-none placeholder:text-slate-200"
+                  className="w-full text-[20px] font-extrabold leading-snug text-slate-900 bg-transparent border-none outline-none resize-none placeholder:text-slate-200 wrap-break-word overflow-wrap-anywhere"
                   rows={2}
                   placeholder="훅 문구를 입력하세요..."
                 />
                 <textarea
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full text-[15px] font-medium text-slate-700 leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-slate-200"
+                  className="w-full text-[15px] font-medium text-slate-700 leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-slate-200 wrap-break-word overflow-wrap-anywhere"
                   rows={7}
                   placeholder="본문 내용을 입력하세요..."
                 />
@@ -661,7 +677,7 @@ export default function PostEditorPage() {
                     <img
                       src={imagePreview}
                       alt="첨부 이미지"
-                      className="w-full object-cover max-h-64"
+                      className="w-full object-contain"
                     />
                   </div>
                 )}
@@ -895,6 +911,28 @@ export default function PostEditorPage() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            onAnimationComplete={() => {
+              setTimeout(() => setToast(null), 2500);
+            }}
+            className={cn(
+              "fixed bottom-8 left-1/2 -translate-x-1/2 z-60 px-6 py-3 rounded-full text-[13px] font-bold shadow-lg",
+              toast.type === "success"
+                ? "bg-emerald-500 text-white"
+                : "bg-rose-500 text-white",
+            )}
+          >
+            {toast.message}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

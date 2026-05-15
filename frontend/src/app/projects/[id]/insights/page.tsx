@@ -91,14 +91,30 @@ export default function InsightsPage() {
 
   // Build channel data from API or fallback
   const channelData = marketingData?.by_platform
-    ? Object.entries(marketingData.by_platform).map(([channel, metrics]) => ({
-        channel: channel.charAt(0).toUpperCase() + channel.slice(1),
-        impressions: (metrics.impressions ?? 0).toLocaleString(),
-        clicks: (metrics.clicks ?? 0).toLocaleString(),
-        ctr: metrics.impressions > 0 ? `${((metrics.clicks / metrics.impressions) * 100).toFixed(1)}%` : "0%",
-        trend: "+0%",
-        up: true,
-      }))
+    ? Object.entries(marketingData.by_platform).map(([channel, metrics]: [string, Record<string, number>]) => {
+        const imp = metrics.impressions ?? 0;
+        const clicks = metrics.clicks ?? 0;
+        const likes = metrics.likes ?? 0;
+        const replies = metrics.replies ?? 0;
+        const reposts = metrics.reposts ?? 0;
+        const engagement = likes + replies + reposts;
+        const engRate = imp > 0 ? ((engagement / imp) * 100).toFixed(1) : "0.0";
+        return {
+          channel: channel.charAt(0).toUpperCase() + channel.slice(1),
+          impressions: imp.toLocaleString(),
+          clicks: clicks.toLocaleString(),
+          likes: likes.toLocaleString(),
+          replies: replies.toLocaleString(),
+          reposts: reposts.toLocaleString(),
+          ctr: imp > 0 ? `${((clicks / imp) * 100).toFixed(1)}%` : "0%",
+          engagementRate: `${engRate}%`,
+          posts: metrics.posts ?? 0,
+          trend: marketingData.changes?.impressions
+            ? `${marketingData.changes.impressions > 0 ? "+" : ""}${marketingData.changes.impressions}%`
+            : "--",
+          up: (marketingData.changes?.impressions ?? 0) >= 0,
+        };
+      })
     : [];
 
   // Build issue data from API or fallback

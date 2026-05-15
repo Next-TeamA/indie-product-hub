@@ -5,7 +5,7 @@ import { Check, Search, Lock, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   connectAccount,
-  disconnectAccount,
+  getGitHubSettingsUrl,
   listAccounts,
   listGitHubRepos,
   type GitHubRepo,
@@ -142,20 +142,14 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
               </div>
               <button
                 onClick={async () => {
-                  // Disconnect and reconnect to get org permission screen
                   try {
-                    const accounts = await listAccounts();
-                    const github = accounts.find((a) => a.provider === "github");
-                    if (github) {
-                      await disconnectAccount(github.id);
-                    }
+                    const { url } = await getGitHubSettingsUrl();
+                    window.open(url, "_blank");
                   } catch {}
-                  handleConnect();
                 }}
-                disabled={connecting}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                {connecting ? "연결 중..." : "조직 권한 관리"}
+                조직 권한 관리
               </button>
             </div>
 

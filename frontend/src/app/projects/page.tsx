@@ -105,7 +105,7 @@ export default function ProjectsPage() {
     logo_url: p.logo_url,
     lastActivity: new Date(p.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
     promotionCount: scheduledPromotionsByProject[p.id]?.filter(promotion => isFuturePromotion(promotion, todayStr)).length ?? 0,
-    issueCount: 0,
+    issueCount: (p as any).open_issue_count ?? 0,
   }));
 
   // ── 캘린더 이벤트 로드 ──
