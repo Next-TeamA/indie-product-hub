@@ -509,12 +509,22 @@ export default function PromotionPage() {
                 <p className="text-[13px] font-medium text-slate-500 line-clamp-3 mb-4 whitespace-pre-line leading-relaxed">
                   {primaryPost.content}
                 </p>
-                {/* Image placeholder */}
-                <div className="w-full aspect-video rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
-                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">
-                    hero shot
-                  </span>
-                </div>
+                {/* Hero image */}
+                {primaryPost.images?.length > 0 ? (
+                  <div className="w-full aspect-video rounded-xl overflow-hidden border border-slate-100 mb-4">
+                    <img
+                      src={primaryPost.images[0]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full aspect-video rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
+                    <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">
+                      hero shot
+                    </span>
+                  </div>
+                )}
                 {/* Detail Link + Delete */}
                 <div className="flex gap-2">
                   <Link
