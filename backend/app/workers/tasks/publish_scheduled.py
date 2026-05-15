@@ -8,6 +8,37 @@ from app.integrations.x_api import x_client
 from app.integrations.threads_api import threads_client
 
 
+def _split_text(text: str, max_len: int = 500) -> list[str]:
+    if len(text) <= max_len:
+        return [text]
+    chunks: list[str] = []
+    remaining = text
+    while remaining:
+        if len(remaining) <= max_len:
+            chunks.append(remaining.strip())
+            break
+        cut = remaining[:max_len].rfind("\n\n")
+        if cut > max_len // 3:
+            chunks.append(remaining[:cut].strip())
+            remaining = remaining[cut:].strip()
+            continue
+        for sep in [". ", "! ", "? "]:
+            cut = remaining[:max_len].rfind(sep)
+            if cut > max_len // 3:
+                chunks.append(remaining[:cut + 1].strip())
+                remaining = remaining[cut + 1:].strip()
+                break
+        else:
+            cut = remaining[:max_len].rfind(" ")
+            if cut > max_len // 3:
+                chunks.append(remaining[:cut].strip())
+                remaining = remaining[cut:].strip()
+            else:
+                chunks.append(remaining[:max_len].strip())
+                remaining = remaining[max_len:].strip()
+    return [c for c in chunks if c]
+
+
 async def publish_scheduled_posts():
     """Check for posts scheduled to be published now.
     Run every 5 minutes via scheduler.
@@ -32,7 +63,7 @@ async def publish_scheduled_posts():
             supabase.table("promotion_posts")
             .update({"status": "publishing"})
             .eq("id", post_id)
-            .eq("status", "scheduled")  # Only if still scheduled
+            .eq("status", "scheduled")
             .execute()
         )
         if not result.data:
@@ -57,14 +88,29 @@ async def publish_scheduled_posts():
             if post.get("hashtags"):
                 text += "\n\n" + " ".join(f"#{tag}" for tag in post["hashtags"])
 
+            images = post.get("images") or []
+            image_url = images[0] if images else None
+
             external_id = ""
             if post["platform"] == "x":
                 result = await x_client.post_tweet(token, text[:280])
                 external_id = result["id"]
             elif post["platform"] == "threads":
-                external_id = await threads_client.create_post(
-                    token, account.data["provider_user_id"], text[:500]
-                )
+                user_thread_id = account.data["provider_user_id"]
+                if len(text) <= 500:
+                    external_id = await threads_client.create_post(
+                        token, user_thread_id, text, image_url=image_url
+                    )
+                else:
+                    chunks = _split_text(text, max_len=500)
+                    external_id = await threads_client.create_post(
+                        token, user_thread_id, chunks[0], image_url=image_url
+                    )
+                    parent_id = str(external_id)
+                    for chunk in chunks[1:]:
+                        parent_id = str(await threads_client.create_reply(
+                            token, user_thread_id, chunk, parent_id
+                        ))
 
             supabase.table("promotion_posts").update({
                 "status": "published",
@@ -78,7 +124,6 @@ async def publish_scheduled_posts():
                 "publish_error": str(e)[:500],
             }).eq("id", post_id).execute()
 
-            # Alert user
             supabase.table("alerts").insert({
                 "user_id": post["user_id"],
                 "project_id": post["project_id"],

@@ -66,6 +66,17 @@ class GitHubAPIClient:
             params={"per_page": per_page, "sort": "pushed", "direction": "desc"},
         )
 
+    async def list_orgs(self, token: str) -> list:
+        """List organizations the authenticated user belongs to."""
+        return await self._request(token, "GET", "/user/orgs", params={"per_page": 100})
+
+    async def list_org_repos(self, token: str, org: str, per_page: int = 100) -> list:
+        """List repos belonging to a specific organization."""
+        return await self._request(
+            token, "GET", f"/orgs/{org}/repos",
+            params={"per_page": per_page, "sort": "pushed", "direction": "desc", "type": "all"},
+        )
+
     async def get_repo(self, token: str, owner: str, repo: str) -> dict:
         return await self._request(token, "GET", f"/repos/{owner}/{repo}")
 

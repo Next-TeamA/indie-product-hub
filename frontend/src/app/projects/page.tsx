@@ -260,12 +260,12 @@ export default function ProjectsPage() {
     <div className="min-h-dvh bg-white dark:bg-white dark:text-slate-900 selection:bg-slate-800 selection:text-white">
       {/* 헤더 */}
       <header className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <button onClick={() => window.location.reload()} className="flex items-center gap-2.5 cursor-pointer">
           <img src="/Lunch_pad_logo.png" alt="" className="w-8 h-8 object-contain" />
           <span className="logo-text text-[18px] text-slate-900">
             Launch<span className="text-blue-500">.</span>Pad
           </span>
-        </div>
+        </button>
         <div className="flex items-center gap-3">
           <Link href="/projects/new" className="bg-slate-900 text-white flex items-center gap-2 text-[13px] font-semibold h-9 px-4 rounded-full hover:bg-slate-800 transition-all">
             <Plus className="w-4 h-4" /> 새 프로젝트

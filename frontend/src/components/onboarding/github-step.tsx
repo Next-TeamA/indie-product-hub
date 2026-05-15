@@ -5,9 +5,10 @@ import { Check, Search, Lock, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   connectAccount,
-  getGitHubSettingsUrl,
   listAccounts,
+  listGitHubOrgs,
   listGitHubRepos,
+  type GitHubOrg,
   type GitHubRepo,
 } from "@/lib/api/accounts";
 
@@ -50,11 +51,14 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [orgs, setOrgs] = useState<GitHubOrg[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<string>("");
+  const [loadingRepos, setLoadingRepos] = useState(false);
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [search, setSearch] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
 
-  // Check if GitHub is already connected + load repos
+  // Check if GitHub is already connected + load orgs/repos
   useEffect(() => {
     async function init() {
       try {
@@ -62,8 +66,14 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
         const github = accounts.find((a) => a.provider === "github");
         if (github) {
           setConnected(true);
-          const repoList = await listGitHubRepos();
-          setRepos(repoList);
+          const orgList = await listGitHubOrgs();
+          setOrgs(orgList);
+          if (orgList.length > 0) {
+            const personal = orgList[0];
+            setSelectedOrg(personal.login);
+            const repoList = await listGitHubRepos(personal.login);
+            setRepos(repoList);
+          }
         }
       } catch {
         // not connected
@@ -73,6 +83,19 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
     }
     init();
   }, []);
+
+  const handleOrgSelect = async (orgLogin: string) => {
+    setSelectedOrg(orgLogin);
+    setSelectedRepo(null);
+    setSearch("");
+    setLoadingRepos(true);
+    try {
+      const repoList = await listGitHubRepos(orgLogin);
+      setRepos(repoList);
+    } finally {
+      setLoadingRepos(false);
+    }
+  };
 
   const handleConnect = async () => {
     setConnecting(true);
@@ -86,7 +109,7 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
   };
 
   const filtered = repos.filter((r) =>
-    r.full_name.toLowerCase().includes(search.toLowerCase())
+    r.name.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) {
@@ -132,33 +155,34 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
           </motion.button>
         ) : (
           <>
-            {/* Connected badge + reconnect for org access */}
-            <div className="flex items-center justify-between h-10 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-              <div className="flex items-center gap-3">
-                <Check className="w-4 h-4 text-emerald-500" />
-                <span className="text-sm font-medium text-emerald-600">
-                  GitHub 연결됨
-                </span>
-              </div>
-              <button
-                onClick={async () => {
-                  setConnecting(true);
-                  try {
-                    const accounts = await listAccounts();
-                    const github = accounts.find((a) => a.provider === "github");
-                    if (github) {
-                      const { disconnectAccount } = await import("@/lib/api/accounts");
-                      await disconnectAccount(github.id);
-                    }
-                  } catch {}
-                  handleConnect();
-                }}
-                disabled={connecting}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {connecting ? "연결 중..." : "재연결"}
-              </button>
+            {/* Connected badge */}
+            <div className="flex items-center h-10 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 gap-3">
+              <Check className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-medium text-emerald-600">GitHub 연결됨</span>
             </div>
+
+            {/* Organization selector */}
+            {orgs.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                {orgs.map((org) => (
+                  <button
+                    key={org.login}
+                    onClick={() => handleOrgSelect(org.login)}
+                    className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
+                      selectedOrg === org.login
+                        ? "border-foreground/20 bg-foreground/5 text-foreground"
+                        : "border-border text-muted-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {org.avatar_url && (
+                      <img src={org.avatar_url} alt="" className="w-4 h-4 rounded-full" />
+                    )}
+                    {org.login}
+                    {org.is_personal && <span className="text-[10px] text-muted-foreground/60">(개인)</span>}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Search */}
             <div className="relative">
@@ -174,7 +198,11 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
 
             {/* Repo list */}
             <div className="max-h-64 overflow-y-auto rounded-2xl border border-border divide-y divide-border">
-              {filtered.length === 0 ? (
+              {loadingRepos ? (
+                <div className="p-6 flex justify-center">
+                  <div className="w-5 h-5 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" />
+                </div>
+              ) : filtered.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
                   레포지토리를 찾을 수 없습니다
                 </div>
@@ -203,7 +231,7 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium truncate">
-                          {repo.full_name}
+                          {repo.name}
                         </span>
                         {repo.private ? (
                           <Lock className="w-3 h-3 text-muted-foreground shrink-0" />

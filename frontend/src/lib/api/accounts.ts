@@ -51,8 +51,19 @@ export async function getGitHubSettingsUrl(): Promise<{ url: string }> {
   return apiFetch("/api/accounts/github/settings-url");
 }
 
-export async function listGitHubRepos(): Promise<GitHubRepo[]> {
-  return apiFetch<GitHubRepo[]>("/api/accounts/github/repos");
+export type GitHubOrg = {
+  login: string;
+  avatar_url: string | null;
+  is_personal: boolean;
+};
+
+export async function listGitHubOrgs(): Promise<GitHubOrg[]> {
+  return apiFetch<GitHubOrg[]>("/api/accounts/github/orgs");
+}
+
+export async function listGitHubRepos(org?: string): Promise<GitHubRepo[]> {
+  const params = org ? `?org=${encodeURIComponent(org)}` : "";
+  return apiFetch<GitHubRepo[]>(`/api/accounts/github/repos${params}`);
 }
 
 export async function listVercelProjects(): Promise<VercelProject[]> {
