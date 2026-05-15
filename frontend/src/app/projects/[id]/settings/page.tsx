@@ -260,34 +260,36 @@ export default function ProjectSettingsPage() {
           )}
 
           {deployPlatform && connectedProviders[deployPlatform] && deployProjects.length > 0 && (
-            <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
-              {deployProjects.map((proj) => (
-                <button
-                  key={proj.id}
-                  onClick={() => setSelectedDeployProject(proj.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer",
-                    selectedDeployProject === proj.id ? "bg-blue-50/50" : "hover:bg-slate-50",
-                  )}
-                >
-                  <div className={cn(
-                    "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                    selectedDeployProject === proj.id ? "border-blue-500 bg-blue-500" : "border-slate-200",
-                  )}>
-                    {selectedDeployProject === proj.id && <Check className="w-2.5 h-2.5 text-white" />}
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">{proj.name}</span>
-                </button>
-              ))}
-            </div>
-            {deployPlatform === "vercel" && (
-              <p className="text-xs text-slate-400 mt-2">
-                프로젝트가 안 보이나요?{" "}
-                <a href="https://vercel.com/~/integrations" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                  Vercel Integration 설정에서 "All Projects" 허용
-                </a>
-              </p>
-            )}
+            <>
+              <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+                {deployProjects.map((proj) => (
+                  <button
+                    key={proj.id}
+                    onClick={() => setSelectedDeployProject(proj.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer",
+                      selectedDeployProject === proj.id ? "bg-blue-50/50" : "hover:bg-slate-50",
+                    )}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                      selectedDeployProject === proj.id ? "border-blue-500 bg-blue-500" : "border-slate-200",
+                    )}>
+                      {selectedDeployProject === proj.id && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">{proj.name}</span>
+                  </button>
+                ))}
+              </div>
+              {deployPlatform === "vercel" && (
+                <p className="text-xs text-slate-400 mt-2">
+                  프로젝트가 안 보이나요?{" "}
+                  <a href="https://vercel.com/~/integrations" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                    Vercel Integration 설정에서 "All Projects" 허용
+                  </a>
+                </p>
+              )}
+            </>
           )}
         </section>
 
