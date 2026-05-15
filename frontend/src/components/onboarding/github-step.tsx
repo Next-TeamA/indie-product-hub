@@ -5,6 +5,7 @@ import { Check, Search, Lock, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   connectAccount,
+  disconnectAccount,
   listAccounts,
   listGitHubRepos,
   type GitHubRepo,
@@ -131,7 +132,7 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
           </motion.button>
         ) : (
           <>
-            {/* Connected badge + manage permissions */}
+            {/* Connected badge + reconnect for org access */}
             <div className="flex items-center justify-between h-10 px-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
               <div className="flex items-center gap-3">
                 <Check className="w-4 h-4 text-emerald-500" />
@@ -139,14 +140,23 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
                   GitHub 연결됨
                 </span>
               </div>
-              <a
-                href="https://github.com/settings/connections/applications/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              <button
+                onClick={async () => {
+                  // Disconnect and reconnect to get org permission screen
+                  try {
+                    const accounts = await listAccounts();
+                    const github = accounts.find((a) => a.provider === "github");
+                    if (github) {
+                      await disconnectAccount(github.id);
+                    }
+                  } catch {}
+                  handleConnect();
+                }}
+                disabled={connecting}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
               >
-                조직 권한 관리
-              </a>
+                {connecting ? "연결 중..." : "조직 권한 관리"}
+              </button>
             </div>
 
             {/* Search */}
