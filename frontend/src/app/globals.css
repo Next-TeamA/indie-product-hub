@@ -179,10 +179,9 @@ html, body {
 
 /* ===== Logo ===== */
 .logo-text {
-  font-family: var(--font-logo), "Space Grotesk", system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--font-logo), "Nunito", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 /* ===== Typography (8-point scale adjusted) ===== */

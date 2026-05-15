@@ -6,7 +6,7 @@ import { useProjects } from "@/hooks/use-projects";
 import {
   Plus, ArrowRight, Pencil, X, ChevronLeft, ChevronRight,
   Clock, Lightbulb, AlertCircle, ShieldCheck, Calendar as CalendarIcon,
-  Settings, Trash2, ImagePlus, Upload,
+  Trash2, ImagePlus, Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -257,16 +257,16 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
+    <div className="min-h-dvh bg-white dark:bg-white dark:text-slate-900 selection:bg-slate-800 selection:text-white">
       {/* 헤더 */}
       <header className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
-        <span className="logo-text text-[17px] text-slate-900">
-          Launch<span className="text-blue-500">.</span>Pad
-        </span>
+        <div className="flex items-center gap-2.5">
+          <img src="/Lunch_pad_logo.png" alt="" className="w-8 h-8 object-contain" />
+          <span className="logo-text text-[18px] text-slate-900">
+            Launch<span className="text-blue-500">.</span>Pad
+          </span>
+        </div>
         <div className="flex items-center gap-3">
-          <Link href="/settings" className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="설정">
-            <Settings className="w-5 h-5" />
-          </Link>
           <Link href="/projects/new" className="bg-slate-900 text-white flex items-center gap-2 text-[13px] font-semibold h-9 px-4 rounded-full hover:bg-slate-800 transition-all">
             <Plus className="w-4 h-4" /> 새 프로젝트
           </Link>
@@ -327,7 +327,11 @@ export default function ProjectsPage() {
 
             <div className="divide-y divide-slate-50">
               {projectList.map(project => (
-                <div key={project.id} className="transition-colors hover:bg-slate-50/30">
+                <div
+                  key={project.id}
+                  className="transition-colors hover:bg-slate-50/50 cursor-pointer"
+                  onClick={() => router.push(`/projects/${project.id}`)}
+                >
                   <div className="grid grid-cols-[1fr_80px_80px_80px_72px] gap-6 px-8 py-5 items-center">
                     {/* 이름 + 편집 버튼 */}
                     <div className="flex items-center gap-4">
@@ -340,7 +344,8 @@ export default function ProjectsPage() {
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-slate-800">{project.name}</span>
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingId(project.id);
                               setInfoForm({ service_name: project.name, description: project.description, logo_url: project.logo_url ?? "" });
                               setImagePreview(project.logo_url ?? null);
@@ -364,7 +369,7 @@ export default function ProjectsPage() {
                     {/* 액션 버튼: 삭제 + 대시보드 입장 */}
                     <div className="flex items-center gap-2 justify-end">
                       <button
-                        onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: project.id, name: project.name }); }}
                         className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:border-rose-300 transition-all"
                         title="프로젝트 삭제"
                       >
@@ -372,6 +377,7 @@ export default function ProjectsPage() {
                       </button>
                       <Link
                         href={`/projects/${project.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all"
                         title="대시보드 입장"
                       >
@@ -492,13 +498,13 @@ export default function ProjectsPage() {
                     const isPromotion = e.source === "promotion";
                     return (
                       <div key={e.id} className={cn("bg-white rounded-2xl border border-slate-100 p-4 shadow-sm border-l-4 group relative", isPromotion ? "border-l-blue-500" : "border-l-slate-800")}>
-                        <div className="flex items-center gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 mb-1.5 pr-8">
                           <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md", type?.badge)}>{type?.label}</span>
                           {isPromotion && e.promotion_status === "draft" && (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600">예약 예정</span>
                           )}
                           {e.time && <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{e.time}</span>}
-                          {e.project_name && <span className="text-[10px] text-slate-300 ml-auto">{e.project_name}</span>}
+                          {e.project_name && <span className="text-[10px] text-slate-300 ml-auto truncate max-w-[80px]">{e.project_name}</span>}
                         </div>
                         {isPromotion && e.promotion_id ? (
                           <Link
