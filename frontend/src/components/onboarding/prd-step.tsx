@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "motion/react";
-import { FileText } from "lucide-react";
 import { useState } from "react";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
@@ -87,16 +86,13 @@ export function PrdStep({ onNext }: PrdStepProps) {
               선택
             </span>
           </label>
-          <div className="relative">
-            <textarea
-              value={prd}
-              onChange={(e) => setPrd(e.target.value)}
-              placeholder="기획서 내용을 붙여넣거나, 프로젝트에 대해 자유롭게 설명해주세요..."
-              rows={6}
-              className="input-hero w-full !h-auto py-4 resize-none"
-            />
-            <FileText className="absolute right-4 top-4 w-4 h-4 text-muted-foreground/30" />
-          </div>
+          <textarea
+            value={prd}
+            onChange={(e) => setPrd(e.target.value)}
+            placeholder="기획서 내용을 붙여넣거나, 프로젝트에 대해 자유롭게 설명해주세요..."
+            rows={6}
+            className="input-hero w-full !h-auto !pt-3 !pb-4 resize-none"
+          />
         </div>
       </motion.div>
 

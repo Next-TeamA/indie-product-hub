@@ -160,7 +160,7 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="레포지토리 검색..."
-                className="input-hero w-full pl-11"
+                className="input-hero w-full !pl-11"
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
             </div>
