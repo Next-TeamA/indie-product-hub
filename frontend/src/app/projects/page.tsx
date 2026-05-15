@@ -6,7 +6,7 @@ import { useProjects } from "@/hooks/use-projects";
 import {
   Plus, ArrowRight, Pencil, X, ChevronLeft, ChevronRight,
   Clock, Lightbulb, AlertCircle, ShieldCheck, Calendar as CalendarIcon,
-  Settings, Trash2, ImagePlus, Upload,
+  Trash2, ImagePlus, Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -257,16 +257,16 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
+    <div className="min-h-dvh bg-white dark:bg-white dark:text-slate-900 selection:bg-slate-800 selection:text-white">
       {/* 헤더 */}
       <header className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
-        <span className="logo-text text-[17px] text-slate-900">
-          Launch<span className="text-blue-500">.</span>Pad
-        </span>
+        <div className="flex items-center gap-2.5">
+          <img src="/Lunch_pad_logo.png" alt="" className="w-8 h-8 object-contain" />
+          <span className="logo-text text-[18px] text-slate-900">
+            Launch<span className="text-blue-500">.</span>Pad
+          </span>
+        </div>
         <div className="flex items-center gap-3">
-          <Link href="/settings" className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="설정">
-            <Settings className="w-5 h-5" />
-          </Link>
           <Link href="/projects/new" className="bg-slate-900 text-white flex items-center gap-2 text-[13px] font-semibold h-9 px-4 rounded-full hover:bg-slate-800 transition-all">
             <Plus className="w-4 h-4" /> 새 프로젝트
           </Link>
