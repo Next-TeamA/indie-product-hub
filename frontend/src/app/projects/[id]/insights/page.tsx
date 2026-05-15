@@ -514,13 +514,8 @@ export default function InsightsPage() {
                 <div className="grid grid-cols-4 gap-5">
                   {newsData.map((news, i) => (
                     <div key={i} className="group cursor-pointer">
-                      <div className="relative aspect-[16/9] rounded-xl overflow-hidden mb-3 border border-slate-50">
-                        <img
-                          src={news.image}
-                          alt={news.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-900/50 text-white backdrop-blur-sm uppercase tracking-wider">
+                      <div className="relative rounded-xl overflow-hidden mb-3 border border-slate-50 bg-slate-50 p-3">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-900/10 text-slate-600 uppercase tracking-wider">
                           {news.tag}
                         </span>
                       </div>
