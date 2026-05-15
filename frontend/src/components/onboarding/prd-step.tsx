@@ -91,7 +91,7 @@ export function PrdStep({ onNext }: PrdStepProps) {
             onChange={(e) => setPrd(e.target.value)}
             placeholder="기획서 내용을 붙여넣거나, 프로젝트에 대해 자유롭게 설명해주세요..."
             rows={6}
-            className="input-hero w-full !h-auto pt-5 pb-4 resize-none"
+            className="input-hero w-full !h-auto !pt-3 !pb-4 resize-none"
           />
         </div>
       </motion.div>
