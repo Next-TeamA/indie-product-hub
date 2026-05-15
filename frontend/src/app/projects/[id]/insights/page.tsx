@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useParams } from "next/navigation";
 import { useMarketingInsights, useOperationsInsights, useMarketInsights } from "@/hooks/use-insights";
+import { useThreadsMentions } from "@/hooks/use-sns-metrics";
 import {
   TrendingUp,
   TrendingDown,
@@ -19,6 +20,7 @@ import {
   Heart,
   MessageCircle,
   Star,
+  AtSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +90,7 @@ export default function InsightsPage() {
   const { data: marketingData } = useMarketingInsights(projectId);
   const { data: opsData } = useOperationsInsights(projectId);
   const { insights: marketInsights, generate: generateInsights } = useMarketInsights(projectId);
+  const { mentions: threadsMentions } = useThreadsMentions(projectId);
 
   // Build channel data from API or fallback
   const channelData = marketingData?.by_platform
@@ -521,9 +524,19 @@ export default function InsightsPage() {
                           {news.tag}
                         </span>
                       </div>
-                      <p className="text-[13px] font-semibold text-slate-700 leading-snug line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors">
+                      <p className="text-[13px] font-semibold text-slate-700 leading-snug line-clamp-2 mb-1.5 group-hover:text-blue-600 transition-colors">
                         {news.title}
                       </p>
+                      {news.summary && (
+                        <p className="text-[11px] text-slate-500 line-clamp-2 mb-1.5">
+                          {news.summary}
+                        </p>
+                      )}
+                      {news.action && (
+                        <p className="text-[11px] font-medium text-blue-600 line-clamp-1 mb-1.5">
+                          {news.action}
+                        </p>
+                      )}
                       <div className="flex justify-between items-center text-[11px] font-medium text-slate-400">
                         <span>{news.source}</span>
                         <span className="text-slate-200">{news.time}</span>
@@ -531,6 +544,44 @@ export default function InsightsPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+              {/* Threads 멘션 */}
+              <div className="bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center gap-2 mb-6">
+                  <AtSign className="w-4 h-4 text-slate-400" />
+                  <p className="text-[15px] font-semibold text-slate-800">
+                    Threads 멘션
+                  </p>
+                  <span className="text-[11px] font-bold text-slate-300 ml-auto">
+                    {threadsMentions.length}건
+                  </span>
+                </div>
+                {threadsMentions.length === 0 ? (
+                  <div className="text-center py-8 text-[13px] text-slate-400">
+                    아직 멘션이 없습니다. Threads에서 제품이 언급되면 여기에 표시됩니다.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {threadsMentions.slice(0, 5).map((mention, i) => (
+                      <div
+                        key={i}
+                        className="rounded-xl border border-slate-100 p-4 hover:bg-slate-50/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[12px] font-bold text-blue-600">
+                            @{mention.username}
+                          </span>
+                          <span className="text-[11px] text-slate-300">
+                            {mention.timestamp ? new Date(mention.timestamp).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) : ""}
+                          </span>
+                        </div>
+                        <p className="text-[13px] text-slate-600 line-clamp-3">
+                          {mention.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
