@@ -198,35 +198,58 @@ async def generate_smart_market_insights(project_id: str) -> list[dict]:
 
     p = project.data
 
-    # Get existing insights to avoid duplicates
+    # Get existing insights to avoid duplicates + build history context
     recent = (
         supabase.table("market_insights")
-        .select("title")
+        .select("title, summary, insight_type")
         .eq("project_id", project_id)
         .order("created_at", desc=True)
-        .limit(10)
+        .limit(15)
         .execute()
     )
     recent_titles = [r["title"] for r in (recent.data or [])]
 
+    # Build accumulated knowledge context
+    history_context = ""
+    if recent.data:
+        history_lines = [f"- [{r['insight_type']}] {r['title']}: {r['summary'][:100]}" for r in recent.data[:8]]
+        history_context = f"\n\nPrevious insights (accumulated knowledge -- build on this, don't repeat):\n" + "\n".join(history_lines)
+
+    # Get knowledge base for deeper project understanding
+    kb = supabase.table("project_knowledge").select("category, content").eq("project_id", project_id).execute()
+    kb_context = ""
+    for k in (kb.data or []):
+        if k["category"] in ("commit_activity", "sns_performance", "deploy_history"):
+            kb_context += f"\n{k['content'][:300]}"
+
     prompt = f"""
 Product: {p.get('name', 'Unknown')}
 Description: {p.get('description', 'N/A')}
-Category hint: {(p.get('prd') or 'N/A')[:300]}
-Channels: {', '.join(p.get('sns_channels', []))}
+PRD/Category: {(p.get('prd') or 'N/A')[:500]}
+Active channels: {', '.join(p.get('sns_channels', []))}
+{history_context}
+{f"Recent project activity:{kb_context}" if kb_context else ""}
 
-Already covered (don't repeat): {', '.join(recent_titles[:5])}
+Already covered (don't repeat these exact topics): {', '.join(recent_titles[:5])}
 
-Search the web for the LATEST information about:
-1. Direct competitors to this product (what are they doing right now?)
-2. Industry trends relevant to this product's category
-3. Any opportunities this product could capitalize on
+You are analyzing the market for THIS SPECIFIC product. Do NOT give generic industry news.
 
-Return 3-5 insights as JSON array. Each must have NEW information not in the "already covered" list.
+Search the web and analyze:
+1. What are DIRECT COMPETITORS doing RIGHT NOW? Name them, quote specifics.
+2. Where is THIS product WEAK compared to competitors? Be honest and specific.
+3. What OPPORTUNITY can this product capitalize on that competitors are missing?
+4. Is there a THREAT that could hurt this product's growth?
+
+For each insight, explain:
+- What it means for THIS product specifically (not the industry in general)
+- What action the founder should take
+
+Return 3-5 insights as JSON array:
 [{{
   "insight_type": "competitor|trend|opportunity|threat",
   "title": "Specific headline (under 60 chars)",
-  "summary": "2-3 sentences with concrete details. Include names, dates, numbers if available.",
+  "summary": "2-3 sentences. MUST reference this product by name and explain impact. Include competitor names, dates, numbers.",
+  "action_item": "One specific thing the founder should do about this",
   "relevance_score": 0.0 to 1.0,
   "is_urgent": true/false,
   "urgency_reason": "only if is_urgent=true"
@@ -246,11 +269,15 @@ Return 3-5 insights as JSON array. Each must have NEW information not in the "al
 
         saved = []
         for insight in insights[:5]:
+            detail = insight.get("action_item", "")
+            if insight.get("urgency_reason"):
+                detail = f"{detail}\n\nUrgency: {insight['urgency_reason']}" if detail else insight["urgency_reason"]
             result = supabase.table("market_insights").insert({
                 "project_id": project_id,
                 "insight_type": insight.get("insight_type", "trend"),
                 "title": insight.get("title", "Untitled")[:200],
                 "summary": insight.get("summary", "")[:1000],
+                "detail": detail[:1000] if detail else None,
                 "relevance_score": min(1.0, max(0.0, float(insight.get("relevance_score", 0.5)))),
                 "is_urgent": bool(insight.get("is_urgent", False)),
                 "urgency_reason": insight.get("urgency_reason"),

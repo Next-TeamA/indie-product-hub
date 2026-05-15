@@ -86,17 +86,25 @@ class ThreadsAPIClient:
                 raise ExternalAPIError("Threads", f"Get user failed: {response.text}")
             return response.json()
 
-    async def create_post(self, access_token: str, user_id: str, text: str) -> str:
-        """Two-step publish: create container -> publish. Returns media ID."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
+    async def create_post(self, access_token: str, user_id: str, text: str, image_url: str | None = None) -> str:
+        """Two-step publish: create container -> publish. Returns media ID.
+        If image_url is provided, posts as IMAGE type with text caption.
+        """
+        async with httpx.AsyncClient(timeout=60.0) as client:
             # Step 1: Create container
+            params: dict = {
+                "text": text,
+                "access_token": access_token,
+            }
+            if image_url:
+                params["media_type"] = "IMAGE"
+                params["image_url"] = image_url
+            else:
+                params["media_type"] = "TEXT"
+
             r1 = await client.post(
                 f"{self.BASE_URL}/{user_id}/threads",
-                params={
-                    "media_type": "TEXT",
-                    "text": text,
-                    "access_token": access_token,
-                },
+                params=params,
             )
             if r1.status_code != 200:
                 raise ExternalAPIError("Threads", f"Create container failed: {r1.text}")
@@ -239,6 +247,82 @@ class ThreadsAPIClient:
                     result[name] = sum(v.get("value", 0) for v in values)
 
             return result
+
+
+    async def keyword_search(self, access_token: str, user_id: str, query: str, limit: int = 20) -> list[dict]:
+        """Search public Threads posts by keyword.
+        Requires threads_keyword_search permission.
+        Standard access: only user's own posts. Advanced access: all public posts.
+        Rate limit: 500 queries per 7 days.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{self.BASE_URL}/{user_id}/threads_search",
+                params={
+                    "q": query,
+                    "fields": "id,text,timestamp,media_type,username",
+                    "limit": min(limit, 50),
+                    "access_token": access_token,
+                },
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Threads", f"Keyword search failed: {response.text}")
+            return response.json().get("data", [])
+
+    async def get_public_profile(self, access_token: str, username: str) -> dict:
+        """Get a public Threads profile by username.
+        Requires threads_profile_discovery permission.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Search for user by username
+            response = await client.get(
+                f"{self.BASE_URL}/search",
+                params={
+                    "q": username,
+                    "search_type": "user",
+                    "fields": "id,username,threads_biography,threads_profile_picture_url",
+                    "access_token": access_token,
+                },
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Threads", f"Profile discovery failed: {response.text}")
+            data = response.json().get("data", [])
+            return data[0] if data else {}
+
+    async def get_public_user_posts(self, access_token: str, user_id: str, limit: int = 20) -> list[dict]:
+        """Get public posts from a discovered profile.
+        Requires threads_profile_discovery permission.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{self.BASE_URL}/{user_id}/threads",
+                params={
+                    "fields": "id,text,timestamp,media_type,username",
+                    "limit": min(limit, 50),
+                    "access_token": access_token,
+                },
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Threads", f"Get public posts failed: {response.text}")
+            return response.json().get("data", [])
+
+    async def get_mentions(self, access_token: str, user_id: str, limit: int = 20) -> list[dict]:
+        """Get posts where the user is mentioned.
+        Requires threads_manage_mentions permission.
+        Only returns public mentions.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{self.BASE_URL}/{user_id}/mentions",
+                params={
+                    "fields": "id,text,timestamp,username,media_type",
+                    "limit": min(limit, 50),
+                    "access_token": access_token,
+                },
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Threads", f"Get mentions failed: {response.text}")
+            return response.json().get("data", [])
 
 
 threads_client = ThreadsAPIClient()

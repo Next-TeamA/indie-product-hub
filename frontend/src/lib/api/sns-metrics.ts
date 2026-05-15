@@ -96,3 +96,29 @@ export async function getThreadsPosts(projectId: string): Promise<ThreadsPostMet
 export async function getThreadsProfile(projectId: string): Promise<ThreadsProfileInsights> {
   return apiFetch(`/api/projects/${projectId}/sns/threads/profile`);
 }
+
+// Threads keyword search
+export type ThreadsSearchResult = {
+  id: string;
+  text: string;
+  timestamp: string;
+  username: string;
+  media_type: string;
+};
+
+export async function searchThreadsPosts(projectId: string, query: string, limit: number = 20): Promise<{ results: ThreadsSearchResult[]; count: number }> {
+  return apiFetch(`/api/projects/${projectId}/sns/threads/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+}
+
+// Threads mentions
+export type ThreadsMention = {
+  id: string;
+  text: string;
+  timestamp: string;
+  username: string;
+  media_type: string;
+};
+
+export async function getThreadsMentions(projectId: string, limit: number = 20): Promise<{ mentions: ThreadsMention[]; count: number }> {
+  return apiFetch(`/api/projects/${projectId}/sns/threads/mentions?limit=${limit}`);
+}

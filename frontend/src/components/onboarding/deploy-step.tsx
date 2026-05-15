@@ -240,6 +240,20 @@ export function DeployStep({ onNext, onBack, onBeforeOAuth }: DeployStepProps) {
                 ))
               )}
             </div>
+            {platform === "vercel" && (
+              <p className="text-xs text-muted-foreground mt-2">
+                프로젝트가 안 보이나요?{" "}
+                <a
+                  href="https://vercel.com/~/integrations"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  Vercel Integration 설정에서 "All Projects" 허용
+                </a>
+                {" "}후 새로고침하세요.
+              </p>
+            )}
           </motion.div>
         )}
       </motion.div>

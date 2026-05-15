@@ -677,7 +677,7 @@ export default function PostEditorPage() {
                     <img
                       src={imagePreview}
                       alt="첨부 이미지"
-                      className="w-full object-contain"
+                      className="w-full max-h-96 object-contain"
                     />
                   </div>
                 )}

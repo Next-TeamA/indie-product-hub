@@ -13,6 +13,53 @@ from app.integrations.threads_api import threads_client
 router = APIRouter(prefix="/projects/{project_id}/sns", tags=["sns-metrics"])
 
 
+@router.get("/threads/search")
+async def threads_keyword_search(
+    project_id: str,
+    q: str = "",
+    limit: int = 20,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Search public Threads posts by keyword."""
+    if not q:
+        return {"results": [], "count": 0}
+    account = safe_maybe_single(
+        supabase.table("connected_accounts")
+        .select("access_token, provider_user_id")
+        .eq("user_id", user["id"])
+        .eq("provider", "threads")
+        .eq("is_active", True)
+    )
+    if not account:
+        return {"error": "Threads not connected"}
+    token = decrypt_token(account["access_token"])
+    posts = await threads_client.keyword_search(token, account["provider_user_id"], q, limit=limit)
+    return {"results": posts, "count": len(posts)}
+
+
+@router.get("/threads/mentions")
+async def threads_mentions(
+    project_id: str,
+    limit: int = 20,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Get posts where the user is mentioned on Threads."""
+    account = safe_maybe_single(
+        supabase.table("connected_accounts")
+        .select("access_token, provider_user_id")
+        .eq("user_id", user["id"])
+        .eq("provider", "threads")
+        .eq("is_active", True)
+    )
+    if not account:
+        return {"mentions": [], "count": 0}
+    token = decrypt_token(account["access_token"])
+    mentions = await threads_client.get_mentions(token, account["provider_user_id"], limit=limit)
+    return {"mentions": mentions, "count": len(mentions)}
+
+
 @router.get("/metrics")
 async def get_sns_metrics(
     project_id: str,
