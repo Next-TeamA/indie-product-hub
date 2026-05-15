@@ -359,7 +359,7 @@ async def delete_post(
         .delete()
         .eq("id", post_id)
         .eq("project_id", project_id)
-        .in_("status", ["draft", "scheduled", "failed"])
+        .neq("status", "publishing")
         .execute()
     )
     if not result.data:
