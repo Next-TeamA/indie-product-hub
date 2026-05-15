@@ -153,14 +153,18 @@ export default function ProjectSettingsPage() {
                 <span className="text-xs text-emerald-600 font-medium">연결됨</span>
                 <button
                   onClick={async () => {
+                    setConnecting("github");
                     try {
-                      const { url } = await getGitHubSettingsUrl();
-                      window.open(url, "_blank");
+                      const accounts = await listAccounts();
+                      const github = accounts.find((a) => a.provider === "github");
+                      if (github) await disconnectAccount(github.id);
                     } catch {}
+                    handleConnect("github");
                   }}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  disabled={connecting === "github"}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  조직 권한 관리
+                  {connecting === "github" ? "연결 중..." : "재연결"}
                 </button>
               </div>
             ) : (
@@ -276,6 +280,14 @@ export default function ProjectSettingsPage() {
                 </button>
               ))}
             </div>
+            {deployPlatform === "vercel" && (
+              <p className="text-xs text-slate-400 mt-2">
+                프로젝트가 안 보이나요?{" "}
+                <a href="https://vercel.com/~/integrations" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                  Vercel Integration 설정에서 "All Projects" 허용
+                </a>
+              </p>
+            )}
           )}
         </section>
 

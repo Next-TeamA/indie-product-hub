@@ -142,14 +142,21 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
               </div>
               <button
                 onClick={async () => {
+                  setConnecting(true);
                   try {
-                    const { url } = await getGitHubSettingsUrl();
-                    window.open(url, "_blank");
+                    const accounts = await listAccounts();
+                    const github = accounts.find((a) => a.provider === "github");
+                    if (github) {
+                      const { disconnectAccount } = await import("@/lib/api/accounts");
+                      await disconnectAccount(github.id);
+                    }
                   } catch {}
+                  handleConnect();
                 }}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                disabled={connecting}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
               >
-                조직 권한 관리
+                {connecting ? "연결 중..." : "재연결"}
               </button>
             </div>
 
