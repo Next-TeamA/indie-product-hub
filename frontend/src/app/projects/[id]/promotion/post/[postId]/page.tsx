@@ -158,13 +158,15 @@ export default function PostEditorPage() {
 
   const defaultDate = urlDate || new Date().toISOString().split("T")[0];
   const defaultTime = (() => {
-    const d = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    const d = new Date();
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   })();
   const [scheduleDate, setScheduleDate] = useState(defaultDate);
   const [scheduleTime, setScheduleTime] = useState(defaultTime);
   const scheduleDateInputRef = useRef<HTMLInputElement>(null);
   const scheduleTimeInputRef = useRef<HTMLInputElement>(null);
+  const hookTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -306,7 +308,13 @@ export default function PostEditorPage() {
       // Build scheduled_at ISO string when scheduling
       let scheduledAt: string | undefined;
       if (status === "scheduled" && scheduleDate) {
-        scheduledAt = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+        const scheduledDate = new Date(`${scheduleDate}T${scheduleTime}:00`);
+        if (scheduledDate <= new Date()) {
+          setToast({ message: "현재 시간 이후로 예약해 주세요.", type: "error" });
+          setSaving(false);
+          return;
+        }
+        scheduledAt = scheduledDate.toISOString();
       }
       const postData = {
         hook: editHook,
@@ -353,6 +361,40 @@ export default function PostEditorPage() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  // Auto-resize preview textareas
+  useEffect(() => {
+    const el = hookTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [editHook]);
+
+  useEffect(() => {
+    const el = contentTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [editContent]);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const nowTimeStr = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+  const isPastSchedule = !!scheduleDate && new Date(`${scheduleDate}T${scheduleTime}:00`) <= new Date();
+
+  const handleScheduleDateChange = (date: string) => {
+    setScheduleDate(date);
+    // 오늘 날짜로 변경 시 시간이 과거면 현재 시간으로 자동 보정
+    if (date === todayStr) {
+      const cur = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+      if (scheduleTime < cur) setScheduleTime(cur);
+    }
+  };
+
+  const handleScheduleTimeChange = (time: string) => {
+    // 오늘 날짜일 때 현재 시간 이전 선택 차단
+    if (scheduleDate === todayStr && time < nowTimeStr) return;
+    setScheduleTime(time);
   };
 
   const togglePlatform = (p: Platform) => {
@@ -620,7 +662,7 @@ export default function PostEditorPage() {
 
           <div className="flex-1 overflow-y-auto p-10 flex flex-col items-center">
             <motion.div
-              className="w-full max-w-lg bg-white border border-slate-100 rounded-[32px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.06)] overflow-hidden"
+              className="w-full max-w-lg bg-white border border-slate-100 rounded-[32px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.06)]"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
@@ -647,17 +689,19 @@ export default function PostEditorPage() {
                 </div>
 
                 <textarea
+                  ref={hookTextareaRef}
                   value={editHook}
                   onChange={(e) => setEditHook(e.target.value)}
-                  className="w-full text-[20px] font-extrabold leading-snug text-slate-900 bg-transparent border-none outline-none resize-none placeholder:text-slate-200 wrap-break-word overflow-wrap-anywhere"
-                  rows={2}
+                  className="w-full text-[20px] font-extrabold leading-snug text-slate-900 bg-transparent border-none outline-none resize-none placeholder:text-slate-200 overflow-hidden"
+                  rows={1}
                   placeholder="훅 문구를 입력하세요..."
                 />
                 <textarea
+                  ref={contentTextareaRef}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full text-[15px] font-medium text-slate-700 leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-slate-200 wrap-break-word overflow-wrap-anywhere"
-                  rows={7}
+                  className="w-full text-[15px] font-medium text-slate-700 leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-slate-200 overflow-hidden"
+                  rows={4}
                   placeholder="본문 내용을 입력하세요..."
                 />
 
@@ -770,8 +814,8 @@ export default function PostEditorPage() {
                       ref={scheduleDateInputRef}
                       type="date"
                       value={scheduleDate}
-                      min={new Date().toISOString().split("T")[0]}
-                      onChange={(e) => setScheduleDate(e.target.value)}
+                      min={todayStr}
+                      onChange={(e) => handleScheduleDateChange(e.target.value)}
                       className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-slate-800 outline-none"
                     />
                   </div>
@@ -790,7 +834,8 @@ export default function PostEditorPage() {
                       ref={scheduleTimeInputRef}
                       type="time"
                       value={scheduleTime}
-                      onChange={(e) => setScheduleTime(e.target.value)}
+                      min={scheduleDate === todayStr ? nowTimeStr : undefined}
+                      onChange={(e) => handleScheduleTimeChange(e.target.value)}
                       className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-slate-800 outline-none"
                     />
                   </div>
@@ -814,7 +859,7 @@ export default function PostEditorPage() {
                 </button>
                 <button
                   onClick={() => handleSave("scheduled")}
-                  disabled={!editContent.trim() || !scheduleDate || saving}
+                  disabled={!editContent.trim() || !scheduleDate || isPastSchedule || saving}
                   className="flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <CalendarDays className="h-4 w-4" />

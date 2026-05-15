@@ -11,9 +11,11 @@ import {
   connectAccount,
   disconnectAccount,
   getGitHubSettingsUrl,
+  listGitHubOrgs,
   listGitHubRepos,
   listVercelProjects,
   listRailwayProjects,
+  type GitHubOrg,
   type GitHubRepo,
   type VercelProject,
   type RailwayProject,
@@ -31,9 +33,12 @@ export default function ProjectSettingsPage() {
   const [connecting, setConnecting] = useState<string | null>(null);
 
   // GitHub
+  const [orgs, setOrgs] = useState<GitHubOrg[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<string>("");
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [repoSearch, setRepoSearch] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<string>("");
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [loadingRepos, setLoadingRepos] = useState(false);
 
   // Deploy
@@ -55,12 +60,24 @@ export default function ProjectSettingsPage() {
         for (const a of accounts) connected[a.provider] = true;
         setConnectedProviders(connected);
 
-        // Load repos if GitHub connected
+        // Load orgs if GitHub connected
         if (connected.github) {
-          setLoadingRepos(true);
-          const r = await listGitHubRepos();
-          setRepos(r);
-          setLoadingRepos(false);
+          setLoadingOrgs(true);
+          try {
+            const orgList = await listGitHubOrgs();
+            setOrgs(orgList);
+            // Auto-select the personal account (first entry)
+            if (orgList.length > 0) {
+              const personal = orgList[0];
+              setSelectedOrg(personal.login);
+              setLoadingRepos(true);
+              const r = await listGitHubRepos(personal.login);
+              setRepos(r);
+              setLoadingRepos(false);
+            }
+          } finally {
+            setLoadingOrgs(false);
+          }
         }
         // Load deploy projects
         if (connected.vercel) {
@@ -116,6 +133,19 @@ export default function ProjectSettingsPage() {
       console.error(e);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleOrgSelect = async (orgLogin: string) => {
+    setSelectedOrg(orgLogin);
+    setSelectedRepo("");
+    setRepoSearch("");
+    setLoadingRepos(true);
+    try {
+      const r = await listGitHubRepos(orgLogin);
+      setRepos(r);
+    } finally {
+      setLoadingRepos(false);
     }
   };
 
@@ -180,6 +210,35 @@ export default function ProjectSettingsPage() {
 
           {connectedProviders.github && (
             <>
+              {/* Organization selector */}
+              {loadingOrgs ? (
+                <div className="flex items-center justify-center h-10">
+                  <RefreshCw className="w-4 h-4 animate-spin text-slate-300" />
+                </div>
+              ) : orgs.length > 1 && (
+                <div className="flex gap-2 flex-wrap mb-1">
+                  {orgs.map((org) => (
+                    <button
+                      key={org.login}
+                      onClick={() => handleOrgSelect(org.login)}
+                      className={cn(
+                        "flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all cursor-pointer",
+                        selectedOrg === org.login
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 text-slate-500 hover:bg-slate-50",
+                      )}
+                    >
+                      {org.avatar_url && (
+                        <img src={org.avatar_url} alt="" className="w-4 h-4 rounded-full" />
+                      )}
+                      {org.login}
+                      {org.is_personal && <span className="text-[10px] text-slate-400">(개인)</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Repo search + list */}
               <div className="relative mb-3">
                 <input
                   type="text"
@@ -213,7 +272,7 @@ export default function ProjectSettingsPage() {
                       )}>
                         {selectedRepo === repo.full_name && <Check className="w-2.5 h-2.5 text-white" />}
                       </div>
-                      <span className="text-sm font-medium text-slate-700 truncate">{repo.full_name}</span>
+                      <span className="text-sm font-medium text-slate-700 truncate">{repo.name}</span>
                       {repo.private ? <Lock className="w-3 h-3 text-slate-300 shrink-0" /> : <Globe className="w-3 h-3 text-slate-300 shrink-0" />}
                       {repo.language && (
                         <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">{repo.language}</span>

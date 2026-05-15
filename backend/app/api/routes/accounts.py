@@ -74,12 +74,12 @@ async def get_github_settings_url():
     return {"url": f"https://github.com/settings/connections/applications/{settings.github_client_id}"}
 
 
-@router.get("/github/repos")
-async def list_github_repos(user: dict = Depends(get_current_user)):
-    """List GitHub repos accessible by the user's connected GitHub account."""
+@router.get("/github/orgs")
+async def list_github_orgs(user: dict = Depends(get_current_user)):
+    """List GitHub orgs + user's personal account as the first entry."""
     account = safe_maybe_single(
         supabase.table("connected_accounts")
-        .select("access_token")
+        .select("access_token, provider_username")
         .eq("user_id", user["id"])
         .eq("provider", "github")
         .eq("is_active", True)
@@ -89,7 +89,40 @@ async def list_github_repos(user: dict = Depends(get_current_user)):
 
     from app.core.encryption import decrypt_token
     token = decrypt_token(account["access_token"])
-    repos = await github_client.list_repos(token)
+    orgs = await github_client.list_orgs(token)
+    username = account.get("provider_username") or ""
+
+    result = [{"login": username, "avatar_url": None, "is_personal": True}]
+    for o in orgs:
+        result.append({"login": o["login"], "avatar_url": o.get("avatar_url"), "is_personal": False})
+    return result
+
+
+@router.get("/github/repos")
+async def list_github_repos(user: dict = Depends(get_current_user), org: str | None = None):
+    """List GitHub repos. If org is provided, list that org's repos; otherwise list user's personal repos."""
+    account = safe_maybe_single(
+        supabase.table("connected_accounts")
+        .select("access_token, provider_username")
+        .eq("user_id", user["id"])
+        .eq("provider", "github")
+        .eq("is_active", True)
+    )
+    if not account:
+        raise AppError("GitHub account not connected", 400)
+
+    from app.core.encryption import decrypt_token
+    token = decrypt_token(account["access_token"])
+    username = account.get("provider_username") or ""
+
+    if org and org != username:
+        repos = await github_client.list_org_repos(token, org)
+    else:
+        repos = await github_client.list_repos(token)
+        # Filter to only personal repos when personal account selected
+        if org == username:
+            repos = [r for r in repos if r["owner"]["login"] == username]
+
     return [
         {
             "id": r["id"],
