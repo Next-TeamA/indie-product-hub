@@ -33,10 +33,11 @@ async def generate_marketing_insights(project_id: str) -> dict:
     # Last week's metrics (for comparison)
     last_week = (
         supabase.table("sns_metrics_snapshots")
-        .select("impressions, likes, replies, reposts, views, url_clicks")
+        .select("impressions, likes, replies, reposts, views, url_clicks, post_id, snapshot_at")
         .eq("project_id", project_id)
         .gte("snapshot_at", two_weeks_ago)
         .lt("snapshot_at", week_ago)
+        .order("snapshot_at", desc=True)
         .execute()
     )
 
@@ -51,23 +52,43 @@ async def generate_marketing_insights(project_id: str) -> dict:
         .execute()
     )
 
-    # Aggregate this week
+    # Aggregate this week -- use only the LATEST snapshot per post
+    # (snapshots record cumulative values; summing all duplicates metrics)
     tw = this_week.data or []
     lw = last_week.data or []
 
+    def _latest_per_post(snapshots: list[dict]) -> list[dict]:
+        """Keep only the most recent snapshot per post_id.
+
+        Snapshots are ordered by snapshot_at DESC from the query,
+        so the first occurrence of each post_id is the latest.
+        """
+        seen: set[str] = set()
+        result = []
+        for m in snapshots:
+            pid = m.get("post_id")
+            if not pid or pid in seen:
+                continue
+            seen.add(pid)
+            result.append(m)
+        return result
+
+    tw_latest = _latest_per_post(tw)
+    lw_latest = _latest_per_post(lw)
+
     tw_totals = {
-        "impressions": sum(m.get("impressions", 0) + m.get("views", 0) for m in tw),
-        "likes": sum(m.get("likes", 0) for m in tw),
-        "replies": sum(m.get("replies", 0) for m in tw),
-        "reposts": sum(m.get("reposts", 0) for m in tw),
-        "clicks": sum(m.get("url_clicks", 0) for m in tw),
+        "impressions": sum(m.get("impressions", 0) + m.get("views", 0) for m in tw_latest),
+        "likes": sum(m.get("likes", 0) for m in tw_latest),
+        "replies": sum(m.get("replies", 0) for m in tw_latest),
+        "reposts": sum(m.get("reposts", 0) for m in tw_latest),
+        "clicks": sum(m.get("url_clicks", 0) for m in tw_latest),
     }
     lw_totals = {
-        "impressions": sum(m.get("impressions", 0) + m.get("views", 0) for m in lw),
-        "likes": sum(m.get("likes", 0) for m in lw),
-        "replies": sum(m.get("replies", 0) for m in lw),
-        "reposts": sum(m.get("reposts", 0) for m in lw),
-        "clicks": sum(m.get("url_clicks", 0) for m in lw),
+        "impressions": sum(m.get("impressions", 0) + m.get("views", 0) for m in lw_latest),
+        "likes": sum(m.get("likes", 0) for m in lw_latest),
+        "replies": sum(m.get("replies", 0) for m in lw_latest),
+        "reposts": sum(m.get("reposts", 0) for m in lw_latest),
+        "clicks": sum(m.get("url_clicks", 0) for m in lw_latest),
     }
 
     # Calculate week-over-week changes
@@ -88,15 +109,15 @@ async def generate_marketing_insights(project_id: str) -> dict:
         (tw_totals["likes"] + tw_totals["replies"] + tw_totals["reposts"]) / total_impressions * 100, 2
     )
 
-    # Find best performing post
+    # Find best performing post (use latest snapshot per post)
     post_metrics = {}
-    for m in tw:
+    for m in tw_latest:
         pid = m.get("post_id")
         if pid:
-            if pid not in post_metrics:
-                post_metrics[pid] = {"impressions": 0, "engagement": 0}
-            post_metrics[pid]["impressions"] += m.get("impressions", 0) + m.get("views", 0)
-            post_metrics[pid]["engagement"] += m.get("likes", 0) + m.get("replies", 0) + m.get("reposts", 0)
+            post_metrics[pid] = {
+                "impressions": m.get("impressions", 0) + m.get("views", 0),
+                "engagement": m.get("likes", 0) + m.get("replies", 0) + m.get("reposts", 0),
+            }
 
     best_post_id = max(post_metrics, key=lambda p: post_metrics[p]["engagement"]) if post_metrics else None
     best_post = None
@@ -121,14 +142,18 @@ async def generate_marketing_insights(project_id: str) -> dict:
             anomalies.append({"metric": key, "change": change, "type": "drop"})
 
     # Daily impressions for chart (last 7 days)
+    # Use latest snapshot per post per day to avoid duplicate counting
     daily_impressions = []
     for days_ago in range(6, -1, -1):
         day_start = (now - timedelta(days=days_ago)).replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
-        day_total = sum(
-            m.get("impressions", 0) + m.get("views", 0)
-            for m in tw
+        day_snapshots = [
+            m for m in tw
             if day_start.isoformat() <= m.get("snapshot_at", "") < day_end.isoformat()
+        ]
+        day_latest = _latest_per_post(day_snapshots)
+        day_total = sum(
+            m.get("impressions", 0) + m.get("views", 0) for m in day_latest
         )
         daily_impressions.append(day_total)
 
@@ -146,8 +171,8 @@ async def generate_marketing_insights(project_id: str) -> dict:
             platform_data[plat]["impressions"] += post_metrics[p["id"]]["impressions"]
             platform_data[plat]["engagement"] += post_metrics[p["id"]]["engagement"]
 
-    # Aggregate per-platform metrics from snapshots
-    for m in tw:
+    # Aggregate per-platform metrics from latest snapshots only
+    for m in tw_latest:
         pid = m.get("post_id")
         if not pid:
             continue

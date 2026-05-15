@@ -1,5 +1,6 @@
 """Deployment log retrieval and sync -- uses per-user OAuth tokens."""
 
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, BackgroundTasks
 
 from app.api.dependencies.auth import get_current_user
@@ -59,6 +60,12 @@ async def sync_deployments(
     return {"status": "syncing"}
 
 
+def _epoch_to_iso(ms: int | None) -> str | None:
+    if not ms:
+        return None
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
+
+
 async def _sync_deployments(project_id: str, platform: str, deploy_project_id: str, token: str):
     """Background: pull latest deployments using user's OAuth token."""
     try:
@@ -66,12 +73,18 @@ async def _sync_deployments(project_id: str, platform: str, deploy_project_id: s
             deployments = await vercel_client.list_deployments(token, deploy_project_id)
             for d in deployments[:10]:
                 status_map = {"READY": "ready", "ERROR": "error", "BUILDING": "building", "QUEUED": "building", "CANCELED": "cancelled"}
+                meta = d.get("meta", {})
+                created_ts = d.get("created") or d.get("createdAt")
                 supabase.table("deployment_logs").upsert({
                     "project_id": project_id,
                     "platform": "vercel",
                     "deployment_id": d.get("uid", d.get("id", "")),
                     "deployment_url": d.get("url"),
+                    "commit_sha": (meta.get("githubCommitSha") or "")[:40] or None,
+                    "commit_message": (meta.get("githubCommitMessage") or "")[:200] or None,
+                    "branch": (meta.get("githubCommitRef") or "")[:100] or None,
                     "status": status_map.get(d.get("readyState", d.get("state", "")), "building"),
+                    **({"started_at": _epoch_to_iso(created_ts)} if created_ts else {}),
                 }, on_conflict="project_id,deployment_id").execute()
 
         elif platform == "railway":
