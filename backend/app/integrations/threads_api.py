@@ -86,17 +86,25 @@ class ThreadsAPIClient:
                 raise ExternalAPIError("Threads", f"Get user failed: {response.text}")
             return response.json()
 
-    async def create_post(self, access_token: str, user_id: str, text: str) -> str:
-        """Two-step publish: create container -> publish. Returns media ID."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
+    async def create_post(self, access_token: str, user_id: str, text: str, image_url: str | None = None) -> str:
+        """Two-step publish: create container -> publish. Returns media ID.
+        If image_url is provided, posts as IMAGE type with text caption.
+        """
+        async with httpx.AsyncClient(timeout=60.0) as client:
             # Step 1: Create container
+            params: dict = {
+                "text": text,
+                "access_token": access_token,
+            }
+            if image_url:
+                params["media_type"] = "IMAGE"
+                params["image_url"] = image_url
+            else:
+                params["media_type"] = "TEXT"
+
             r1 = await client.post(
                 f"{self.BASE_URL}/{user_id}/threads",
-                params={
-                    "media_type": "TEXT",
-                    "text": text,
-                    "access_token": access_token,
-                },
+                params=params,
             )
             if r1.status_code != 200:
                 raise ExternalAPIError("Threads", f"Create container failed: {r1.text}")

@@ -456,6 +456,9 @@ async def _do_publish(user_id: str, post_data: dict):
     text = post_data.get("hook", "") + "\n\n" + post_data["content"]
     if post_data.get("hashtags"):
         text += "\n\n" + " ".join(f"#{tag}" for tag in post_data["hashtags"])
+    # Get first image URL if available
+    images = post_data.get("images") or []
+    image_url = images[0] if images else None
 
     try:
         # Get user's connected account for this platform
@@ -479,13 +482,11 @@ async def _do_publish(user_id: str, post_data: dict):
         elif platform == "threads":
             user_thread_id = account.data["provider_user_id"]
             if len(text) <= 500:
-                external_id = await threads_client.create_post(token, user_thread_id, text)
+                external_id = await threads_client.create_post(token, user_thread_id, text, image_url=image_url)
             else:
-                # Split into thread: first 500 chars as main post, rest as replies
+                # Split into thread: first 500 chars as main post (with image), rest as replies
                 chunks = _split_text_for_threads(text, max_len=500)
-                # Post first chunk
-                external_id = await threads_client.create_post(token, user_thread_id, chunks[0])
-                # Post remaining chunks as replies
+                external_id = await threads_client.create_post(token, user_thread_id, chunks[0], image_url=image_url)
                 parent_id = str(external_id)
                 for chunk in chunks[1:]:
                     parent_id = str(await threads_client.create_reply(token, user_thread_id, chunk, parent_id))
