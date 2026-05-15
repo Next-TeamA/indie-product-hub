@@ -63,3 +63,11 @@ class PromotionCampaignRequest(BaseModel):
 class PromotionCampaignResponse(BaseModel):
     campaign: dict
     posts: list[dict]
+
+
+class PromotionPersonaSelectRequest(BaseModel):
+    persona_id: str = Field(..., min_length=1, max_length=100)
+
+
+class PromotionStrategySelectRequest(BaseModel):
+    strategy_id: str = Field(..., min_length=1, max_length=100)

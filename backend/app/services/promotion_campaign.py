@@ -15,6 +15,7 @@ from app.core.exceptions import ExternalAPIError, ValidationError
 from app.core.supabase import supabase
 from app.integrations import gemini
 from app.models.promotion import PromotionCampaignRequest
+from app.services.promotion_options import PERSONA_OPTIONS, STRATEGY_OPTIONS
 from app.workspace.skill_loader import get_skill_prompt
 
 MODEL = "gemini-2.5-flash"
@@ -180,6 +181,22 @@ def _input_dict(body: PromotionCampaignRequest) -> dict:
     return body.model_dump()
 
 
+def _option_by_id(options: list[dict], option_id: str, label: str) -> dict:
+    for option in options:
+        if option.get("id") == option_id:
+            return option
+    raise ValidationError(f"Unknown {label}: {option_id}")
+
+
+def _evaluation_by_id(evaluations: list[dict] | None, option_id: str) -> dict:
+    if not isinstance(evaluations, list):
+        return {}
+    for evaluation in evaluations:
+        if isinstance(evaluation, dict) and evaluation.get("optionId") == option_id:
+            return evaluation
+    return {}
+
+
 def _common_context(body: PromotionCampaignRequest) -> str:
     return f"""
 Project name: {body.project_name}
@@ -193,6 +210,12 @@ Channel: {body.channel}
 Tone preference: {body.tone_preference}
 Additional context: {body.additional_context or "N/A"}
 """
+
+
+def _campaign_body_from_input(value: object) -> PromotionCampaignRequest:
+    if not isinstance(value, dict):
+        raise ValidationError("Campaign input is missing")
+    return PromotionCampaignRequest(**value)
 
 
 def _ensure_dict(value: object, step: str) -> dict:
@@ -376,6 +399,145 @@ Return only JSON:
 """
     result = await gemini.generate_json(prompt=prompt, system="Analyze target users for product marketing. Be concrete, not generic.", model=MODEL)
     return _ensure_dict(result, "target_analysis")
+
+
+async def _evaluate_persona_options(body: PromotionCampaignRequest, target_analysis: dict) -> dict:
+    prompt = f"""
+You are a Threads marketing strategist.
+
+Evaluate the fixed persona options for this project. Do not create new options.
+Write very short Korean comments for compact selection cards.
+
+Input:
+{_common_context(body)}
+
+Target analysis:
+{target_analysis}
+
+Fixed persona options:
+{PERSONA_OPTIONS}
+
+Return only JSON:
+{{
+  "evaluations": [
+    {{
+      "optionId": "honest_operator",
+      "reason": "이 프로젝트에 이 페르소나가 맞는 이유",
+      "caution": "선택 시 주의할 점"
+    }}
+  ]
+}}
+
+Rules:
+- Include exactly one evaluation for every fixed persona option.
+- Do not include fitScore or numeric ranking.
+- Do not invent option IDs.
+- Keep reason within 70 Korean characters.
+- Keep caution within 45 Korean characters.
+- Each field should be one short sentence.
+- Use Korean only.
+"""
+    result = await gemini.generate_json(
+        prompt=prompt,
+        system="Evaluate fixed persona options for a project. Do not create new options.",
+        model=MODEL,
+    )
+    evaluation = _ensure_dict(result, "persona_option_evaluation")
+    if not isinstance(evaluation.get("evaluations"), list):
+        raise ExternalAPIError("Gemini", "persona_option_evaluation did not return evaluations")
+    return evaluation
+
+
+async def _evaluate_strategy_options(body: PromotionCampaignRequest, target_analysis: dict, selected_persona: dict) -> dict:
+    prompt = f"""
+You are a Threads campaign strategist.
+
+Evaluate the fixed strategy options for this project and selected persona. Do not create new options.
+Write very short Korean comments for compact selection cards.
+
+Input:
+{_common_context(body)}
+
+Target analysis:
+{target_analysis}
+
+Selected persona:
+{selected_persona}
+
+Fixed strategy options:
+{STRATEGY_OPTIONS}
+
+Return only JSON:
+{{
+  "evaluations": [
+    {{
+      "optionId": "daily_presence",
+      "reason": "이 프로젝트와 선택된 페르소나에 이 전략이 맞는 이유",
+      "caution": "선택 시 주의할 점"
+    }}
+  ]
+}}
+
+Rules:
+- Include exactly one evaluation for every fixed strategy option.
+- Do not include fitScore or numeric ranking.
+- Do not invent option IDs.
+- Keep reason within 70 Korean characters.
+- Keep caution within 45 Korean characters.
+- Each field should be one short sentence.
+- Use Korean only.
+"""
+    result = await gemini.generate_json(
+        prompt=prompt,
+        system="Evaluate fixed strategy options for a project. Do not create new options.",
+        model=MODEL,
+    )
+    evaluation = _ensure_dict(result, "strategy_option_evaluation")
+    if not isinstance(evaluation.get("evaluations"), list):
+        raise ExternalAPIError("Gemini", "strategy_option_evaluation did not return evaluations")
+    return evaluation
+
+
+def _strategy_from_selection(
+    body: PromotionCampaignRequest,
+    selected_persona: dict,
+    persona_evaluation: dict,
+    selected_strategy: dict,
+    strategy_evaluation: dict,
+) -> dict:
+    return {
+        "goal": body.promotion_goal,
+        "duration": "14 days",
+        "overallMood": selected_persona.get("tone", body.tone_preference),
+        "contentPrinciple": (
+            "Use the fixed selected persona and selected strategy as the campaign direction. "
+            "Do not invent a new strategy."
+        ),
+        "operatorPersona": selected_persona,
+        "selectedPersona": selected_persona,
+        "personaEvaluation": persona_evaluation,
+        "selectedStrategy": selected_strategy,
+        "strategyEvaluation": strategy_evaluation,
+        "finishedProductBoundary": (
+            "The product already exists enough to promote. Do not write as if it is an unbuilt MVP."
+        ),
+        "rhythmStrategy": {
+            "strategyName": selected_strategy.get("id", ""),
+            "whyThisRhythm": strategy_evaluation.get("reason") or selected_strategy.get("description", ""),
+            "shortformEmphasis": selected_persona.get("description", ""),
+            "productRequestApproach": selected_strategy.get("mainGoal", ""),
+            "communityApproach": (
+                "Use Threads-native community language only when it matches the selected persona and strategy."
+            ),
+        },
+        "avoidRules": selected_persona.get("avoid", []) + selected_strategy.get("risks", []),
+        "contentMix": [
+            {"contentType": "운영자 숏폼형", "count": 9},
+            {"contentType": "제품 요청형", "count": 3},
+            {"contentType": "제품 소개형", "count": 1},
+            {"contentType": "정보/기능형", "count": 1},
+        ],
+    }
 
 
 async def _campaign_strategy(body: PromotionCampaignRequest, target_analysis: dict) -> dict:
@@ -860,6 +1022,238 @@ def _scheduled_at_for_day(day: int) -> str:
         microsecond=0,
     )
     return target.isoformat()
+
+
+def _get_campaign_for_user(project_id: str, user_id: str, campaign_id: str) -> dict:
+    result = (
+        supabase.table("promotion_campaigns")
+        .select("*")
+        .eq("id", campaign_id)
+        .eq("project_id", project_id)
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise ValidationError("Campaign not found")
+    return result.data
+
+
+async def start_campaign_wizard(project_id: str, user_id: str, body: PromotionCampaignRequest) -> dict:
+    """Start the guided strategy proposal flow and return persona evaluations."""
+    campaign_insert = supabase.table("promotion_campaigns").insert({
+        "project_id": project_id,
+        "user_id": user_id,
+        "input": _input_dict(body),
+        "status": "awaiting_persona_selection",
+    }).execute()
+    if not campaign_insert.data:
+        raise ValidationError("Failed to create promotion campaign")
+
+    campaign = campaign_insert.data[0]
+    campaign_id = campaign["id"]
+
+    try:
+        target_analysis = await _target_analysis(body)
+        await _save_step(campaign_id, "target_analysis", target_analysis)
+
+        persona_evaluation = await _evaluate_persona_options(body, target_analysis)
+        persona_step = {
+            "options": PERSONA_OPTIONS,
+            **persona_evaluation,
+        }
+        await _save_step(campaign_id, "persona_option_evaluation", persona_step)
+
+        campaign_strategy = {
+            "personaOptions": PERSONA_OPTIONS,
+            "personaEvaluation": persona_evaluation.get("evaluations", []),
+        }
+        updated = supabase.table("promotion_campaigns").update({
+            "target_analysis": target_analysis,
+            "campaign_strategy": campaign_strategy,
+            "status": "awaiting_persona_selection",
+        }).eq("id", campaign_id).execute()
+
+        return {
+            "campaign": updated.data[0] if updated.data else campaign,
+            "personaOptions": PERSONA_OPTIONS,
+            "personaEvaluation": persona_evaluation.get("evaluations", []),
+        }
+    except Exception as exc:
+        supabase.table("promotion_campaigns").update({
+            "status": "failed",
+            "error_message": str(exc)[:1000],
+        }).eq("id", campaign_id).execute()
+        raise
+
+
+async def select_campaign_persona(project_id: str, user_id: str, campaign_id: str, persona_id: str) -> dict:
+    """Persist the selected persona and return strategy option evaluations."""
+    campaign = _get_campaign_for_user(project_id, user_id, campaign_id)
+    body = _campaign_body_from_input(campaign.get("input"))
+    target_analysis = campaign.get("target_analysis") or {}
+    campaign_strategy = campaign.get("campaign_strategy") or {}
+
+    selected_persona = _option_by_id(PERSONA_OPTIONS, persona_id, "persona")
+    persona_evaluation = _evaluation_by_id(campaign_strategy.get("personaEvaluation"), persona_id)
+
+    await _save_step(campaign_id, "user_persona_selection", {
+        "selectedPersonaId": persona_id,
+        "selectedPersona": selected_persona,
+        "personaEvaluation": persona_evaluation,
+    })
+
+    strategy_evaluation = await _evaluate_strategy_options(body, target_analysis, selected_persona)
+    strategy_step = {
+        "selectedPersona": selected_persona,
+        "options": STRATEGY_OPTIONS,
+        **strategy_evaluation,
+    }
+    await _save_step(campaign_id, "strategy_option_evaluation", strategy_step)
+
+    updated_strategy = {
+        **campaign_strategy,
+        "selectedPersona": selected_persona,
+        "selectedPersonaId": persona_id,
+        "selectedPersonaEvaluation": persona_evaluation,
+        "strategyOptions": STRATEGY_OPTIONS,
+        "strategyEvaluation": strategy_evaluation.get("evaluations", []),
+    }
+    updated = supabase.table("promotion_campaigns").update({
+        "campaign_strategy": updated_strategy,
+        "status": "awaiting_strategy_selection",
+    }).eq("id", campaign_id).execute()
+
+    return {
+        "campaign": updated.data[0] if updated.data else campaign,
+        "selectedPersona": selected_persona,
+        "strategyOptions": STRATEGY_OPTIONS,
+        "strategyEvaluation": strategy_evaluation.get("evaluations", []),
+    }
+
+
+async def select_campaign_strategy(project_id: str, user_id: str, campaign_id: str, strategy_id: str) -> dict:
+    """Persist the selected strategy, then generate and save the 14-day campaign."""
+    campaign = _get_campaign_for_user(project_id, user_id, campaign_id)
+    body = _campaign_body_from_input(campaign.get("input"))
+    target_analysis = campaign.get("target_analysis") or {}
+    campaign_strategy = campaign.get("campaign_strategy") or {}
+
+    selected_persona = campaign_strategy.get("selectedPersona")
+    if not isinstance(selected_persona, dict):
+        raise ValidationError("Select a persona before selecting strategy")
+
+    selected_strategy = _option_by_id(STRATEGY_OPTIONS, strategy_id, "strategy")
+    persona_evaluation = campaign_strategy.get("selectedPersonaEvaluation") or {}
+    strategy_evaluation = _evaluation_by_id(campaign_strategy.get("strategyEvaluation"), strategy_id)
+    strategy = _strategy_from_selection(
+        body,
+        selected_persona,
+        persona_evaluation,
+        selected_strategy,
+        strategy_evaluation,
+    )
+
+    await _save_step(campaign_id, "user_strategy_selection", {
+        "selectedStrategyId": strategy_id,
+        "selectedStrategy": selected_strategy,
+        "strategyEvaluation": strategy_evaluation,
+    })
+
+    try:
+        supabase.table("promotion_campaigns").update({
+            "status": "generating",
+            "campaign_strategy": {
+                **campaign_strategy,
+                **strategy,
+            },
+        }).eq("id", campaign_id).execute()
+
+        operating_rhythm = await _threads_operating_rhythm(body, target_analysis, strategy)
+        await _save_step(campaign_id, "threads_operating_rhythm", operating_rhythm)
+
+        calendar = await _calendar_plan(body, target_analysis, strategy, operating_rhythm)
+        await _save_step(campaign_id, "calendar_planning", calendar)
+
+        drafts = await _draft_posts(body, target_analysis, strategy, operating_rhythm, calendar)
+        await _save_step(campaign_id, "draft_writing", drafts)
+
+        review = await _review_campaign(body, target_analysis, strategy, operating_rhythm, calendar, drafts)
+        await _save_step(campaign_id, "review", review)
+
+        final_calendar = review["finalCalendar"]
+        posts = _insert_campaign_posts(project_id, user_id, body, campaign_id, final_calendar)
+
+        final_strategy = {
+            **campaign_strategy,
+            **strategy,
+            "threadsOperatingRhythm": operating_rhythm,
+        }
+        updated = supabase.table("promotion_campaigns").update({
+            "status": "completed",
+            "target_analysis": target_analysis,
+            "campaign_strategy": final_strategy,
+            "final_calendar": final_calendar,
+            "post_ids": [p["id"] for p in posts],
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", campaign_id).execute()
+
+        return {"campaign": updated.data[0] if updated.data else campaign, "posts": posts}
+    except Exception as exc:
+        supabase.table("promotion_campaigns").update({
+            "status": "failed",
+            "error_message": str(exc)[:1000],
+        }).eq("id", campaign_id).execute()
+        raise
+
+
+def _insert_campaign_posts(project_id: str, user_id: str, body: PromotionCampaignRequest, campaign_id: str, final_calendar: list) -> list:
+    posts_payload = []
+    for raw in final_calendar:
+        day = int(raw.get("day", len(posts_payload) + 1))
+        draft = str(raw.get("draft", "")).strip()
+        topic = str(raw.get("topic", "")).strip()
+        hook = str(raw.get("hook", "")).strip()
+        content = str(raw.get("content", "")).strip()
+        if not hook or not content:
+            hook, content = _split_hook_and_content(draft, topic)
+        elif draft and _same_text(hook, content):
+            _, content = _split_hook_and_content(draft, topic)
+        content = _remove_repeated_hook(hook, content) or topic or body.one_line_description
+        content = _format_threads_content(content)
+        posts_payload.append({
+            "project_id": project_id,
+            "user_id": user_id,
+            "platform": body.channel,
+            "hook": hook,
+            "content": content or topic or body.one_line_description,
+            "hashtags": [],
+            "tone": "friendly",
+            "content_type": _post_content_type(raw.get("contentType")),
+            "status": "draft",
+            "scheduled_at": _scheduled_at_for_day(day),
+            "ai_prompt": "2-week promotion campaign",
+            "ai_model": MODEL,
+            "campaign_id": campaign_id,
+            "campaign_day": day,
+            "campaign_meta": {
+                "postFormat": raw.get("postFormat", ""),
+                "contentType": raw.get("contentType", ""),
+                "postGoal": raw.get("postGoal", ""),
+                "topic": topic,
+                "hookStyle": raw.get("hookStyle", ""),
+                "coreMessage": raw.get("coreMessage", ""),
+                "cta": raw.get("cta", ""),
+                "assignedInfo": raw.get("assignedInfo", ""),
+                "toneElements": raw.get("toneElements", []),
+                "ctaStrength": raw.get("ctaStrength", ""),
+                "usePlatformLanguage": raw.get("usePlatformLanguage", False),
+                "productMentionLevel": raw.get("productMentionLevel", ""),
+            },
+        })
+
+    posts_result = supabase.table("promotion_posts").insert(posts_payload).execute()
+    return posts_result.data or []
 
 
 async def create_campaign(project_id: str, user_id: str, body: PromotionCampaignRequest) -> dict:

@@ -10,7 +10,13 @@ CREATE TABLE IF NOT EXISTS promotion_campaigns (
   final_calendar    jsonb NOT NULL DEFAULT '[]',
   post_ids          uuid[] NOT NULL DEFAULT '{}',
   status            text NOT NULL DEFAULT 'generating'
-    CHECK (status IN ('generating', 'completed', 'failed')),
+    CHECK (status IN (
+      'awaiting_persona_selection',
+      'awaiting_strategy_selection',
+      'generating',
+      'completed',
+      'failed'
+    )),
   error_message     text,
   completed_at      timestamptz,
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -22,6 +28,10 @@ CREATE TABLE IF NOT EXISTS promotion_campaign_steps (
   campaign_id  uuid NOT NULL REFERENCES promotion_campaigns(id) ON DELETE CASCADE,
   step_name    text NOT NULL CHECK (step_name IN (
     'target_analysis',
+    'persona_option_evaluation',
+    'user_persona_selection',
+    'strategy_option_evaluation',
+    'user_strategy_selection',
     'campaign_strategy',
     'threads_operating_rhythm',
     'calendar_planning',

@@ -12,10 +12,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  createPromotionCampaign,
   getLatestPromotionCampaign,
   getProjectPromotionInfo,
+  selectPromotionCampaignPersona,
+  selectPromotionCampaignStrategy,
+  startPromotionCampaign,
   type PromotionCampaignInput,
+  type PromotionOptionEvaluation,
+  type PromotionPersonaOption,
+  type PromotionStrategyOption,
 } from "@/lib/api/promotion";
 import { getProject } from "@/lib/api/projects";
 
@@ -80,6 +85,15 @@ function Field({ label, helper, children }: FieldProps) {
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-medium text-slate-800 outline-none transition-colors placeholder:text-slate-300 focus:border-slate-400";
 
+type WizardStep = "input" | "persona" | "strategy" | "generating";
+
+const wizardSteps: { id: WizardStep; label: string }[] = [
+  { id: "input", label: "정보 입력" },
+  { id: "persona", label: "페르소나 선택" },
+  { id: "strategy", label: "전략 선택" },
+  { id: "generating", label: "콘텐츠 생성" },
+];
+
 const generationSteps = [
   {
     title: "제품 정보 분석",
@@ -114,6 +128,129 @@ function formatElapsed(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
   return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function evaluationFor(
+  evaluations: PromotionOptionEvaluation[],
+  optionId: string,
+) {
+  return evaluations.find((item) => item.optionId === optionId);
+}
+
+function Stepper({ activeStep }: { activeStep: WizardStep }) {
+  const activeIndex = wizardSteps.findIndex((step) => step.id === activeStep);
+  return (
+    <div className="grid gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-2 md:grid-cols-4">
+      {wizardSteps.map((step, index) => {
+        const isActive = step.id === activeStep;
+        const isDone = index < activeIndex;
+        return (
+          <div
+            key={step.id}
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold ${
+              isActive
+                ? "bg-slate-900 text-white"
+                : isDone
+                  ? "bg-white text-emerald-600"
+                  : "text-slate-400"
+            }`}
+          >
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+                isActive
+                  ? "bg-white/15"
+                  : isDone
+                    ? "bg-emerald-50"
+                    : "bg-white"
+              }`}
+            >
+              {index + 1}
+            </span>
+            {step.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function OptionCard({
+  selected,
+  title,
+  description,
+  meta,
+  reason,
+  caution,
+  onSelect,
+}: {
+  selected: boolean;
+  title: string;
+  description: string;
+  meta: string;
+  reason?: string;
+  caution?: string;
+  onSelect: () => void;
+}) {
+  const titleClass = selected
+    ? "text-[14px] font-black text-white"
+    : "text-[14px] font-black text-slate-900";
+  const metaClass = selected
+    ? "mt-1 truncate text-[11px] font-semibold text-white/60"
+    : "mt-1 truncate text-[11px] font-semibold text-slate-400";
+  const descriptionClass = selected
+    ? "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-white/80"
+    : "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-slate-500";
+  const reasonBoxClass = selected
+    ? "mt-3 rounded-lg bg-white/10 px-3 py-2"
+    : "mt-3 rounded-lg bg-slate-50 px-3 py-2";
+  const cautionBoxClass = selected
+    ? "mt-2 rounded-lg bg-white/10 px-3 py-2"
+    : "mt-2 rounded-lg bg-amber-50/60 px-3 py-2";
+  const mutedLabelClass = selected
+    ? "text-[10px] font-bold text-white/50"
+    : "text-[10px] font-bold text-slate-400";
+  const cautionLabelClass = selected
+    ? "text-[10px] font-bold text-white/50"
+    : "text-[10px] font-bold text-amber-600";
+  const detailTextClass = selected
+    ? "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-white/80"
+    : "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-slate-600";
+  const cautionTextClass = selected
+    ? "mt-0.5 line-clamp-1 text-[11px] font-medium leading-5 text-white/80"
+    : "mt-0.5 line-clamp-1 text-[11px] font-medium leading-5 text-amber-800/80";
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`min-h-[190px] rounded-2xl border p-4 text-left transition-all ${
+        selected
+          ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-200"
+          : "border-slate-100 bg-white text-slate-900 hover:border-slate-300"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className={titleClass}>{title}</p>
+          <p className={metaClass}>{meta}</p>
+        </div>
+        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-white" />}
+      </div>
+      <p className={descriptionClass}>{description}</p>
+      {reason && (
+        <div className={reasonBoxClass}>
+          <p className={mutedLabelClass}>이 프로젝트에 맞는 이유</p>
+          <p className={detailTextClass}>{reason}</p>
+        </div>
+      )}
+      {caution && (
+        <div className={cautionBoxClass}>
+          <p className={cautionLabelClass}>주의할 점</p>
+          <p className={cautionTextClass}>{caution}</p>
+        </div>
+      )}
+    </button>
+  );
 }
 
 type GenerationProgressProps = {
@@ -241,6 +378,14 @@ export default function NewPromotionCampaignPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const router = useRouter();
   const [form, setForm] = useState<PromotionCampaignInput>(initialForm);
+  const [wizardStep, setWizardStep] = useState<WizardStep>("input");
+  const [campaignId, setCampaignId] = useState("");
+  const [personaOptions, setPersonaOptions] = useState<PromotionPersonaOption[]>([]);
+  const [personaEvaluation, setPersonaEvaluation] = useState<PromotionOptionEvaluation[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState("");
+  const [strategyOptions, setStrategyOptions] = useState<PromotionStrategyOption[]>([]);
+  const [strategyEvaluation, setStrategyEvaluation] = useState<PromotionOptionEvaluation[]>([]);
+  const [selectedStrategyId, setSelectedStrategyId] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -307,13 +452,61 @@ export default function NewPromotionCampaignPage() {
     setElapsedSeconds(0);
     setGenerating(true);
     try {
-      await createPromotionCampaign(projectId, form);
-      router.push(`/projects/${projectId}/promotion`);
+      const result = await startPromotionCampaign(projectId, form);
+      setCampaignId(result.campaign.id);
+      setPersonaOptions(result.personaOptions);
+      setPersonaEvaluation(result.personaEvaluation);
+      setSelectedPersonaId(result.personaOptions[0]?.id ?? "");
+      setWizardStep("persona");
     } catch (e) {
       console.error(e);
       setError(
-        e instanceof Error ? e.message : "홍보 전략 생성에 실패했습니다.",
+        e instanceof Error ? e.message : "페르소나 제안 생성에 실패했습니다.",
       );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handlePersonaNext = async () => {
+    if (!campaignId || !selectedPersonaId) return;
+    setError("");
+    setGenerating(true);
+    try {
+      const result = await selectPromotionCampaignPersona(
+        projectId,
+        campaignId,
+        selectedPersonaId,
+      );
+      setStrategyOptions(result.strategyOptions);
+      setStrategyEvaluation(result.strategyEvaluation);
+      setSelectedStrategyId(result.strategyOptions[0]?.id ?? "");
+      setWizardStep("strategy");
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "전략 제안 생성에 실패했습니다.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleStrategyGenerate = async () => {
+    if (!campaignId || !selectedStrategyId) return;
+    setError("");
+    setElapsedSeconds(0);
+    setWizardStep("generating");
+    setGenerating(true);
+    try {
+      await selectPromotionCampaignStrategy(
+        projectId,
+        campaignId,
+        selectedStrategyId,
+      );
+      router.push(`/projects/${projectId}/promotion`);
+    } catch (e) {
+      console.error(e);
+      setWizardStep("strategy");
+      setError(e instanceof Error ? e.message : "홍보 캠페인 생성에 실패했습니다.");
     } finally {
       setGenerating(false);
     }
@@ -346,12 +539,14 @@ export default function NewPromotionCampaignPage() {
           </div>
         </header>
 
+        <Stepper activeStep={wizardStep} />
+
         {generating ? (
           <GenerationProgress
             projectName={generationProjectName}
             elapsedSeconds={elapsedSeconds}
           />
-        ) : (
+        ) : wizardStep === "input" ? (
           <form
             onSubmit={handleSubmit}
             className="grid gap-6 lg:grid-cols-[1fr_320px]"
@@ -463,17 +658,16 @@ export default function NewPromotionCampaignPage() {
                 <Sparkles className="h-4 w-4" />
               </div>
               <h2 className="text-[16px] font-bold text-slate-900">
-                생성 결과
+                다음 단계
               </h2>
               <p className="mt-2 text-[13px] font-medium leading-6 text-slate-500">
-                홍보 에이전트가 타겟 분석, 2주 캠페인 전략, Threads 운영 리듬,
-                14일 콘텐츠 캘린더, Threads 초안, 최종 검수를 순서대로
-                실행합니다.
+                먼저 프로젝트 맥락을 분석한 뒤, 고정된 페르소나 선택지마다
+                이 프로젝트에 맞는 이유와 주의할 점을 제안합니다.
               </p>
               <div className="mt-5 space-y-2 text-[12px] font-semibold text-slate-500">
-                <p>Day 1은 내일 오후 7시로 배치됩니다.</p>
-                <p>생성된 글은 날짜가 지정된 초안으로 저장됩니다.</p>
-                <p>예약 발행은 캘린더 우상단에서 한 번에 켤 수 있습니다.</p>
+                <p>선택지는 AI가 새로 만들지 않습니다.</p>
+                <p>AI는 정해진 선택지에 대한 판단만 작성합니다.</p>
+                <p>전략 선택 후 14일 초안 생성이 시작됩니다.</p>
               </div>
 
               {error && (
@@ -495,12 +689,127 @@ export default function NewPromotionCampaignPage() {
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4" />
-                    홍보 계획 생성하기
+                    다음: 페르소나 제안 보기
                   </>
                 )}
               </button>
             </aside>
           </form>
+        ) : wizardStep === "persona" ? (
+          <section className="grid gap-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
+                  Persona Direction
+                </p>
+                <h2 className="mt-1 text-[22px] font-bold tracking-tight text-slate-900">
+                  어떤 사람처럼 보이며 홍보할까요?
+                </h2>
+                <p className="mt-1 max-w-2xl text-[13px] font-medium leading-6 text-slate-500">
+                  고정된 선택지 중 하나를 고르면 다음 단계에서 전략을 비교합니다.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWizardStep("input")}
+                  className="h-11 rounded-xl border border-slate-200 px-4 text-[13px] font-bold text-slate-600 transition-colors hover:border-slate-300"
+                >
+                  이전
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePersonaNext}
+                  disabled={!selectedPersonaId}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  다음: 전략 제안 보기
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-600">
+                {error}
+              </div>
+            )}
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {personaOptions.map((option) => {
+                const evaluation = evaluationFor(personaEvaluation, option.id);
+                return (
+                  <OptionCard
+                    key={option.id}
+                    selected={selectedPersonaId === option.id}
+                    title={option.name}
+                    description={option.description}
+                    meta={option.tone}
+                    reason={evaluation?.reason}
+                    caution={evaluation?.caution}
+                    onSelect={() => setSelectedPersonaId(option.id)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        ) : (
+          <section className="grid gap-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
+                  Campaign Strategy
+                </p>
+                <h2 className="mt-1 text-[22px] font-bold tracking-tight text-slate-900">
+                  2주 캠페인을 어떤 방식으로 운영할까요?
+                </h2>
+                <p className="mt-1 max-w-2xl text-[13px] font-medium leading-6 text-slate-500">
+                  전략을 고르면 바로 14일 콘텐츠 초안 생성을 시작합니다.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWizardStep("persona")}
+                  className="h-11 rounded-xl border border-slate-200 px-4 text-[13px] font-bold text-slate-600 transition-colors hover:border-slate-300"
+                >
+                  이전
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStrategyGenerate}
+                  disabled={!selectedStrategyId}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  2주 콘텐츠 생성 시작
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-600">
+                {error}
+              </div>
+            )}
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {strategyOptions.map((option) => {
+                const evaluation = evaluationFor(strategyEvaluation, option.id);
+                return (
+                  <OptionCard
+                    key={option.id}
+                    selected={selectedStrategyId === option.id}
+                    title={option.name}
+                    description={option.description}
+                    meta={`${option.mainGoal} · ${option.postStyle}`}
+                    reason={evaluation?.reason}
+                    caution={evaluation?.caution}
+                    onSelect={() => setSelectedStrategyId(option.id)}
+                  />
+                );
+              })}
+            </div>
+          </section>
         )}
       </div>
     </div>
