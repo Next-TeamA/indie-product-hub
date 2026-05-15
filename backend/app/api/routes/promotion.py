@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, Request
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.project_access import verify_project_access
@@ -30,7 +30,8 @@ router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"]
 def _get_promotion_system_prompt() -> str:
     """Load promotion system prompt from skill file."""
     skill_content = get_skill_prompt("promotion")
-    return f"You are a marketing copywriter specialized in indie products.\n\n{skill_content}" if skill_content else "You are a marketing copywriter. Write authentic, non-salesy promotional content."
+    base = f"You are a marketing copywriter specialized in indie products.\n\n{skill_content}" if skill_content else "You are a marketing copywriter. Write authentic, non-salesy promotional content."
+    return base + "\n\n**CRITICAL: Always write ALL output in Korean (한국어). Never use English in the generated hook, content, or hashtags.**"
 
 
 @router.get("/history")
@@ -162,11 +163,13 @@ Generate promotional content following the Playbook rules and reference patterns
 Use the 5-Part Arc: Hook -> Context -> Solution -> Proof -> CTA.
 Match the slot type and voice persona to the request.
 
+**IMPORTANT: Write everything in Korean (한국어). Hook, content, and hashtags must all be in Korean.**
+
 Return as JSON:
 {{
-  "hook": "Opening line that grabs attention (1 sentence, follow hook formulas from playbook)",
-  "content": "Main body following the 5-part arc structure",
-  "hashtags": ["tag1", "tag2"]
+  "hook": "주목을 끄는 첫 문장 (한국어, 1문장)",
+  "content": "5-Part Arc 구조를 따른 본문 (한국어)",
+  "hashtags": ["한국어태그1", "한국어태그2"]
 }}
 """
 
@@ -369,11 +372,10 @@ async def publish_post(
     request: Request,
     project_id: str,
     post_id: str,
-    background_tasks: BackgroundTasks,
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
-    """Publish a post to the connected SNS platform."""
+    """Publish a post to the connected SNS platform (synchronous)."""
     # Get post
     post = (
         supabase.table("promotion_posts")
@@ -401,9 +403,21 @@ async def publish_post(
     if not update_result.data:
         raise ValidationError("Post is already being published")
 
-    # Publish in background
-    background_tasks.add_task(_do_publish, user["id"], post_data)
-    return {"status": "publishing", "post_id": post_id}
+    # Publish synchronously so errors are returned immediately
+    await _do_publish(user["id"], post_data)
+
+    # Return final status from DB
+    final = (
+        supabase.table("promotion_posts")
+        .select("status, publish_error")
+        .eq("id", post_id)
+        .single()
+        .execute()
+    )
+    final_data = final.data or {}
+    if final_data.get("status") == "failed":
+        raise ExternalAPIError("SNS", final_data.get("publish_error") or "Publishing failed")
+    return {"status": final_data.get("status", "published"), "post_id": post_id}
 
 
 def _split_text_for_threads(text: str, max_len: int = 500) -> list[str]:
