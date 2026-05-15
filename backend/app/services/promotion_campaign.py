@@ -146,8 +146,8 @@ DEFAULT_THREADS_RHYTHM = [
     {
         "day": 14,
         "postFormat": "operator_shortform",
-        "rhythmRole": "2주 운영의 마무리와 다음 글 예고를 사람처럼 남긴다",
-        "toneElements": ["운영일지", "다음 예고", "작은 고마움"],
+        "rhythmRole": "계속 이어지는 운영 흐름 속에서 짧은 생각이나 질문을 남긴다",
+        "toneElements": ["계속 운영", "짧은 생각", "대화 여지"],
         "ctaStrength": "low",
         "usePlatformLanguage": False,
         "productMentionLevel": "implied",
@@ -401,53 +401,6 @@ Return only JSON:
     return _ensure_dict(result, "target_analysis")
 
 
-async def _evaluate_persona_options(body: PromotionCampaignRequest, target_analysis: dict) -> dict:
-    prompt = f"""
-You are a Threads marketing strategist.
-
-Evaluate the fixed persona options for this project. Do not create new options.
-Write very short Korean comments for compact selection cards.
-
-Input:
-{_common_context(body)}
-
-Target analysis:
-{target_analysis}
-
-Fixed persona options:
-{PERSONA_OPTIONS}
-
-Return only JSON:
-{{
-  "evaluations": [
-    {{
-      "optionId": "honest_operator",
-      "reason": "이 프로젝트에 이 페르소나가 맞는 이유",
-      "caution": "선택 시 주의할 점"
-    }}
-  ]
-}}
-
-Rules:
-- Include exactly one evaluation for every fixed persona option.
-- Do not include fitScore or numeric ranking.
-- Do not invent option IDs.
-- Keep reason within 70 Korean characters.
-- Keep caution within 45 Korean characters.
-- Each field should be one short sentence.
-- Use Korean only.
-"""
-    result = await gemini.generate_json(
-        prompt=prompt,
-        system="Evaluate fixed persona options for a project. Do not create new options.",
-        model=MODEL,
-    )
-    evaluation = _ensure_dict(result, "persona_option_evaluation")
-    if not isinstance(evaluation.get("evaluations"), list):
-        raise ExternalAPIError("Gemini", "persona_option_evaluation did not return evaluations")
-    return evaluation
-
-
 async def _evaluate_strategy_options(body: PromotionCampaignRequest, target_analysis: dict, selected_persona: dict) -> dict:
     prompt = f"""
 You are a Threads campaign strategist.
@@ -501,7 +454,6 @@ Rules:
 def _strategy_from_selection(
     body: PromotionCampaignRequest,
     selected_persona: dict,
-    persona_evaluation: dict,
     selected_strategy: dict,
     strategy_evaluation: dict,
 ) -> dict:
@@ -515,7 +467,6 @@ def _strategy_from_selection(
         ),
         "operatorPersona": selected_persona,
         "selectedPersona": selected_persona,
-        "personaEvaluation": persona_evaluation,
         "selectedStrategy": selected_strategy,
         "strategyEvaluation": strategy_evaluation,
         "finishedProductBoundary": (
@@ -600,6 +551,8 @@ async def _threads_operating_rhythm(body: PromotionCampaignRequest, target_analy
 You are a Threads-native editorial rhythm planner.
 
 Create the operating rhythm for a 14-day campaign before any final post drafts are written.
+The 14 days are only an internal generation batch in LaunchPad, not a public campaign period.
+Never make Day 14 a closing, recap, goodbye, wrap-up, or "two weeks are over" post.
 This product is already finished enough to promote. Do not frame it as an unbuilt MVP or future idea.
 Use the campaign strategy's rhythmStrategy to choose the day-by-day flow.
 Do not copy the fallback rhythm mechanically. It is only a safety reference for shape and pacing.
@@ -645,6 +598,7 @@ Rules for calendarRhythm:
 - It must contain exactly 14 objects.
 - Day 1 must be postFormat "product_intro".
 - Choose day 2-14 postFormat based on the campaign strategy.
+- Day 14 must feel like a normal ongoing account post, not the end of anything.
 - Include 3-4 product_request posts total, spaced roughly every 3-4 days.
 - Include at least 8 operator-led posts using operator_shortform, community_question, or proof_or_progress.
 - Include 3-6 days where usePlatformLanguage is true.
@@ -652,6 +606,7 @@ Rules for calendarRhythm:
 - Use postFormat values only from:
   product_intro, operator_shortform, product_request, community_question, soft_feature, proof_or_progress.
 - Do not make every day a hard CTA.
+- Do not mention internal generation windows or endings: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
 """
     result = await gemini.generate_json(prompt=prompt, system="Plan Threads editorial rhythm for human operator-led finished-product campaigns.", model=MODEL)
     rhythm = _ensure_dict(result, "threads_operating_rhythm")
@@ -666,11 +621,14 @@ async def _calendar_plan(body: PromotionCampaignRequest, target_analysis: dict, 
 You are a 14-day SNS editorial calendar planner.
 
 Plan exactly 14 different Threads posts. Do not write final drafts yet.
+The 14 posts are only an internal generation batch in LaunchPad.
+Readers must not see references to a 14-day or two-week campaign.
 Each day must have a different topic angle, hook style, and message.
 Do not repeat the same product benefit every day.
 Follow the operating rhythm exactly for postFormat, CTA strength, platform-language usage, and product mention level.
 Day 1 must introduce the product clearly.
 The campaign should not pretend the product is unbuilt or still being made from scratch.
+Day 14 must not be a closing, recap, wrap-up, goodbye, or final campaign post.
 
 Input:
 {_common_context(body)}
@@ -705,6 +663,11 @@ Return only a JSON array with exactly 14 objects:
     "productMentionLevel": "none | implied | clear"
   }}
 ]
+
+Rules:
+- Do not use topics, postGoals, hookStyles, coreMessages, or CTAs about ending or wrapping up the campaign.
+- Forbidden phrases: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
+- Day 14 should be another ongoing operator post, question, soft product request, small operating moment, or insight.
 """
     result = await gemini.generate_json(prompt=prompt, system="Create non-overlapping content calendars for product marketing.", model=MODEL)
     plan = _ensure_list(result, "calendar_planning")
@@ -718,6 +681,8 @@ async def _draft_posts(body: PromotionCampaignRequest, target_analysis: dict, st
 You are a Threads copywriter for finished-product operator-led promotion.
 
 Write actual post drafts for the 14-day calendar.
+The 14 days are only an internal generation batch in LaunchPad.
+Do not reveal the batch length or write as if promotion stops after these posts.
 
 Promotion writing reference:
 {PROMOTION_SKILL or "No promotion skill document is available. Follow the rules below."}
@@ -734,6 +699,7 @@ Rules:
 - Each draft must be 500 characters or less.
 - Follow each day's postFormat, toneElements, ctaStrength, usePlatformLanguage, and productMentionLevel.
 - Day 1 must clearly introduce the product.
+- Day 14 must sound like the account will keep operating, not like a closing post.
 - Product request posts must ask directly but sound like a human operator asking, not an ad.
 - Operator shortform posts should lead with human feeling, operating situation, low engagement, awkwardness, small wins, or community-seeking before product explanation.
 - Use 스친, 스하리, 반하리, 맞팔, 뒷삭 only on days where usePlatformLanguage is true.
@@ -742,6 +708,7 @@ Rules:
 - Do not use advertising phrases like "지금 바로", "확인해보세요", "경험해보세요", "무료로 체험", "마법", "꿀팁", "심폐소생술", "새 생명", "알아서 척척", "더 이상".
 - Do not use cliches like "혁신적인", "최고의", "생산성을 극대화", "게임 체인저".
 - Do not write as if the product is unbuilt, still just an idea, or being built from scratch.
+- Do not mention internal generation windows or endings: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
 - You may write operator-led posts about running, promoting, asking for feedback, and finding users for an already-finished product.
 - Start from realistic situations the target user faces.
 - Do not write polished educational posts, checklist posts, fake testimonials, or corporate campaign copy unless the day's postFormat explicitly asks for it.
@@ -828,6 +795,7 @@ async def _review_campaign(body: PromotionCampaignRequest, target_analysis: dict
 You are the final editor for a 14-day finished-product Threads operator campaign.
 
 Review and revise the campaign so it passes all rules.
+The 14 days are only an internal generation batch in LaunchPad, not a public campaign period.
 
 Input:
 {_common_context(body)}
@@ -859,8 +827,11 @@ Review rules:
 - CTA strength must match each post's role. Not every post needs a hard CTA.
 - Keep Threads length and tone.
 - Do not write as if the product is unbuilt or still being made from scratch.
+- Do not mention internal generation windows or endings: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
 - Preserve operator-led human posts about running, promoting, finding users, getting feedback, awkwardness, low engagement, and small wins.
 - Day 1 must clearly introduce the product.
+- Day 14 must be rewritten if it sounds like a closing, recap, wrap-up, goodbye, final promise, or "campaign is over" post.
+- Day 14 should feel like one normal ongoing account post that could naturally be followed by Day 15.
 - Across the 14 posts, 9-10 should feel like operator-led shortform posts.
 - Across the 14 posts, 3-4 should be product request posts, spaced roughly every 3-4 posts.
 - Threads culture terms like 스친, 스하리, 반하리, 맞팔, 뒷삭 should appear in 3-6 posts only.
@@ -1040,7 +1011,7 @@ def _get_campaign_for_user(project_id: str, user_id: str, campaign_id: str) -> d
 
 
 async def start_campaign_wizard(project_id: str, user_id: str, body: PromotionCampaignRequest) -> dict:
-    """Start the guided strategy proposal flow and return persona evaluations."""
+    """Start the guided strategy proposal flow and return fixed persona options."""
     campaign_insert = supabase.table("promotion_campaigns").insert({
         "project_id": project_id,
         "user_id": user_id,
@@ -1057,16 +1028,8 @@ async def start_campaign_wizard(project_id: str, user_id: str, body: PromotionCa
         target_analysis = await _target_analysis(body)
         await _save_step(campaign_id, "target_analysis", target_analysis)
 
-        persona_evaluation = await _evaluate_persona_options(body, target_analysis)
-        persona_step = {
-            "options": PERSONA_OPTIONS,
-            **persona_evaluation,
-        }
-        await _save_step(campaign_id, "persona_option_evaluation", persona_step)
-
         campaign_strategy = {
             "personaOptions": PERSONA_OPTIONS,
-            "personaEvaluation": persona_evaluation.get("evaluations", []),
         }
         updated = supabase.table("promotion_campaigns").update({
             "target_analysis": target_analysis,
@@ -1077,7 +1040,6 @@ async def start_campaign_wizard(project_id: str, user_id: str, body: PromotionCa
         return {
             "campaign": updated.data[0] if updated.data else campaign,
             "personaOptions": PERSONA_OPTIONS,
-            "personaEvaluation": persona_evaluation.get("evaluations", []),
         }
     except Exception as exc:
         supabase.table("promotion_campaigns").update({
@@ -1095,12 +1057,10 @@ async def select_campaign_persona(project_id: str, user_id: str, campaign_id: st
     campaign_strategy = campaign.get("campaign_strategy") or {}
 
     selected_persona = _option_by_id(PERSONA_OPTIONS, persona_id, "persona")
-    persona_evaluation = _evaluation_by_id(campaign_strategy.get("personaEvaluation"), persona_id)
 
     await _save_step(campaign_id, "user_persona_selection", {
         "selectedPersonaId": persona_id,
         "selectedPersona": selected_persona,
-        "personaEvaluation": persona_evaluation,
     })
 
     strategy_evaluation = await _evaluate_strategy_options(body, target_analysis, selected_persona)
@@ -1115,7 +1075,6 @@ async def select_campaign_persona(project_id: str, user_id: str, campaign_id: st
         **campaign_strategy,
         "selectedPersona": selected_persona,
         "selectedPersonaId": persona_id,
-        "selectedPersonaEvaluation": persona_evaluation,
         "strategyOptions": STRATEGY_OPTIONS,
         "strategyEvaluation": strategy_evaluation.get("evaluations", []),
     }
@@ -1144,12 +1103,10 @@ async def select_campaign_strategy(project_id: str, user_id: str, campaign_id: s
         raise ValidationError("Select a persona before selecting strategy")
 
     selected_strategy = _option_by_id(STRATEGY_OPTIONS, strategy_id, "strategy")
-    persona_evaluation = campaign_strategy.get("selectedPersonaEvaluation") or {}
     strategy_evaluation = _evaluation_by_id(campaign_strategy.get("strategyEvaluation"), strategy_id)
     strategy = _strategy_from_selection(
         body,
         selected_persona,
-        persona_evaluation,
         selected_strategy,
         strategy_evaluation,
     )

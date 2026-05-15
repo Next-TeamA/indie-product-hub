@@ -75,6 +75,7 @@ export type PromotionPersonaOption = {
   id: string;
   name: string;
   description: string;
+  comment: string;
   tone: string;
   bestFor: string[];
   strengths: string[];
@@ -121,7 +122,6 @@ export type PromotionCampaignResult = {
 export type PromotionCampaignStartResult = {
   campaign: PromotionCampaignRecord;
   personaOptions: PromotionPersonaOption[];
-  personaEvaluation: PromotionOptionEvaluation[];
 };
 
 export type PromotionCampaignPersonaResult = {

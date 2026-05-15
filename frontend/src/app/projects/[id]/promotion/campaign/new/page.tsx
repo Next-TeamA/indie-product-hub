@@ -174,6 +174,41 @@ function Stepper({ activeStep }: { activeStep: WizardStep }) {
   );
 }
 
+function PersonaCard({
+  selected,
+  option,
+  onSelect,
+}: {
+  selected: boolean;
+  option: PromotionPersonaOption;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`min-h-[118px] rounded-2xl border p-4 text-left transition-all ${
+        selected
+          ? "border-blue-300 bg-blue-50/70 shadow-sm shadow-blue-100"
+          : "border-slate-100 bg-white hover:border-slate-300"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[14px] font-black text-slate-900">{option.name}</p>
+          <p className="mt-1 truncate text-[11px] font-semibold text-slate-400">
+            {option.tone}
+          </p>
+        </div>
+        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-600" />}
+      </div>
+      <p className="mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-slate-600">
+        {option.comment}
+      </p>
+    </button>
+  );
+}
+
 function OptionCard({
   selected,
   title,
@@ -192,31 +227,31 @@ function OptionCard({
   onSelect: () => void;
 }) {
   const titleClass = selected
-    ? "text-[14px] font-black text-white"
+    ? "text-[14px] font-black text-slate-900"
     : "text-[14px] font-black text-slate-900";
   const metaClass = selected
-    ? "mt-1 truncate text-[11px] font-semibold text-white/60"
+    ? "mt-1 truncate text-[11px] font-semibold text-blue-600/70"
     : "mt-1 truncate text-[11px] font-semibold text-slate-400";
   const descriptionClass = selected
-    ? "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-white/80"
+    ? "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-slate-600"
     : "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-slate-500";
   const reasonBoxClass = selected
-    ? "mt-3 rounded-lg bg-white/10 px-3 py-2"
+    ? "mt-3 rounded-lg bg-white/80 px-3 py-2"
     : "mt-3 rounded-lg bg-slate-50 px-3 py-2";
   const cautionBoxClass = selected
-    ? "mt-2 rounded-lg bg-white/10 px-3 py-2"
+    ? "mt-2 rounded-lg bg-amber-50/80 px-3 py-2"
     : "mt-2 rounded-lg bg-amber-50/60 px-3 py-2";
   const mutedLabelClass = selected
-    ? "text-[10px] font-bold text-white/50"
+    ? "text-[10px] font-bold text-slate-400"
     : "text-[10px] font-bold text-slate-400";
   const cautionLabelClass = selected
-    ? "text-[10px] font-bold text-white/50"
+    ? "text-[10px] font-bold text-amber-600"
     : "text-[10px] font-bold text-amber-600";
   const detailTextClass = selected
-    ? "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-white/80"
+    ? "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-slate-600"
     : "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-slate-600";
   const cautionTextClass = selected
-    ? "mt-0.5 line-clamp-1 text-[11px] font-medium leading-5 text-white/80"
+    ? "mt-0.5 line-clamp-1 text-[11px] font-medium leading-5 text-amber-800/80"
     : "mt-0.5 line-clamp-1 text-[11px] font-medium leading-5 text-amber-800/80";
 
   return (
@@ -225,7 +260,7 @@ function OptionCard({
       onClick={onSelect}
       className={`min-h-[190px] rounded-2xl border p-4 text-left transition-all ${
         selected
-          ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-200"
+          ? "border-blue-300 bg-blue-50/70 shadow-sm shadow-blue-100"
           : "border-slate-100 bg-white text-slate-900 hover:border-slate-300"
       }`}
     >
@@ -234,7 +269,7 @@ function OptionCard({
           <p className={titleClass}>{title}</p>
           <p className={metaClass}>{meta}</p>
         </div>
-        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-white" />}
+        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-600" />}
       </div>
       <p className={descriptionClass}>{description}</p>
       {reason && (
@@ -381,7 +416,6 @@ export default function NewPromotionCampaignPage() {
   const [wizardStep, setWizardStep] = useState<WizardStep>("input");
   const [campaignId, setCampaignId] = useState("");
   const [personaOptions, setPersonaOptions] = useState<PromotionPersonaOption[]>([]);
-  const [personaEvaluation, setPersonaEvaluation] = useState<PromotionOptionEvaluation[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [strategyOptions, setStrategyOptions] = useState<PromotionStrategyOption[]>([]);
   const [strategyEvaluation, setStrategyEvaluation] = useState<PromotionOptionEvaluation[]>([]);
@@ -455,13 +489,12 @@ export default function NewPromotionCampaignPage() {
       const result = await startPromotionCampaign(projectId, form);
       setCampaignId(result.campaign.id);
       setPersonaOptions(result.personaOptions);
-      setPersonaEvaluation(result.personaEvaluation);
       setSelectedPersonaId(result.personaOptions[0]?.id ?? "");
       setWizardStep("persona");
     } catch (e) {
       console.error(e);
       setError(
-        e instanceof Error ? e.message : "페르소나 제안 생성에 실패했습니다.",
+        e instanceof Error ? e.message : "페르소나 선택지를 불러오지 못했습니다.",
       );
     } finally {
       setGenerating(false);
@@ -689,7 +722,7 @@ export default function NewPromotionCampaignPage() {
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4" />
-                    다음: 페르소나 제안 보기
+                    다음: 페르소나 선택하기
                   </>
                 )}
               </button>
@@ -735,21 +768,14 @@ export default function NewPromotionCampaignPage() {
             )}
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {personaOptions.map((option) => {
-                const evaluation = evaluationFor(personaEvaluation, option.id);
-                return (
-                  <OptionCard
-                    key={option.id}
-                    selected={selectedPersonaId === option.id}
-                    title={option.name}
-                    description={option.description}
-                    meta={option.tone}
-                    reason={evaluation?.reason}
-                    caution={evaluation?.caution}
-                    onSelect={() => setSelectedPersonaId(option.id)}
-                  />
-                );
-              })}
+              {personaOptions.map((option) => (
+                <PersonaCard
+                  key={option.id}
+                  selected={selectedPersonaId === option.id}
+                  option={option}
+                  onSelect={() => setSelectedPersonaId(option.id)}
+                />
+              ))}
             </div>
           </section>
         ) : (

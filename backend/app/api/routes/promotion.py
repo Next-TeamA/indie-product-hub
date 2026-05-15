@@ -216,7 +216,7 @@ async def start_promotion_campaign_wizard(
     user: dict = Depends(get_current_user),
     _project: dict = Depends(verify_project_access),
 ):
-    """Start guided campaign planning and return fixed persona options with AI comments."""
+    """Start guided campaign planning and return fixed persona options."""
     return await start_campaign_wizard(project_id, user["id"], body)
 
 
