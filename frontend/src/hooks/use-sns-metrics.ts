@@ -6,11 +6,13 @@ import {
   getXProfile,
   getThreadsPosts,
   getThreadsProfile,
+  getThreadsMentions,
   type SnsMetricSnapshot,
   type XTweetMetrics,
   type XProfileMetrics,
   type ThreadsPostMetrics,
   type ThreadsProfileInsights,
+  type ThreadsMention,
 } from "@/lib/api/sns-metrics";
 
 export function useSnsMetrics(projectId: string) {
@@ -62,4 +64,13 @@ export function useThreadsProfile(projectId: string) {
     { revalidateOnFocus: false }
   );
   return { profile: data, error, isLoading };
+}
+
+export function useThreadsMentions(projectId: string) {
+  const { data, error, isLoading } = useSWR<{ mentions: ThreadsMention[]; count: number }>(
+    `projects/${projectId}/sns/threads/mentions`,
+    () => getThreadsMentions(projectId),
+    { revalidateOnFocus: false }
+  );
+  return { mentions: data?.mentions ?? [], count: data?.count ?? 0, error, isLoading };
 }

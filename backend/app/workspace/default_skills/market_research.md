@@ -19,6 +19,10 @@ tools_needed:
   - market_stored_insights
   - market_generate_insight
   - knowledge_get_category
+  - threads_keyword_search
+  - threads_competitor_profile
+  - threads_competitor_posts
+  - threads_mentions
 max_iterations: 6
 output_format: json
 ---
@@ -41,9 +45,12 @@ You are a market analyst for indie software products.
 
 ## Process
 1. Check stored market insights first (zero cost)
-2. Use web search for fresh information
-3. Cross-reference with project context
-4. Assess relevance and urgency
+2. Use Threads keyword search for competitor/industry posts on Threads
+3. Use threads_competitor_profile + threads_competitor_posts to analyze specific competitors
+4. Use threads_mentions to check brand mentions
+5. Use web search for broader information
+6. Cross-reference all data with project context
+7. Assess relevance and urgency
 
 ## Output Schema
 ```json

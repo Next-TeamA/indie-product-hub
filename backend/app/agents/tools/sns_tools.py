@@ -123,6 +123,68 @@ async def _get_performance_summary(ctx: AgentContext) -> dict:
     }
 
 
+async def _threads_keyword_search(ctx: AgentContext, query: str = "", limit: int = 20) -> dict:
+    """Search Threads posts by keyword."""
+    token = ctx.tokens.get("threads")
+    if not token:
+        return {"error": "Threads not connected."}
+    account = safe_maybe_single(
+        supabase.table("connected_accounts")
+        .select("provider_user_id")
+        .eq("user_id", ctx.user_id)
+        .eq("provider", "threads")
+        .eq("is_active", True)
+    )
+    if not account:
+        return {"error": "Threads account not found."}
+    if not query:
+        return {"error": "Search query required."}
+    posts = await threads_client.keyword_search(token, account["provider_user_id"], query, limit=limit)
+    return {"results": posts, "count": len(posts)}
+
+
+async def _threads_competitor_profile(ctx: AgentContext, username: str = "") -> dict:
+    """Look up a public Threads profile by username."""
+    token = ctx.tokens.get("threads")
+    if not token:
+        return {"error": "Threads not connected."}
+    if not username:
+        return {"error": "Username required."}
+    profile = await threads_client.get_public_profile(token, username)
+    if not profile:
+        return {"error": f"Profile '{username}' not found."}
+    return profile
+
+
+async def _threads_competitor_posts(ctx: AgentContext, user_id: str = "", limit: int = 10) -> dict:
+    """Get public posts from a Threads user (for competitor analysis)."""
+    token = ctx.tokens.get("threads")
+    if not token:
+        return {"error": "Threads not connected."}
+    if not user_id:
+        return {"error": "User ID required. Use threads_competitor_profile first to get the ID."}
+    posts = await threads_client.get_public_user_posts(token, user_id, limit=limit)
+    return {"posts": posts, "count": len(posts)}
+
+
+async def _threads_mentions(ctx: AgentContext, limit: int = 20) -> dict:
+    """Get posts where the user's account is mentioned."""
+    token = ctx.tokens.get("threads")
+    if not token:
+        return {"error": "Threads not connected."}
+    account = safe_maybe_single(
+        supabase.table("connected_accounts")
+        .select("provider_user_id")
+        .eq("user_id", ctx.user_id)
+        .eq("provider", "threads")
+        .eq("is_active", True)
+    )
+    if not account:
+        return {"error": "Threads account not found."}
+    mentions = await threads_client.get_mentions(token, account["provider_user_id"], limit=limit)
+    return {"mentions": mentions, "count": len(mentions)}
+
+
 async def _get_promotion_references(ctx: AgentContext, slot_type: str = "", limit: int = 3) -> dict:
     """Get reference post templates by slot type."""
     query = supabase.table("promotion_references").select("slot_type, title, hook_text, body_text, cta_text, voice_persona, good_points")
@@ -164,6 +226,24 @@ def register_sns_tools():
 
     register_tool("sns_performance_summary", "Get aggregated SNS performance stats",
         {}, _get_performance_summary, "sns")
+
+    register_tool("threads_keyword_search", "Search public Threads posts by keyword (requires threads_keyword_search permission)",
+        {"query": {"type": "string", "description": "Search keyword"},
+         "limit": {"type": "integer", "description": "Max results (default 20)"}},
+        _threads_keyword_search, "sns")
+
+    register_tool("threads_competitor_profile", "Look up a public Threads profile by username",
+        {"username": {"type": "string", "description": "Threads username to look up"}},
+        _threads_competitor_profile, "sns")
+
+    register_tool("threads_competitor_posts", "Get public posts from a Threads user for competitor analysis",
+        {"user_id": {"type": "string", "description": "Threads user ID (get from threads_competitor_profile)"},
+         "limit": {"type": "integer", "description": "Max posts (default 10)"}},
+        _threads_competitor_posts, "sns")
+
+    register_tool("threads_mentions", "Get posts where your account is mentioned on Threads",
+        {"limit": {"type": "integer", "description": "Max mentions (default 20)"}},
+        _threads_mentions, "sns")
 
     register_tool("sns_promotion_references", "Get reference post templates by slot type for writing guidance",
         {"slot_type": {"type": "string", "description": "Slot type: feature_intro, problem_raising, feedback_request, update_share, dev_insights, launch"},
