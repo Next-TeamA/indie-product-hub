@@ -114,6 +114,33 @@ class ThreadsAPIClient:
                 raise ExternalAPIError("Threads", f"Publish failed: {r2.text}")
             return r2.json()["id"]
 
+    async def create_reply(self, access_token: str, user_id: str, text: str, reply_to_id: str) -> str:
+        """Create a reply to an existing thread post. Returns media ID."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r1 = await client.post(
+                f"{self.BASE_URL}/{user_id}/threads",
+                params={
+                    "media_type": "TEXT",
+                    "text": text,
+                    "reply_to_id": reply_to_id,
+                    "access_token": access_token,
+                },
+            )
+            if r1.status_code != 200:
+                raise ExternalAPIError("Threads", f"Create reply container failed: {r1.text}")
+            container_id = r1.json()["id"]
+
+            r2 = await client.post(
+                f"{self.BASE_URL}/{user_id}/threads_publish",
+                params={
+                    "creation_id": container_id,
+                    "access_token": access_token,
+                },
+            )
+            if r2.status_code != 200:
+                raise ExternalAPIError("Threads", f"Publish reply failed: {r2.text}")
+            return r2.json()["id"]
+
     async def get_post_insights(self, access_token: str, media_id: str) -> dict:
         """Get all available metrics for a single post."""
         async with httpx.AsyncClient(timeout=30.0) as client:
