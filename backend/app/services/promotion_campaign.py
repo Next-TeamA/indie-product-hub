@@ -15,6 +15,7 @@ from app.core.exceptions import ExternalAPIError, ValidationError
 from app.core.supabase import supabase
 from app.integrations import gemini
 from app.models.promotion import PromotionCampaignRequest
+from app.services.promotion_options import PERSONA_OPTIONS, STRATEGY_OPTIONS
 from app.workspace.skill_loader import get_skill_prompt
 
 MODEL = "gemini-2.5-flash"
@@ -145,8 +146,8 @@ DEFAULT_THREADS_RHYTHM = [
     {
         "day": 14,
         "postFormat": "operator_shortform",
-        "rhythmRole": "2주 운영의 마무리와 다음 글 예고를 사람처럼 남긴다",
-        "toneElements": ["운영일지", "다음 예고", "작은 고마움"],
+        "rhythmRole": "계속 이어지는 운영 흐름 속에서 짧은 생각이나 질문을 남긴다",
+        "toneElements": ["계속 운영", "짧은 생각", "대화 여지"],
         "ctaStrength": "low",
         "usePlatformLanguage": False,
         "productMentionLevel": "implied",
@@ -180,10 +181,27 @@ def _input_dict(body: PromotionCampaignRequest) -> dict:
     return body.model_dump()
 
 
+def _option_by_id(options: list[dict], option_id: str, label: str) -> dict:
+    for option in options:
+        if option.get("id") == option_id:
+            return option
+    raise ValidationError(f"Unknown {label}: {option_id}")
+
+
+def _evaluation_by_id(evaluations: list[dict] | None, option_id: str) -> dict:
+    if not isinstance(evaluations, list):
+        return {}
+    for evaluation in evaluations:
+        if isinstance(evaluation, dict) and evaluation.get("optionId") == option_id:
+            return evaluation
+    return {}
+
+
 def _common_context(body: PromotionCampaignRequest) -> str:
     return f"""
 Project name: {body.project_name}
 One-line description: {body.one_line_description}
+Project link: {body.project_url or "N/A"}
 Expected target user: {body.target_user}
 Problem to solve: {body.problem}
 Core value: {body.core_value}
@@ -193,6 +211,12 @@ Channel: {body.channel}
 Tone preference: {body.tone_preference}
 Additional context: {body.additional_context or "N/A"}
 """
+
+
+def _campaign_body_from_input(value: object) -> PromotionCampaignRequest:
+    if not isinstance(value, dict):
+        raise ValidationError("Campaign input is missing")
+    return PromotionCampaignRequest(**value)
 
 
 def _ensure_dict(value: object, step: str) -> dict:
@@ -378,6 +402,96 @@ Return only JSON:
     return _ensure_dict(result, "target_analysis")
 
 
+async def _evaluate_strategy_options(body: PromotionCampaignRequest, target_analysis: dict, selected_persona: dict) -> dict:
+    prompt = f"""
+You are a Threads campaign strategist.
+
+Evaluate the fixed strategy options for this project and selected persona. Do not create new options.
+Write very short Korean comments for compact selection cards.
+
+Input:
+{_common_context(body)}
+
+Target analysis:
+{target_analysis}
+
+Selected persona:
+{selected_persona}
+
+Fixed strategy options:
+{STRATEGY_OPTIONS}
+
+Return only JSON:
+{{
+  "evaluations": [
+    {{
+      "optionId": "daily_presence",
+      "reason": "이 프로젝트와 선택된 페르소나에 이 전략이 맞는 이유",
+      "caution": "선택 시 주의할 점"
+    }}
+  ]
+}}
+
+Rules:
+- Include exactly one evaluation for every fixed strategy option.
+- Do not include fitScore or numeric ranking.
+- Do not invent option IDs.
+- Keep reason within 70 Korean characters.
+- Keep caution within 45 Korean characters.
+- Each field should be one short sentence.
+- Use Korean only.
+"""
+    result = await gemini.generate_json(
+        prompt=prompt,
+        system="Evaluate fixed strategy options for a project. Do not create new options.",
+        model=MODEL,
+    )
+    evaluation = _ensure_dict(result, "strategy_option_evaluation")
+    if not isinstance(evaluation.get("evaluations"), list):
+        raise ExternalAPIError("Gemini", "strategy_option_evaluation did not return evaluations")
+    return evaluation
+
+
+def _strategy_from_selection(
+    body: PromotionCampaignRequest,
+    selected_persona: dict,
+    selected_strategy: dict,
+    strategy_evaluation: dict,
+) -> dict:
+    return {
+        "goal": body.promotion_goal,
+        "duration": "14 days",
+        "overallMood": selected_persona.get("tone", body.tone_preference),
+        "contentPrinciple": (
+            "Use the fixed selected persona and selected strategy as the campaign direction. "
+            "Do not invent a new strategy."
+        ),
+        "operatorPersona": selected_persona,
+        "selectedPersona": selected_persona,
+        "selectedStrategy": selected_strategy,
+        "strategyEvaluation": strategy_evaluation,
+        "finishedProductBoundary": (
+            "The product already exists enough to promote. Do not write as if it is an unbuilt MVP."
+        ),
+        "rhythmStrategy": {
+            "strategyName": selected_strategy.get("id", ""),
+            "whyThisRhythm": strategy_evaluation.get("reason") or selected_strategy.get("description", ""),
+            "shortformEmphasis": selected_persona.get("description", ""),
+            "productRequestApproach": selected_strategy.get("mainGoal", ""),
+            "communityApproach": (
+                "Use Threads-native community language only when it matches the selected persona and strategy."
+            ),
+        },
+        "avoidRules": selected_persona.get("avoid", []) + selected_strategy.get("risks", []),
+        "contentMix": [
+            {"contentType": "운영자 숏폼형", "count": 9},
+            {"contentType": "제품 요청형", "count": 3},
+            {"contentType": "제품 소개형", "count": 1},
+            {"contentType": "정보/기능형", "count": 1},
+        ],
+    }
+
+
 async def _campaign_strategy(body: PromotionCampaignRequest, target_analysis: dict) -> dict:
     prompt = f"""
 You are a campaign strategist for finished SaaS/product promotion.
@@ -438,6 +552,8 @@ async def _threads_operating_rhythm(body: PromotionCampaignRequest, target_analy
 You are a Threads-native editorial rhythm planner.
 
 Create the operating rhythm for a 14-day campaign before any final post drafts are written.
+The 14 days are only an internal generation batch in LaunchPad, not a public campaign period.
+Never make Day 14 a closing, recap, goodbye, wrap-up, or "two weeks are over" post.
 This product is already finished enough to promote. Do not frame it as an unbuilt MVP or future idea.
 Use the campaign strategy's rhythmStrategy to choose the day-by-day flow.
 Do not copy the fallback rhythm mechanically. It is only a safety reference for shape and pacing.
@@ -483,6 +599,7 @@ Rules for calendarRhythm:
 - It must contain exactly 14 objects.
 - Day 1 must be postFormat "product_intro".
 - Choose day 2-14 postFormat based on the campaign strategy.
+- Day 14 must feel like a normal ongoing account post, not the end of anything.
 - Include 3-4 product_request posts total, spaced roughly every 3-4 days.
 - Include at least 8 operator-led posts using operator_shortform, community_question, or proof_or_progress.
 - Include 3-6 days where usePlatformLanguage is true.
@@ -490,6 +607,7 @@ Rules for calendarRhythm:
 - Use postFormat values only from:
   product_intro, operator_shortform, product_request, community_question, soft_feature, proof_or_progress.
 - Do not make every day a hard CTA.
+- Do not mention internal generation windows or endings: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
 """
     result = await gemini.generate_json(prompt=prompt, system="Plan Threads editorial rhythm for human operator-led finished-product campaigns.", model=MODEL)
     rhythm = _ensure_dict(result, "threads_operating_rhythm")
@@ -504,11 +622,14 @@ async def _calendar_plan(body: PromotionCampaignRequest, target_analysis: dict, 
 You are a 14-day SNS editorial calendar planner.
 
 Plan exactly 14 different Threads posts. Do not write final drafts yet.
+The 14 posts are only an internal generation batch in LaunchPad.
+Readers must not see references to a 14-day or two-week campaign.
 Each day must have a different topic angle, hook style, and message.
 Do not repeat the same product benefit every day.
 Follow the operating rhythm exactly for postFormat, CTA strength, platform-language usage, and product mention level.
 Day 1 must introduce the product clearly.
 The campaign should not pretend the product is unbuilt or still being made from scratch.
+Day 14 must not be a closing, recap, wrap-up, goodbye, or final campaign post.
 
 Input:
 {_common_context(body)}
@@ -543,6 +664,11 @@ Return only a JSON array with exactly 14 objects:
     "productMentionLevel": "none | implied | clear"
   }}
 ]
+
+Rules:
+- Do not use topics, postGoals, hookStyles, coreMessages, or CTAs about ending or wrapping up the campaign.
+- Forbidden phrases: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
+- Day 14 should be another ongoing operator post, question, soft product request, small operating moment, or insight.
 """
     result = await gemini.generate_json(prompt=prompt, system="Create non-overlapping content calendars for product marketing.", model=MODEL)
     plan = _ensure_list(result, "calendar_planning")
@@ -556,6 +682,8 @@ async def _draft_posts(body: PromotionCampaignRequest, target_analysis: dict, st
 You are a Threads copywriter for finished-product operator-led promotion.
 
 Write actual post drafts for the 14-day calendar.
+The 14 days are only an internal generation batch in LaunchPad.
+Do not reveal the batch length or write as if promotion stops after these posts.
 
 Promotion writing reference:
 {PROMOTION_SKILL or "No promotion skill document is available. Follow the rules below."}
@@ -572,6 +700,7 @@ Rules:
 - Each draft must be 500 characters or less.
 - Follow each day's postFormat, toneElements, ctaStrength, usePlatformLanguage, and productMentionLevel.
 - Day 1 must clearly introduce the product.
+- Day 14 must sound like the account will keep operating, not like a closing post.
 - Product request posts must ask directly but sound like a human operator asking, not an ad.
 - Operator shortform posts should lead with human feeling, operating situation, low engagement, awkwardness, small wins, or community-seeking before product explanation.
 - Use 스친, 스하리, 반하리, 맞팔, 뒷삭 only on days where usePlatformLanguage is true.
@@ -580,11 +709,14 @@ Rules:
 - Do not use advertising phrases like "지금 바로", "확인해보세요", "경험해보세요", "무료로 체험", "마법", "꿀팁", "심폐소생술", "새 생명", "알아서 척척", "더 이상".
 - Do not use cliches like "혁신적인", "최고의", "생산성을 극대화", "게임 체인저".
 - Do not write as if the product is unbuilt, still just an idea, or being built from scratch.
+- Do not mention internal generation windows or endings: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
 - You may write operator-led posts about running, promoting, asking for feedback, and finding users for an already-finished product.
 - Start from realistic situations the target user faces.
 - Do not write polished educational posts, checklist posts, fake testimonials, or corporate campaign copy unless the day's postFormat explicitly asks for it.
 - Do not end every post with a product CTA.
 - Mention the product name only when productMentionLevel is "clear"; otherwise imply the context without naming it.
+- Do not write URLs directly in the hook, content, or draft. The system attaches the project link only to selected CTA-role posts.
+- If a post needs a CTA, write the human request text only.
 
 Format-specific rules:
 - product_intro: introduce product name, who it is for, and what it does. Keep it human, not corporate.
@@ -666,6 +798,7 @@ async def _review_campaign(body: PromotionCampaignRequest, target_analysis: dict
 You are the final editor for a 14-day finished-product Threads operator campaign.
 
 Review and revise the campaign so it passes all rules.
+The 14 days are only an internal generation batch in LaunchPad, not a public campaign period.
 
 Input:
 {_common_context(body)}
@@ -697,8 +830,13 @@ Review rules:
 - CTA strength must match each post's role. Not every post needs a hard CTA.
 - Keep Threads length and tone.
 - Do not write as if the product is unbuilt or still being made from scratch.
+- Do not mention internal generation windows or endings: "지난 2주", "2주 캠페인", "14일간의 여정", "마무리", "마지막", "끝났어요", "종료".
+- Remove any URLs from final copy. The system attaches the project link only to selected CTA-role posts.
+- CTA posts should contain the human request text, not the raw link.
 - Preserve operator-led human posts about running, promoting, finding users, getting feedback, awkwardness, low engagement, and small wins.
 - Day 1 must clearly introduce the product.
+- Day 14 must be rewritten if it sounds like a closing, recap, wrap-up, goodbye, final promise, or "campaign is over" post.
+- Day 14 should feel like one normal ongoing account post that could naturally be followed by Day 15.
 - Across the 14 posts, 9-10 should feel like operator-led shortform posts.
 - Across the 14 posts, 3-4 should be product request posts, spaced roughly every 3-4 posts.
 - Threads culture terms like 스친, 스하리, 반하리, 맞팔, 뒷삭 should appear in 3-6 posts only.
@@ -765,6 +903,44 @@ def _post_content_type(content_type: str | None) -> str:
     if not content_type:
         return "tip"
     return CONTENT_TYPE_MAP.get(content_type, "tip")
+
+
+URL_PATTERN = re.compile(r"(?:https?://|www\.)\S+", re.IGNORECASE)
+
+
+def _remove_urls(value: str) -> str:
+    cleaned = URL_PATTERN.sub("", value).strip()
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned
+
+
+def _campaign_project_url(body: PromotionCampaignRequest) -> str:
+    url = (body.project_url or "").strip()
+    if not url:
+        return ""
+    if not re.match(r"^https?://", url, re.IGNORECASE):
+        return f"https://{url}"
+    return url
+
+
+def _campaign_link_rule(raw: dict, day: int) -> str:
+    post_format = str(raw.get("postFormat", "")).strip().lower()
+    cta_strength = str(raw.get("ctaStrength", "")).strip().lower()
+    if day == 1 and post_format == "product_intro":
+        return "day1_product_intro"
+    if post_format == "product_request":
+        return "product_request"
+    if cta_strength == "high":
+        return "high_cta"
+    return ""
+
+
+def _campaign_post_link(body: PromotionCampaignRequest, raw: dict, day: int) -> str | None:
+    url = _campaign_project_url(body)
+    if not url:
+        return None
+    return url if _campaign_link_rule(raw, day) else None
 
 
 def _split_hook_and_content(draft: str, topic: str) -> tuple[str, str]:
@@ -862,6 +1038,231 @@ def _scheduled_at_for_day(day: int) -> str:
     return target.isoformat()
 
 
+def _get_campaign_for_user(project_id: str, user_id: str, campaign_id: str) -> dict:
+    result = (
+        supabase.table("promotion_campaigns")
+        .select("*")
+        .eq("id", campaign_id)
+        .eq("project_id", project_id)
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise ValidationError("Campaign not found")
+    return result.data
+
+
+async def start_campaign_wizard(project_id: str, user_id: str, body: PromotionCampaignRequest) -> dict:
+    """Start the guided strategy proposal flow and return fixed persona options."""
+    campaign_insert = supabase.table("promotion_campaigns").insert({
+        "project_id": project_id,
+        "user_id": user_id,
+        "input": _input_dict(body),
+        "status": "awaiting_persona_selection",
+    }).execute()
+    if not campaign_insert.data:
+        raise ValidationError("Failed to create promotion campaign")
+
+    campaign = campaign_insert.data[0]
+    campaign_id = campaign["id"]
+
+    try:
+        target_analysis = await _target_analysis(body)
+        await _save_step(campaign_id, "target_analysis", target_analysis)
+
+        campaign_strategy = {
+            "personaOptions": PERSONA_OPTIONS,
+        }
+        updated = supabase.table("promotion_campaigns").update({
+            "target_analysis": target_analysis,
+            "campaign_strategy": campaign_strategy,
+            "status": "awaiting_persona_selection",
+        }).eq("id", campaign_id).execute()
+
+        return {
+            "campaign": updated.data[0] if updated.data else campaign,
+            "personaOptions": PERSONA_OPTIONS,
+        }
+    except Exception as exc:
+        supabase.table("promotion_campaigns").update({
+            "status": "failed",
+            "error_message": str(exc)[:1000],
+        }).eq("id", campaign_id).execute()
+        raise
+
+
+async def select_campaign_persona(project_id: str, user_id: str, campaign_id: str, persona_id: str) -> dict:
+    """Persist the selected persona and return strategy option evaluations."""
+    campaign = _get_campaign_for_user(project_id, user_id, campaign_id)
+    body = _campaign_body_from_input(campaign.get("input"))
+    target_analysis = campaign.get("target_analysis") or {}
+    campaign_strategy = campaign.get("campaign_strategy") or {}
+
+    selected_persona = _option_by_id(PERSONA_OPTIONS, persona_id, "persona")
+
+    await _save_step(campaign_id, "user_persona_selection", {
+        "selectedPersonaId": persona_id,
+        "selectedPersona": selected_persona,
+    })
+
+    strategy_evaluation = await _evaluate_strategy_options(body, target_analysis, selected_persona)
+    strategy_step = {
+        "selectedPersona": selected_persona,
+        "options": STRATEGY_OPTIONS,
+        **strategy_evaluation,
+    }
+    await _save_step(campaign_id, "strategy_option_evaluation", strategy_step)
+
+    updated_strategy = {
+        **campaign_strategy,
+        "selectedPersona": selected_persona,
+        "selectedPersonaId": persona_id,
+        "strategyOptions": STRATEGY_OPTIONS,
+        "strategyEvaluation": strategy_evaluation.get("evaluations", []),
+    }
+    updated = supabase.table("promotion_campaigns").update({
+        "campaign_strategy": updated_strategy,
+        "status": "awaiting_strategy_selection",
+    }).eq("id", campaign_id).execute()
+
+    return {
+        "campaign": updated.data[0] if updated.data else campaign,
+        "selectedPersona": selected_persona,
+        "strategyOptions": STRATEGY_OPTIONS,
+        "strategyEvaluation": strategy_evaluation.get("evaluations", []),
+    }
+
+
+async def select_campaign_strategy(project_id: str, user_id: str, campaign_id: str, strategy_id: str) -> dict:
+    """Persist the selected strategy, then generate and save the 14-day campaign."""
+    campaign = _get_campaign_for_user(project_id, user_id, campaign_id)
+    body = _campaign_body_from_input(campaign.get("input"))
+    target_analysis = campaign.get("target_analysis") or {}
+    campaign_strategy = campaign.get("campaign_strategy") or {}
+
+    selected_persona = campaign_strategy.get("selectedPersona")
+    if not isinstance(selected_persona, dict):
+        raise ValidationError("Select a persona before selecting strategy")
+
+    selected_strategy = _option_by_id(STRATEGY_OPTIONS, strategy_id, "strategy")
+    strategy_evaluation = _evaluation_by_id(campaign_strategy.get("strategyEvaluation"), strategy_id)
+    strategy = _strategy_from_selection(
+        body,
+        selected_persona,
+        selected_strategy,
+        strategy_evaluation,
+    )
+
+    await _save_step(campaign_id, "user_strategy_selection", {
+        "selectedStrategyId": strategy_id,
+        "selectedStrategy": selected_strategy,
+        "strategyEvaluation": strategy_evaluation,
+    })
+
+    try:
+        supabase.table("promotion_campaigns").update({
+            "status": "generating",
+            "campaign_strategy": {
+                **campaign_strategy,
+                **strategy,
+            },
+        }).eq("id", campaign_id).execute()
+
+        operating_rhythm = await _threads_operating_rhythm(body, target_analysis, strategy)
+        await _save_step(campaign_id, "threads_operating_rhythm", operating_rhythm)
+
+        calendar = await _calendar_plan(body, target_analysis, strategy, operating_rhythm)
+        await _save_step(campaign_id, "calendar_planning", calendar)
+
+        drafts = await _draft_posts(body, target_analysis, strategy, operating_rhythm, calendar)
+        await _save_step(campaign_id, "draft_writing", drafts)
+
+        review = await _review_campaign(body, target_analysis, strategy, operating_rhythm, calendar, drafts)
+        await _save_step(campaign_id, "review", review)
+
+        final_calendar = review["finalCalendar"]
+        posts = _insert_campaign_posts(project_id, user_id, body, campaign_id, final_calendar)
+
+        final_strategy = {
+            **campaign_strategy,
+            **strategy,
+            "threadsOperatingRhythm": operating_rhythm,
+        }
+        updated = supabase.table("promotion_campaigns").update({
+            "status": "completed",
+            "target_analysis": target_analysis,
+            "campaign_strategy": final_strategy,
+            "final_calendar": final_calendar,
+            "post_ids": [p["id"] for p in posts],
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", campaign_id).execute()
+
+        return {"campaign": updated.data[0] if updated.data else campaign, "posts": posts}
+    except Exception as exc:
+        supabase.table("promotion_campaigns").update({
+            "status": "failed",
+            "error_message": str(exc)[:1000],
+        }).eq("id", campaign_id).execute()
+        raise
+
+
+def _insert_campaign_posts(project_id: str, user_id: str, body: PromotionCampaignRequest, campaign_id: str, final_calendar: list) -> list:
+    posts_payload = []
+    for raw in final_calendar:
+        day = int(raw.get("day", len(posts_payload) + 1))
+        draft = str(raw.get("draft", "")).strip()
+        topic = str(raw.get("topic", "")).strip()
+        hook = str(raw.get("hook", "")).strip()
+        content = str(raw.get("content", "")).strip()
+        if not hook or not content:
+            hook, content = _split_hook_and_content(draft, topic)
+        elif draft and _same_text(hook, content):
+            _, content = _split_hook_and_content(draft, topic)
+        hook = _remove_urls(hook)
+        content = _remove_repeated_hook(hook, content) or topic or body.one_line_description
+        content = _remove_urls(content)
+        content = _format_threads_content(content)
+        link = _campaign_post_link(body, raw, day)
+        link_rule = _campaign_link_rule(raw, day)
+        posts_payload.append({
+            "project_id": project_id,
+            "user_id": user_id,
+            "platform": body.channel,
+            "hook": hook,
+            "content": content or topic or body.one_line_description,
+            "link": link,
+            "hashtags": [],
+            "tone": "friendly",
+            "content_type": _post_content_type(raw.get("contentType")),
+            "status": "draft",
+            "scheduled_at": _scheduled_at_for_day(day),
+            "ai_prompt": "2-week promotion campaign",
+            "ai_model": MODEL,
+            "campaign_id": campaign_id,
+            "campaign_day": day,
+            "campaign_meta": {
+                "postFormat": raw.get("postFormat", ""),
+                "contentType": raw.get("contentType", ""),
+                "postGoal": raw.get("postGoal", ""),
+                "topic": topic,
+                "hookStyle": raw.get("hookStyle", ""),
+                "coreMessage": raw.get("coreMessage", ""),
+                "cta": raw.get("cta", ""),
+                "assignedInfo": raw.get("assignedInfo", ""),
+                "toneElements": raw.get("toneElements", []),
+                "ctaStrength": raw.get("ctaStrength", ""),
+                "usePlatformLanguage": raw.get("usePlatformLanguage", False),
+                "productMentionLevel": raw.get("productMentionLevel", ""),
+                "linkAttached": bool(link),
+                "linkRule": link_rule,
+            },
+        })
+
+    posts_result = supabase.table("promotion_posts").insert(posts_payload).execute()
+    return posts_result.data or []
+
+
 async def create_campaign(project_id: str, user_id: str, body: PromotionCampaignRequest) -> dict:
     """Run the promotion campaign chain and persist campaign + 14 dated drafts."""
     campaign_insert = supabase.table("promotion_campaigns").insert({
@@ -896,52 +1297,7 @@ async def create_campaign(project_id: str, user_id: str, body: PromotionCampaign
         await _save_step(campaign_id, "review", review)
 
         final_calendar = review["finalCalendar"]
-        posts_payload = []
-        for raw in final_calendar:
-            day = int(raw.get("day", len(posts_payload) + 1))
-            draft = str(raw.get("draft", "")).strip()
-            topic = str(raw.get("topic", "")).strip()
-            hook = str(raw.get("hook", "")).strip()
-            content = str(raw.get("content", "")).strip()
-            if not hook or not content:
-                hook, content = _split_hook_and_content(draft, topic)
-            elif draft and _same_text(hook, content):
-                _, content = _split_hook_and_content(draft, topic)
-            content = _remove_repeated_hook(hook, content) or topic or body.one_line_description
-            content = _format_threads_content(content)
-            posts_payload.append({
-                "project_id": project_id,
-                "user_id": user_id,
-                "platform": body.channel,
-                "hook": hook,
-                "content": content or topic or body.one_line_description,
-                "hashtags": [],
-                "tone": "friendly",
-                "content_type": _post_content_type(raw.get("contentType")),
-                "status": "draft",
-                "scheduled_at": _scheduled_at_for_day(day),
-                "ai_prompt": "2-week promotion campaign",
-                "ai_model": MODEL,
-                "campaign_id": campaign_id,
-                "campaign_day": day,
-                "campaign_meta": {
-                    "postFormat": raw.get("postFormat", ""),
-                    "contentType": raw.get("contentType", ""),
-                    "postGoal": raw.get("postGoal", ""),
-                    "topic": topic,
-                    "hookStyle": raw.get("hookStyle", ""),
-                    "coreMessage": raw.get("coreMessage", ""),
-                    "cta": raw.get("cta", ""),
-                    "assignedInfo": raw.get("assignedInfo", ""),
-                    "toneElements": raw.get("toneElements", []),
-                    "ctaStrength": raw.get("ctaStrength", ""),
-                    "usePlatformLanguage": raw.get("usePlatformLanguage", False),
-                    "productMentionLevel": raw.get("productMentionLevel", ""),
-                },
-            })
-
-        posts_result = supabase.table("promotion_posts").insert(posts_payload).execute()
-        posts = posts_result.data or []
+        posts = _insert_campaign_posts(project_id, user_id, body, campaign_id, final_calendar)
 
         updated = supabase.table("promotion_campaigns").update({
             "status": "completed",

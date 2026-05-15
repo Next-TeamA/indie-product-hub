@@ -54,6 +54,7 @@ export type PromotionGenerateInput = {
 export type PromotionCampaignInput = {
   project_name: string;
   one_line_description: string;
+  project_url: string;
   target_user: string;
   problem: string;
   core_value: string;
@@ -64,26 +65,77 @@ export type PromotionCampaignInput = {
   additional_context: string;
 };
 
+export type PromotionCampaignStatus =
+  | "awaiting_persona_selection"
+  | "awaiting_strategy_selection"
+  | "generating"
+  | "completed"
+  | "failed";
+
+export type PromotionPersonaOption = {
+  id: string;
+  name: string;
+  description: string;
+  comment: string;
+  tone: string;
+  bestFor: string[];
+  strengths: string[];
+  risks: string[];
+  avoid: string[];
+};
+
+export type PromotionStrategyOption = {
+  id: string;
+  name: string;
+  description: string;
+  postStyle: string;
+  mainGoal: string;
+  bestFor: string[];
+  strengths: string[];
+  risks: string[];
+  recommendedPersona: string[];
+};
+
+export type PromotionOptionEvaluation = {
+  optionId: string;
+  reason: string;
+  caution: string;
+};
+
+export type PromotionCampaignRecord = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  input: PromotionCampaignInput;
+  target_analysis: Record<string, unknown>;
+  campaign_strategy: Record<string, unknown>;
+  final_calendar: Record<string, unknown>[];
+  status: PromotionCampaignStatus;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PromotionCampaignResult = {
-  campaign: {
-    id: string;
-    project_id: string;
-    user_id: string;
-    input: PromotionCampaignInput;
-    target_analysis: Record<string, unknown>;
-    campaign_strategy: Record<string, unknown>;
-    final_calendar: Record<string, unknown>[];
-    status: "generating" | "completed" | "failed";
-    created_at: string;
-    updated_at: string;
-  };
+  campaign: PromotionCampaignRecord;
   posts: Promotion[];
+};
+
+export type PromotionCampaignStartResult = {
+  campaign: PromotionCampaignRecord;
+  personaOptions: PromotionPersonaOption[];
+};
+
+export type PromotionCampaignPersonaResult = {
+  campaign: PromotionCampaignRecord;
+  selectedPersona: PromotionPersonaOption;
+  strategyOptions: PromotionStrategyOption[];
+  strategyEvaluation: PromotionOptionEvaluation[];
 };
 
 export type LatestPromotionCampaign = {
   id: string;
   input: PromotionCampaignInput;
-  status: "generating" | "completed" | "failed";
+  status: PromotionCampaignStatus;
   created_at: string;
   updated_at: string;
 } | null;
@@ -141,6 +193,12 @@ export async function activateScheduledPromotions(projectId: string): Promise<{ 
   });
 }
 
+export async function deactivateScheduledPromotions(projectId: string): Promise<{ updated: number }> {
+  return apiFetch(`/api/projects/${projectId}/promotion/posts/deactivate-scheduled`, {
+    method: "POST",
+  });
+}
+
 // --- AI Generation ---
 
 export async function generatePromotion(projectId: string, data: PromotionGenerateInput): Promise<{
@@ -169,6 +227,38 @@ export async function createPromotionCampaign(
   return apiFetch(`/api/projects/${projectId}/promotion/campaigns`, {
     method: "POST",
     body: data,
+  });
+}
+
+export async function startPromotionCampaign(
+  projectId: string,
+  data: PromotionCampaignInput,
+): Promise<PromotionCampaignStartResult> {
+  return apiFetch(`/api/projects/${projectId}/promotion/campaigns/start`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function selectPromotionCampaignPersona(
+  projectId: string,
+  campaignId: string,
+  personaId: string,
+): Promise<PromotionCampaignPersonaResult> {
+  return apiFetch(`/api/projects/${projectId}/promotion/campaigns/${campaignId}/select-persona`, {
+    method: "POST",
+    body: { persona_id: personaId },
+  });
+}
+
+export async function selectPromotionCampaignStrategy(
+  projectId: string,
+  campaignId: string,
+  strategyId: string,
+): Promise<PromotionCampaignResult> {
+  return apiFetch(`/api/projects/${projectId}/promotion/campaigns/${campaignId}/select-strategy`, {
+    method: "POST",
+    body: { strategy_id: strategyId },
   });
 }
 

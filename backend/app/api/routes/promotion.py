@@ -20,8 +20,15 @@ from app.models.promotion import (
     PromotionInfoUpsert,
     PromotionCampaignRequest,
     PromotionCampaignResponse,
+    PromotionPersonaSelectRequest,
+    PromotionStrategySelectRequest,
 )
-from app.services.promotion_campaign import create_campaign
+from app.services.promotion_campaign import (
+    create_campaign,
+    start_campaign_wizard,
+    select_campaign_persona,
+    select_campaign_strategy,
+)
 from app.workspace.skill_loader import get_skill_prompt
 
 router = APIRouter(prefix="/projects/{project_id}/promotion", tags=["promotion"])
@@ -200,6 +207,19 @@ async def create_promotion_campaign(
     return await create_campaign(project_id, user["id"], body)
 
 
+@router.post("/campaigns/start")
+@limiter.limit("3/hour")
+async def start_promotion_campaign_wizard(
+    request: Request,
+    project_id: str,
+    body: PromotionCampaignRequest,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Start guided campaign planning and return fixed persona options."""
+    return await start_campaign_wizard(project_id, user["id"], body)
+
+
 @router.get("/campaigns/latest")
 async def get_latest_promotion_campaign(
     project_id: str,
@@ -219,6 +239,34 @@ async def get_latest_promotion_campaign(
     if not result.data:
         return None
     return result.data[0]
+
+
+@router.post("/campaigns/{campaign_id}/select-persona")
+@limiter.limit("10/minute")
+async def select_promotion_campaign_persona(
+    request: Request,
+    project_id: str,
+    campaign_id: str,
+    body: PromotionPersonaSelectRequest,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Save selected persona and return fixed strategy options with AI comments."""
+    return await select_campaign_persona(project_id, user["id"], campaign_id, body.persona_id)
+
+
+@router.post("/campaigns/{campaign_id}/select-strategy", response_model=PromotionCampaignResponse)
+@limiter.limit("3/hour")
+async def select_promotion_campaign_strategy(
+    request: Request,
+    project_id: str,
+    campaign_id: str,
+    body: PromotionStrategySelectRequest,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Save selected strategy, then generate and save the final 14 dated drafts."""
+    return await select_campaign_strategy(project_id, user["id"], campaign_id, body.strategy_id)
 
 
 @router.post("/posts")
@@ -286,6 +334,27 @@ async def activate_scheduled_posts(
         .eq("project_id", project_id)
         .eq("user_id", user["id"])
         .eq("status", "draft")
+        .not_.is_("scheduled_at", "null")
+        .gt("scheduled_at", now)
+        .execute()
+    )
+    return {"updated": len(result.data or [])}
+
+
+@router.post("/posts/deactivate-scheduled")
+async def deactivate_scheduled_posts(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Turn future scheduled posts back into drafts while keeping their scheduled_at."""
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        supabase.table("promotion_posts")
+        .update({"status": "draft"})
+        .eq("project_id", project_id)
+        .eq("user_id", user["id"])
+        .eq("status", "scheduled")
         .not_.is_("scheduled_at", "null")
         .gt("scheduled_at", now)
         .execute()
@@ -468,6 +537,9 @@ async def _do_publish(user_id: str, post_data: dict):
     post_id = post_data["id"]
     platform = post_data["platform"]
     text = post_data.get("hook", "") + "\n\n" + post_data["content"]
+    link = (post_data.get("link") or "").strip()
+    if link:
+        text += "\n\n" + link
     if post_data.get("hashtags"):
         text += "\n\n" + " ".join(f"#{tag}" for tag in post_data["hashtags"])
     # Get first image URL if available

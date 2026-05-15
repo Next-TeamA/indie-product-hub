@@ -37,7 +37,9 @@ Forbidden unfinished-product framing:
 
 ## 14-Day Rhythm
 - Day 1 must be `product_intro`: clearly introduce what the product is and who it is for.
-- Days 2-14 should feel like one operator actually ran the account for two weeks.
+- Days 2-14 should feel like one operator is steadily running the account.
+- The 14-day structure is only an internal generation batch. Never write as if the public campaign ends on Day 14.
+- Day 14 should be an ongoing account post that could naturally be followed by another post tomorrow, not a recap or closing post.
 - 9-10 of 14 posts should be operator-led shortform posts.
 - 3-4 posts should be `product_request`: direct but human requests to try the product, give feedback, or share.
 - Product request posts should appear roughly every 3-4 posts, not all at the end.
