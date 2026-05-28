@@ -11,6 +11,7 @@ from app.workers.tasks.weekly_report import generate_weekly_reports
 from app.workers.tasks.cleanup import cleanup_expired_oauth_states
 from app.workers.tasks.sync_knowledge import sync_project_knowledge
 from app.workers.tasks.agent_tasks import daily_project_health_check, daily_market_analysis
+from app.workers.tasks.health_ping import health_ping_all_projects
 
 scheduler = AsyncIOScheduler()
 
@@ -71,6 +72,14 @@ def setup_scheduler():
         sync_project_knowledge,
         IntervalTrigger(hours=6),
         id="sync_knowledge",
+        replace_existing=True,
+    )
+
+    # Endpoint health ping: every 5 minutes (Log Drain alternative)
+    scheduler.add_job(
+        health_ping_all_projects,
+        IntervalTrigger(minutes=5),
+        id="health_ping",
         replace_existing=True,
     )
 

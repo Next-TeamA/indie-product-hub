@@ -169,6 +169,14 @@ class GitHubAPIClient:
                 continue
         return results
 
+    async def get_tree(self, token: str, owner: str, repo: str, sha: str = "HEAD", recursive: bool = True) -> list[dict]:
+        """Get the full file tree of a repo (recursive)."""
+        data = await self._request(
+            token, "GET", f"/repos/{owner}/{repo}/git/trees/{sha}",
+            params={"recursive": "1"} if recursive else {},
+        )
+        return data.get("tree", []) if isinstance(data, dict) else []
+
     async def create_webhook(self, token: str, owner: str, repo: str, webhook_url: str, events: list[str] | None = None) -> dict:
         return await self._request(
             token, "POST", f"/repos/{owner}/{repo}/hooks",

@@ -11,6 +11,7 @@ class ProjectCreate(BaseModel):
     github_repo_name: str | None = None
     deploy_platform: str | None = None
     deploy_project_id: str | None = None
+    deploy_url: str | None = None
     sns_channels: list[str] = []
 
 
@@ -24,6 +25,7 @@ class ProjectUpdate(BaseModel):
     github_repo_name: str | None = None
     deploy_platform: str | None = None
     deploy_project_id: str | None = None
+    deploy_url: str | None = None
     sns_channels: list[str] | None = None
 
 
