@@ -2,9 +2,13 @@
 
 기획서 §6.4 + §부록 I.4.
 
-setup() race condition 회피: 첫 호출 시 lock 보호된 setup().
-이상적으로는 별도 마이그레이션 SQL로 분리하지만, langgraph-checkpoint-postgres
-가 자체 setup() 로직을 관리하므로 lazy + lock 방식 채택.
+Supabase pooler 호환:
+- AsyncConnectionPool 사용 (단일 connection은 장기 실행 부적합)
+- prepare_threshold=None (pgbouncer/pooler가 prepared statement 충돌 방지)
+- autocommit=True (checkpointer 요구)
+
+setup()은 첫 호출 시 lock 보호. checkpoint 테이블(checkpoints,
+checkpoint_blobs, checkpoint_writes, checkpoint_migrations)을 생성.
 """
 
 import asyncio
@@ -12,58 +16,60 @@ import asyncio
 from app.core.config import settings
 from app.core.exceptions import ExternalAPIError
 
+_pool = None
 _checkpointer = None
 _setup_lock = asyncio.Lock()
-_setup_done = False
 
 
 async def get_checkpointer():
-    """Lazy-init AsyncPostgresSaver. Returns shared instance.
+    """Lazy-init AsyncPostgresSaver backed by a connection pool.
 
-    Returns None if SUPABASE_DB_URL not configured (LangGraph not yet ready
-    in this environment — caller should fall back to legacy agent).
+    Returns None if SUPABASE_DB_URL not configured (caller falls back to
+    legacy agent).
     """
-    global _checkpointer, _setup_done
+    global _pool, _checkpointer
 
     if not settings.supabase_db_url:
         return None
 
-    if _checkpointer is not None and _setup_done:
+    if _checkpointer is not None:
         return _checkpointer
 
     async with _setup_lock:
-        if _checkpointer is not None and _setup_done:
+        if _checkpointer is not None:
             return _checkpointer
 
         try:
             from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-        except ImportError:
+            from psycopg_pool import AsyncConnectionPool
+        except ImportError as e:
             raise ExternalAPIError(
                 "LangGraph",
-                "langgraph-checkpoint-postgres not installed. Run: pip install langgraph-checkpoint-postgres",
+                f"checkpointer deps missing ({e}). "
+                "pip install langgraph-checkpoint-postgres psycopg-pool",
             )
 
-        if _checkpointer is None:
-            # AsyncPostgresSaver.from_conn_string is async context manager,
-            # we keep it open for app lifetime.
-            cm = AsyncPostgresSaver.from_conn_string(settings.supabase_db_url)
-            _checkpointer = await cm.__aenter__()
+        # pooler 호환: prepare_threshold=None, autocommit=True
+        _pool = AsyncConnectionPool(
+            conninfo=settings.supabase_db_url,
+            max_size=10,
+            open=False,
+            kwargs={"autocommit": True, "prepare_threshold": None},
+        )
+        await _pool.open()
 
-        if not _setup_done:
-            await _checkpointer.setup()
-            _setup_done = True
-
+        _checkpointer = AsyncPostgresSaver(_pool)
+        await _checkpointer.setup()
         return _checkpointer
 
 
 async def close_checkpointer() -> None:
     """Call on app shutdown."""
-    global _checkpointer, _setup_done
-    if _checkpointer is not None:
+    global _pool, _checkpointer
+    if _pool is not None:
         try:
-            # AsyncPostgresSaver.__aexit__ closes the connection pool
-            pass  # AsyncPostgresSaver는 내부 connection을 관리. 명시적 close 불필요.
+            await _pool.close()
         except Exception:
             pass
-        _checkpointer = None
-        _setup_done = False
+    _pool = None
+    _checkpointer = None

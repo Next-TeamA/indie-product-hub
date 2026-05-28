@@ -16,19 +16,26 @@ _call_single에 claude 경로 추가하면 즉시 활성화 가능.
 
 from typing import Any
 
-from anthropic import AsyncAnthropic
-
 from app.core.config import settings
 from app.core.exceptions import ExternalAPIError
 
-_client: AsyncAnthropic | None = None
+# anthropic SDK는 lazy import (현재 미설치 — Gemini Pro로 대체됨).
+# 키 발급 + `pip install anthropic` 후 이 클라이언트 사용 가능.
+_client: Any = None
 
 
-def _get_client() -> AsyncAnthropic:
+def _get_client() -> Any:
     global _client
     if _client is None:
         if not settings.anthropic_api_key:
             raise ExternalAPIError("Anthropic", "ANTHROPIC_API_KEY not configured")
+        try:
+            from anthropic import AsyncAnthropic
+        except ImportError:
+            raise ExternalAPIError(
+                "Anthropic",
+                "anthropic SDK not installed. Run: pip install anthropic",
+            )
         _client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     return _client
 
