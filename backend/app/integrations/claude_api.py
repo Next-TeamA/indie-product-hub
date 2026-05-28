@@ -1,5 +1,10 @@
 """Anthropic Claude API wrapper -- Sonnet 4.6 (Tier 3 LLM Router).
 
+[비활성 — 2026-05-16]
+현재 ANTHROPIC_API_KEY 미보유로 LLM Router Tier 3는 Gemini 2.5 Pro로 대체됨.
+이 파일은 보존: 키 발급 시 llm_router.py의 Tier.PRO를 SONNET으로 되돌리고
+_call_single에 claude 경로 추가하면 즉시 활성화 가능.
+
 용도 (기획서 §부록 C/I):
 - Content Agent: voice 매칭 카피라이팅 (품질 최우선)
 - LLM-as-Judge: 다른 모델이 생성한 콘텐츠 평가 (sycophancy 방지)

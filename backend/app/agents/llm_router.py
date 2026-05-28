@@ -4,9 +4,12 @@
 
 Tier 1: Gemini 2.5 Flash ($0.075/M input, 75% cache 할인 자동)
 Tier 2: GPT-4.1 Mini ($0.15/M input, 50% cache 할인)
-Tier 3: Claude Sonnet 4.6 ($3/M input, 90% cache read 할인)
+Tier 3: Gemini 2.5 Pro (Anthropic Sonnet 대체 — 2026-05-16 결정)
 
-Fallback chain: Sonnet → Mini → Flash (rate limit 시).
+Anthropic 키 미보유 → Tier 3를 Gemini 2.5 Pro로 대체.
+claude_api.py는 보존 (키 발급 시 PRICING/TASK_MAP만 SONNET으로 되돌리면 활성).
+
+Fallback chain: Pro → Mini → Flash (rate limit 시).
 """
 
 from enum import Enum
@@ -19,7 +22,7 @@ from app.core.exceptions import ExternalAPIError
 class Tier(Enum):
     FLASH = "gemini-2.5-flash"      # Tier 1
     MINI = "gpt-4.1-mini"           # Tier 2
-    SONNET = "claude-sonnet-4-6"    # Tier 3
+    PRO = "gemini-2.5-pro"          # Tier 3 (Anthropic Sonnet 대체)
 
 
 # (task_type, complexity) → Tier
@@ -27,20 +30,20 @@ TASK_MAP: dict[tuple[str, str], Tier] = {
     ("strategy", "low"): Tier.FLASH,
     ("strategy", "high"): Tier.MINI,
     ("content", "low"): Tier.MINI,
-    ("content", "high"): Tier.SONNET,
+    ("content", "high"): Tier.PRO,
     ("engagement_classify", "any"): Tier.FLASH,
     ("engagement_reply", "low"): Tier.MINI,
-    ("engagement_reply", "high"): Tier.SONNET,
-    ("video_script", "any"): Tier.SONNET,
+    ("engagement_reply", "high"): Tier.PRO,
+    ("video_script", "any"): Tier.PRO,
     ("performance_pattern", "any"): Tier.FLASH,
-    ("judge", "any"): Tier.SONNET,
-    ("skill_generation", "any"): Tier.SONNET,
+    ("judge", "any"): Tier.PRO,
+    ("skill_generation", "any"): Tier.PRO,
     ("query_rewrite", "any"): Tier.FLASH,
     ("contextualize", "any"): Tier.FLASH,
 }
 
 FALLBACK_CHAIN: dict[Tier, list[Tier]] = {
-    Tier.SONNET: [Tier.MINI, Tier.FLASH],
+    Tier.PRO: [Tier.MINI, Tier.FLASH],
     Tier.MINI: [Tier.FLASH],
     Tier.FLASH: [],
 }
@@ -49,7 +52,7 @@ FALLBACK_CHAIN: dict[Tier, list[Tier]] = {
 PRICING: dict[Tier, tuple[float, float, float]] = {
     Tier.FLASH: (0.075, 0.30, 0.01875),   # Gemini 2.5 Flash, 75% 캐시 할인
     Tier.MINI: (0.15, 0.60, 0.075),       # GPT-4.1 Mini, 50% 캐시 할인
-    Tier.SONNET: (3.0, 15.0, 0.30),       # Claude Sonnet 4.6, 90% 캐시 read 할인
+    Tier.PRO: (1.25, 10.0, 0.3125),       # Gemini 2.5 Pro, 75% 캐시 할인
 }
 
 
@@ -119,32 +122,6 @@ async def _call_single(
     enable_caching: bool,
 ) -> dict:
     """Dispatch to specific provider."""
-    if tier == Tier.SONNET:
-        from app.integrations import claude_api
-        resp = await claude_api.messages_create(
-            system=system,
-            messages=messages,
-            model=tier.value,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            enable_caching=enable_caching,
-        )
-        cost = estimate_cost(
-            tier,
-            resp["usage"]["input_tokens"] + resp["usage"].get("cache_creation_input_tokens", 0),
-            resp["usage"]["output_tokens"],
-            cached_tokens=resp["usage"].get("cache_read_input_tokens", 0),
-        )
-        return {
-            "content": resp["content"],
-            "tool_calls": resp.get("tool_use", []),
-            "usage": resp["usage"],
-            "model": tier.value,
-            "cost_usd": cost,
-            "stop_reason": resp.get("stop_reason"),
-        }
-
     if tier == Tier.MINI:
         from app.integrations import openai_api
         oai_messages = ([{"role": "system", "content": system}] if system else []) + messages
@@ -169,32 +146,30 @@ async def _call_single(
             "stop_reason": "stop",
         }
 
-    # FLASH (Gemini)
+    # FLASH (gemini-2.5-flash) + PRO (gemini-2.5-pro) — 둘 다 Gemini
     from app.integrations import gemini
+    model_name = tier.value  # "gemini-2.5-flash" or "gemini-2.5-pro"
+    prompt = "\n\n".join(m.get("content", "") for m in messages)
+
     if response_format == "json":
-        result = await gemini.generate_json(
-            prompt="\n\n".join(m.get("content", "") for m in messages),
-            system=system,
-        )
-        # Gemini는 usage info 자세히 안 돌려줌 → 추정만
+        result = await gemini.generate_json(prompt=prompt, system=system, model=model_name)
+        # Gemini SDK는 usage 상세를 항상 노출하지 않음 → cost 추정은 추후 보강
         return {
             "content": result if isinstance(result, str) else str(result),
             "tool_calls": [],
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "cached_tokens": 0},
-            "model": tier.value,
+            "model": model_name,
             "cost_usd": 0.0,
             "stop_reason": "stop",
             "parsed_json": result,
         }
-    text = await gemini.generate_text(
-        prompt="\n\n".join(m.get("content", "") for m in messages),
-        system=system,
-    )
+
+    text = await gemini.generate_text(prompt=prompt, system=system, model=model_name)
     return {
         "content": text,
         "tool_calls": [],
         "usage": {"prompt_tokens": 0, "completion_tokens": 0, "cached_tokens": 0},
-        "model": tier.value,
+        "model": model_name,
         "cost_usd": 0.0,
         "stop_reason": "stop",
     }
