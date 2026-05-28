@@ -2,11 +2,11 @@
 
 기획서 §부록 C/E + 결정 의사록 A1.
 
-Tier 1: Gemini 2.5 Flash ($0.075/M input, 75% cache 할인 자동)
-Tier 2: GPT-4.1 Mini ($0.15/M input, 50% cache 할인)
-Tier 3: Gemini 2.5 Pro (Anthropic Sonnet 대체 — 2026-05-16 결정)
+Tier 1: Gemini 3.5 Flash (최신 Flash, 빠르고 저렴)
+Tier 2: GPT-4.1 Mini ($0.15/M input, 50% cache 할인 — 다양성용)
+Tier 3: Gemini 3.1 Pro Preview ($2/M in, $12/M out — Anthropic Sonnet 대체)
 
-Anthropic 키 미보유 → Tier 3를 Gemini 2.5 Pro로 대체.
+Anthropic 키 미보유 → Tier 3를 Gemini 3.1 Pro로 대체.
 claude_api.py는 보존 (키 발급 시 PRICING/TASK_MAP만 SONNET으로 되돌리면 활성).
 
 Fallback chain: Pro → Mini → Flash (rate limit 시).
@@ -20,9 +20,9 @@ from app.core.exceptions import ExternalAPIError
 
 
 class Tier(Enum):
-    FLASH = "gemini-2.5-flash"      # Tier 1
-    MINI = "gpt-4.1-mini"           # Tier 2
-    PRO = "gemini-2.5-pro"          # Tier 3 (Anthropic Sonnet 대체)
+    FLASH = "gemini-3.5-flash"        # Tier 1 (최신 Flash)
+    MINI = "gpt-4.1-mini"             # Tier 2
+    PRO = "gemini-3.1-pro-preview"    # Tier 3 (Anthropic Sonnet 대체)
 
 
 # (task_type, complexity) → Tier
@@ -50,9 +50,9 @@ FALLBACK_CHAIN: dict[Tier, list[Tier]] = {
 
 # 모델별 (input $/M, output $/M, cached_read $/M)
 PRICING: dict[Tier, tuple[float, float, float]] = {
-    Tier.FLASH: (0.075, 0.30, 0.01875),   # Gemini 2.5 Flash, 75% 캐시 할인
+    Tier.FLASH: (0.15, 0.60, 0.0375),     # Gemini 3.5 Flash (추정, 75% 캐시 할인)
     Tier.MINI: (0.15, 0.60, 0.075),       # GPT-4.1 Mini, 50% 캐시 할인
-    Tier.PRO: (1.25, 10.0, 0.3125),       # Gemini 2.5 Pro, 75% 캐시 할인
+    Tier.PRO: (2.0, 12.0, 0.50),          # Gemini 3.1 Pro Preview, 75% 캐시 할인
 }
 
 

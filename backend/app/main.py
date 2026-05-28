@@ -25,6 +25,7 @@ from app.api.routes.log_drain import router as log_drain_router
 from app.api.routes.agent import router as agent_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.global_events import router as global_events_router
+from app.api.routes.amp import router as amp_router
 
 
 @asynccontextmanager
@@ -83,3 +84,6 @@ app.include_router(log_drain_router, prefix="/api")
 app.include_router(agent_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(global_events_router, prefix="/api")
+
+# AMP (Autonomous Marketing Platform)
+app.include_router(amp_router, prefix="/api")
