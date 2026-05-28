@@ -79,3 +79,45 @@ yarl==1.23.0
 zstandard==0.25.0
 slowapi==0.1.9
 APScheduler==3.11.2
+
+# ==========================================
+# AMP (Autonomous Marketing Platform) - 2026-05-16
+# ==========================================
+
+# LangGraph multi-agent orchestration
+langgraph==0.2.62
+langgraph-checkpoint-postgres==2.0.9
+langchain-core==0.3.29
+
+# LLM SDKs (멀티 프로바이더)
+openai==1.59.6
+anthropic==0.42.0
+cohere==5.13.4
+
+# Embeddings + Vector
+pgvector==0.3.6
+numpy==2.2.1
+
+# Media generation
+elevenlabs==1.50.5
+ffmpeg-python==0.2.0
+
+# Storage
+boto3==1.35.99   # Cloudflare R2 (S3-compatible)
+
+# Queue
+celery[redis]==5.4.0
+redis==5.2.1
+
+# Observability
+sentry-sdk[fastapi]==2.19.2
+posthog==3.7.5
+langsmith==0.2.10
+
+# Video quality check (Wave 5에서 활성화)
+# opencv-python-headless==4.10.0.84
+# open-clip-torch==2.30.0
+
+# DSPy (Wave 16에서 활성화)
+# dspy-ai==2.5.42
+
