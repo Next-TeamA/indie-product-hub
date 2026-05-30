@@ -1,0 +1,129 @@
+"""AMP (Autonomous Marketing Platform) routes — LangGraph 트리거 + 승인.
+
+기획서 §12 + §13.
+
+- POST /projects/{id}/amp/run         : 그래프 수동 실행
+- GET  /projects/{id}/amp/runs        : workflow_runs 목록
+- GET  /projects/{id}/amp/approvals   : 승인 대기 목록
+- POST /projects/{id}/amp/approvals/{approval_id}/decide : 승인/거절 + resume
+"""
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from app.agents.runner import resume_graph, run_graph
+from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.project_access import verify_project_access
+from app.core.exceptions import NotFoundError, ValidationError
+from app.core.supabase import safe_maybe_single, supabase
+
+router = APIRouter(prefix="/projects/{project_id}/amp", tags=["amp"])
+
+
+class RunInput(BaseModel):
+    graph: str = "content_creation"  # content_creation | engagement | video_production
+    trigger_type: str = "manual"     # manual | github.push | scheduled.weekly_summary
+    payload: dict = {}
+
+
+@router.post("/run")
+async def run_amp(
+    project_id: str,
+    body: RunInput,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Manually trigger an AMP graph. Returns run status (may pause for approval)."""
+    if body.graph not in ("content_creation", "engagement", "video_production"):
+        raise ValidationError(f"Unknown graph: {body.graph}")
+
+    result = await run_graph(
+        graph_name=body.graph,
+        project_id=project_id,
+        user_id=user["id"],
+        trigger={"type": body.trigger_type, "payload": body.payload},
+    )
+    return result
+
+
+@router.get("/runs")
+async def list_runs(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    result = (
+        supabase.table("workflow_runs")
+        .select("*")
+        .eq("project_id", project_id)
+        .order("started_at", desc=True)
+        .limit(30)
+        .execute()
+    )
+    return result.data
+
+
+@router.get("/approvals")
+async def list_approvals(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    result = (
+        supabase.table("approval_queue")
+        .select("*")
+        .eq("project_id", project_id)
+        .eq("status", "pending")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return result.data
+
+
+class DecideInput(BaseModel):
+    decision: str  # 'approved' | 'rejected'
+
+
+@router.post("/approvals/{approval_id}/decide")
+async def decide_approval(
+    project_id: str,
+    approval_id: str,
+    body: DecideInput,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    if body.decision not in ("approved", "rejected"):
+        raise ValidationError("decision must be 'approved' or 'rejected'")
+
+    approval = safe_maybe_single(
+        supabase.table("approval_queue")
+        .select("*")
+        .eq("id", approval_id)
+        .eq("project_id", project_id)
+    )
+    if not approval:
+        raise NotFoundError("Approval", approval_id)
+
+    # 그래프 resume
+    run = safe_maybe_single(
+        supabase.table("workflow_runs")
+        .select("graph_name, thread_id")
+        .eq("id", approval["workflow_run_id"])
+    )
+    resume_result = {"status": "skipped", "reason": "no workflow run"}
+    if run:
+        resume_result = await resume_graph(
+            thread_id=run["thread_id"],
+            graph_name=run["graph_name"],
+            decision=body.decision,
+        )
+
+    # approval_queue 업데이트
+    from datetime import datetime, timezone
+    supabase.table("approval_queue").update({
+        "status": body.decision,
+        "decided_at": datetime.now(timezone.utc).isoformat(),
+        "decided_by": user["id"],
+    }).eq("id", approval_id).execute()
+
+    return {"decision": body.decision, "resume": resume_result}

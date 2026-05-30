@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request, HTTPException
 from app.core.config import settings
 from app.core.supabase import supabase, safe_maybe_single
 from app.services.automation import create_promo_draft_from_push, create_issue_from_deploy_failure
+from app.services.endpoint_scanner import scan_project_endpoints
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -72,6 +73,20 @@ async def github_webhook(request: Request):
             await create_promo_draft_from_push(project_id, user_id, payload)
         except Exception:
             pass  # Non-critical, don't fail webhook
+
+        # Re-scan API endpoints if route files were added/modified
+        try:
+            commits = payload.get("commits", [])
+            changed_files = set()
+            for c in commits:
+                changed_files.update(c.get("added", []))
+                changed_files.update(c.get("modified", []))
+                changed_files.update(c.get("removed", []))
+            if any("api/" in f and ("route.ts" in f or "route.js" in f or f.endswith(".ts") or f.endswith(".js"))
+                   for f in changed_files if "/api/" in f):
+                await scan_project_endpoints(project_id)
+        except Exception:
+            pass
 
     elif event_type == "deployment_status":
         deployment = payload.get("deployment", {})

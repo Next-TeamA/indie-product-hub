@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies.auth import get_current_user
+from app.core.encryption import decrypt_token
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.supabase import supabase, safe_maybe_single
+from app.integrations.vercel_api import vercel_client
 from app.models.project import ProjectCreate, ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -88,6 +90,39 @@ async def update_project(
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise ValidationError("No fields to update")
+
+    # Auto-fill deploy_url from Vercel when deploy_project_id is set
+    if updates.get("deploy_project_id") and updates.get("deploy_platform") == "vercel":
+        if not updates.get("deploy_url"):
+            try:
+                account = safe_maybe_single(
+                    supabase.table("connected_accounts")
+                    .select("access_token")
+                    .eq("user_id", user["id"])
+                    .eq("provider", "vercel")
+                    .eq("is_active", True)
+                )
+                if account:
+                    token = decrypt_token(account["access_token"])
+                    projects = await vercel_client.list_projects(token)
+                    for p in projects:
+                        if p.get("id") == updates["deploy_project_id"]:
+                            # Use production domain or Vercel default
+                            domains = p.get("targets", {}).get("production", {}).get("alias", [])
+                            if domains:
+                                updates["deploy_url"] = f"https://{domains[0]}"
+                            elif p.get("alias"):
+                                aliases = p["alias"]
+                                if isinstance(aliases, list) and aliases:
+                                    updates["deploy_url"] = f"https://{aliases[0].get('domain', '') if isinstance(aliases[0], dict) else aliases[0]}"
+                            if not updates.get("deploy_url"):
+                                # Fallback: use Vercel's default domain
+                                name = p.get("name", "")
+                                if name:
+                                    updates["deploy_url"] = f"https://{name}.vercel.app"
+                            break
+            except Exception:
+                pass
 
     result = (
         supabase.table("projects")
