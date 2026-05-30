@@ -13,7 +13,6 @@ import json
 
 from app.agents.graph_state import AMPState
 from app.agents.llm_router import call_for_task, estimate_cost, pick_tier
-from app.core.supabase import supabase
 from app.workspace.skill_loader import get_skill_prompt
 
 
@@ -36,6 +35,7 @@ _DEFAULT_SYSTEM = (
 
 async def content_node(state: AMPState) -> dict:
     from app.agents.core import build_agent_context
+    from app.services import voice_matcher
 
     project_id = state["project_id"]
     user_id = state["user_id"]
@@ -47,27 +47,18 @@ async def content_node(state: AMPState) -> dict:
     project = ctx.project
     knowledge = ctx.knowledge
 
-    # voice samples: 최근 published posts (RAG 전 단계 — Wave 12에서 pgvector)
-    recent = (
-        supabase.table("promotion_posts")
-        .select("hook, content, platform")
-        .eq("project_id", project_id)
-        .eq("status", "published")
-        .order("published_at", desc=True)
-        .limit(8)
-        .execute()
-    )
-    voice_samples = [
-        f"[{p.get('platform')}] {p.get('hook', '')} {p.get('content', '')[:200]}"
-        for p in (recent.data or [])
-    ]
+    # 트리거 컨텍스트 (예: 커밋 메시지) — voice 검색 쿼리로도 사용
+    trigger_summary = _summarize_trigger(trigger)
+
+    # voice context: persona profile + RAG로 검색한 가장 관련있는 과거 글 (기획서 §8)
+    voice_query = f"{project.get('name', '')} {strategy.get('topic') or trigger_summary}"
+    voice_ctx = await voice_matcher.get_voice_context(project_id, voice_query)
+    persona = voice_ctx.get("persona") or {}
+    voice_samples = voice_ctx.get("examples") or []
 
     # 언어 결정
     langs = project.get("primary_languages") or ["ko"]
     primary_lang = langs[0] if langs else "ko"
-
-    # 트리거 컨텍스트 (예: 커밋 메시지)
-    trigger_summary = _summarize_trigger(trigger)
 
     skill_prompt = get_skill_prompt("promotion") or _DEFAULT_SYSTEM
 
@@ -80,6 +71,7 @@ async def content_node(state: AMPState) -> dict:
             project=project,
             knowledge=knowledge,
             voice_samples=voice_samples,
+            persona=persona,
             trigger_summary=trigger_summary,
             channel=ch,
             lang=primary_lang,
@@ -133,18 +125,22 @@ def _summarize_trigger(trigger: dict) -> str:
     return f"트리거: {t}"
 
 
-def _build_prompt(project, knowledge, voice_samples, trigger_summary, channel, lang) -> str:
+def _build_prompt(project, knowledge, voice_samples, persona, trigger_summary, channel, lang) -> str:
     kb_snippet = ""
     for cat in ("project_readme", "commit_activity", "sns_performance"):
         if cat in knowledge:
             kb_snippet += f"\n[{cat}]\n{knowledge[cat][:500]}\n"
 
     voice_block = "\n".join(voice_samples) if voice_samples else "(과거 글 없음 — 제품 설명 기반으로)"
+    persona_block = _format_persona(persona)
     lang_label = {"ko": "한국어", "en": "English"}.get(lang, lang)
 
     return f"""제품: {project.get('name', '')}
 설명: {project.get('description', '')}
 타겟: {project.get('target_audience', 'indie builders / developers')}
+
+== 사용자 voice 프로필 (이 스타일을 정확히 재현하라) ==
+{persona_block}
 
 == 사용자의 과거 글 (이 voice를 따라하라) ==
 {voice_block}
@@ -165,3 +161,34 @@ AI 티 나는 표현 금지. 구체적 숫자/디테일 선호.
 
 JSON으로만 응답:
 {{"hook": "첫 줄 후킹", "content": "본문", "hashtags": ["태그1"], "voice_match_score": 0.0~1.0}}"""
+
+
+def _format_persona(persona: dict) -> str:
+    """Render persona voice_profile + forbidden/preferred phrases into the prompt."""
+    if not persona:
+        return "(분석된 voice 프로필 없음)"
+
+    vp = persona.get("voice_profile") or {}
+    lines = []
+    if vp:
+        if vp.get("tone"):
+            lines.append(f"- 톤: {vp['tone']}")
+        if vp.get("avg_sentence_length"):
+            lines.append(f"- 평균 문장 길이: {vp['avg_sentence_length']} 단어")
+        if vp.get("emoji_freq") is not None:
+            lines.append(f"- 이모지 빈도: 글당 {vp['emoji_freq']}개")
+        if vp.get("question_ratio") is not None:
+            lines.append(f"- 의문형 비율: {vp['question_ratio']}")
+        if vp.get("first_person_freq") is not None:
+            lines.append(f"- 1인칭 사용: {vp['first_person_freq']}")
+        if vp.get("typical_starts"):
+            lines.append(f"- 자주 쓰는 시작 문구: {', '.join(vp['typical_starts'][:5])}")
+
+    preferred = persona.get("preferred_phrases") or []
+    forbidden = persona.get("forbidden_phrases") or []
+    if preferred:
+        lines.append(f"- 선호 표현 (적극 활용): {', '.join(preferred[:10])}")
+    if forbidden:
+        lines.append(f"- 금지 표현 (절대 사용 X): {', '.join(forbidden[:10])}")
+
+    return "\n".join(lines) if lines else "(분석된 voice 프로필 없음)"
