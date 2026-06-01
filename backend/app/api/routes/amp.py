@@ -63,6 +63,34 @@ async def list_runs(
     return result.data
 
 
+@router.get("/runs/{run_id}")
+async def get_run(
+    project_id: str,
+    run_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Single workflow_run with its approvals."""
+    run = safe_maybe_single(
+        supabase.table("workflow_runs")
+        .select("*")
+        .eq("id", run_id)
+        .eq("project_id", project_id)
+    )
+    if not run:
+        raise NotFoundError("WorkflowRun", run_id)
+
+    approvals = (
+        supabase.table("approval_queue")
+        .select("*")
+        .eq("workflow_run_id", run_id)
+        .order("created_at", desc=True)
+        .execute()
+        .data
+    )
+    return {"run": run, "approvals": approvals}
+
+
 @router.get("/approvals")
 async def list_approvals(
     project_id: str,

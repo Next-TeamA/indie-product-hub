@@ -28,6 +28,9 @@ from app.api.routes.global_events import router as global_events_router
 from app.api.routes.amp import router as amp_router
 from app.api.routes.persona import router as persona_router
 from app.api.routes.fal_webhook import router as fal_webhook_router
+from app.api.routes.videos import router as videos_router
+from app.api.routes.voice_samples import router as voice_samples_router
+from app.api.routes.cost import router as cost_router
 
 
 @asynccontextmanager
@@ -91,3 +94,6 @@ app.include_router(global_events_router, prefix="/api")
 app.include_router(amp_router, prefix="/api")
 app.include_router(persona_router, prefix="/api")
 app.include_router(fal_webhook_router, prefix="/api")
+app.include_router(videos_router, prefix="/api")
+app.include_router(voice_samples_router, prefix="/api")
+app.include_router(cost_router, prefix="/api")
