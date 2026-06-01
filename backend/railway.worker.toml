@@ -1,0 +1,7 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=1"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
