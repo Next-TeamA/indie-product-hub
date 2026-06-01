@@ -112,7 +112,7 @@ redis==5.2.1
 # Observability
 sentry-sdk[fastapi]==2.19.2
 posthog==3.7.5
-langsmith==0.2.10
+langsmith>=0.3.45,<1.0.0
 
 # Video quality check (Wave 5에서 활성화)
 # opencv-python-headless==4.10.0.84
