@@ -5,38 +5,38 @@ const STATUS_META: Record<
   VideoStatus,
   { label: string; bg: string; text: string; pulse?: boolean }
 > = {
-  planning: { label: "기획 중", bg: "bg-muted", text: "text-muted-foreground" },
-  queued: { label: "대기 중", bg: "bg-muted", text: "text-muted-foreground" },
+  planning: { label: "기획 중", bg: "bg-slate-100", text: "text-slate-600" },
+  queued: { label: "대기 중", bg: "bg-slate-100", text: "text-slate-600" },
   generating_scenes: {
     label: "장면 생성",
-    bg: "bg-violet-50 dark:bg-violet-950/40",
-    text: "text-violet-600 dark:text-violet-400",
+    bg: "bg-violet-50",
+    text: "text-violet-600",
     pulse: true,
   },
   generating_audio: {
     label: "오디오 생성",
-    bg: "bg-violet-50 dark:bg-violet-950/40",
-    text: "text-violet-600 dark:text-violet-400",
+    bg: "bg-violet-50",
+    text: "text-violet-600",
     pulse: true,
   },
   compositing: {
     label: "합성 중",
-    bg: "bg-blue-50 dark:bg-blue-950/40",
-    text: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50",
+    text: "text-blue-600",
     pulse: true,
   },
   quality_check: {
     label: "품질 확인",
-    bg: "bg-blue-50 dark:bg-blue-950/40",
-    text: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50",
+    text: "text-blue-600",
     pulse: true,
   },
-  ready: { label: "완료", bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-600 dark:text-emerald-400" },
-  failed: { label: "실패", bg: "bg-rose-50 dark:bg-rose-950/40", text: "text-rose-600 dark:text-rose-400" },
+  ready: { label: "완료", bg: "bg-emerald-50", text: "text-emerald-600" },
+  failed: { label: "실패", bg: "bg-rose-50", text: "text-rose-600" },
   human_review: {
     label: "사람 확인 필요",
-    bg: "bg-amber-50 dark:bg-amber-950/40",
-    text: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50",
+    text: "text-amber-600",
   },
 };
 

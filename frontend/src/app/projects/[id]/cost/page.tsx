@@ -56,14 +56,14 @@ export default function CostPage() {
         className="mb-8 flex flex-wrap items-end justify-between gap-4"
       >
         <div>
-          <h1 className="text-3xl font-bold text-foreground md:text-4xl">
+          <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">
             비용
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground md:text-base">
+          <p className="mt-2 text-sm text-slate-500 md:text-base">
             AI · 영상 · 저장 비용을 한눈에. cost_ledger 기반.
           </p>
         </div>
-        <div className="inline-flex rounded-full bg-muted p-1">
+        <div className="inline-flex rounded-full bg-slate-100 p-1">
           {WINDOWS.map((w) => (
             <button
               key={w.days}
@@ -72,8 +72,8 @@ export default function CostPage() {
               className={cn(
                 "rounded-full px-4 py-1.5 text-sm font-bold transition-colors",
                 days === w.days
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700",
               )}
             >
               {w.label}
@@ -83,7 +83,7 @@ export default function CostPage() {
       </motion.div>
 
       {isLoading || !cost ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-slate-400">
           <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중
         </div>
       ) : (
@@ -104,13 +104,13 @@ export default function CostPage() {
 
 function TotalCard({ total, days }: { total: number; days: number }) {
   return (
-    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
         <DollarSign className="h-3.5 w-3.5" /> 최근 {days}일 합계
       </div>
-      <div className="mt-2 text-4xl font-bold text-foreground md:text-5xl">
+      <div className="mt-2 text-4xl font-bold text-slate-900 md:text-5xl">
         ${total.toFixed(2)}
-        <span className="ml-2 text-base font-medium text-muted-foreground">USD</span>
+        <span className="ml-2 text-base font-medium text-slate-400">USD</span>
       </div>
     </div>
   );
@@ -124,10 +124,10 @@ function ServiceCard({
   total: number;
 }) {
   return (
-    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
-      <h2 className="text-base font-bold text-foreground">서비스별</h2>
+    <div className="rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+      <h2 className="text-base font-bold text-slate-900">서비스별</h2>
       {items.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">데이터가 없어요.</p>
+        <p className="mt-4 text-sm text-slate-500">데이터가 없어요.</p>
       ) : (
         <ul className="mt-4 space-y-3">
           {items.map((it) => {
@@ -135,17 +135,17 @@ function ServiceCard({
             return (
               <li key={it.service}>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-slate-700">
                     {SERVICE_LABEL[it.service] ?? it.service}
                   </span>
-                  <span className="text-muted-foreground">
+                  <span className="text-slate-500">
                     ${it.cost_usd.toFixed(3)}
-                    <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="ml-1 text-xs text-slate-400">
                       ({pct.toFixed(0)}%)
                     </span>
                   </span>
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all",
@@ -166,10 +166,10 @@ function ServiceCard({
 function DayChart({ items }: { items: CostByDay[] }) {
   const max = Math.max(0.001, ...items.map((d) => d.cost_usd));
   return (
-    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
-      <h2 className="text-base font-bold text-foreground">일별 추이</h2>
+    <div className="rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+      <h2 className="text-base font-bold text-slate-900">일별 추이</h2>
       {items.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">데이터가 없어요.</p>
+        <p className="mt-4 text-sm text-slate-500">데이터가 없어요.</p>
       ) : (
         <div className="mt-4 flex h-40 items-end gap-1">
           {items.map((d) => {
@@ -187,7 +187,7 @@ function DayChart({ items }: { items: CostByDay[] }) {
         </div>
       )}
       {items.length > 0 && (
-        <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+        <div className="mt-2 flex justify-between text-[10px] text-slate-400">
           <span>{items[0].date.slice(5)}</span>
           <span>{items[items.length - 1].date.slice(5)}</span>
         </div>
@@ -198,12 +198,12 @@ function DayChart({ items }: { items: CostByDay[] }) {
 
 function RecentCard({ rows }: { rows: CostLedgerRow[] }) {
   return (
-    <div className="mt-8 rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
-      <h2 className="text-base font-bold text-foreground">최근 항목</h2>
+    <div className="mt-8 rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+      <h2 className="text-base font-bold text-slate-900">최근 항목</h2>
       {rows.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">기록이 없어요.</p>
+        <p className="mt-4 text-sm text-slate-500">기록이 없어요.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-border">
+        <ul className="mt-4 divide-y divide-slate-100">
           {rows.map((r) => (
             <li
               key={r.id}
@@ -217,18 +217,18 @@ function RecentCard({ rows }: { rows: CostLedgerRow[] }) {
                       svcColor(r.service),
                     )}
                   />
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-slate-700">
                     {SERVICE_LABEL[r.service] ?? r.service}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-slate-400">
                     {r.operation}
                   </span>
                 </div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
+                <div className="mt-0.5 text-xs text-slate-400">
                   {new Date(r.occurred_at).toLocaleString("ko-KR")}
                 </div>
               </div>
-              <span className="font-bold text-foreground">
+              <span className="font-bold text-slate-900">
                 ${Number(r.cost_usd).toFixed(4)}
               </span>
             </li>
