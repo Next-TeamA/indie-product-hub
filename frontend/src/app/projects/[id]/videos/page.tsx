@@ -85,10 +85,10 @@ export default function VideosPage() {
         className="mb-8 flex items-end justify-between gap-4"
       >
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">
+          <h1 className="text-3xl font-bold text-foreground md:text-4xl">
             영상
           </h1>
-          <p className="mt-2 text-sm text-slate-500 md:text-base">
+          <p className="mt-2 text-sm text-muted-foreground md:text-base">
             AI가 만든 마케팅 영상 모음. AMP 워크플로우가 자동으로 만들거나,
             여기서 직접 트리거할 수 있어요.
           </p>
@@ -96,14 +96,14 @@ export default function VideosPage() {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-slate-700"
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" /> 새 영상
         </button>
       </motion.div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중
         </div>
       ) : videos.length === 0 ? (
@@ -145,10 +145,10 @@ function VideoCard({
   return (
     <Link
       href={`/projects/${projectId}/videos/${video.id}`}
-      className="group block overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-0.5"
+      className="group block overflow-hidden rounded-[24px] border border-border bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-0.5"
     >
-      <div className="relative flex aspect-[9/16] items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 sm:aspect-video">
-        <Film className="h-10 w-10 text-slate-300 transition-transform group-hover:scale-110" />
+      <div className="relative flex aspect-[9/16] items-center justify-center bg-gradient-to-br from-muted to-muted sm:aspect-video">
+        <Film className="h-10 w-10 text-muted-foreground transition-transform group-hover:scale-110" />
         {video.status !== "ready" && (
           <div className="absolute inset-0 flex items-end p-3">
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/60">
@@ -162,12 +162,12 @@ function VideoCard({
       </div>
       <div className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 text-sm font-bold text-slate-900">
+          <h3 className="line-clamp-2 text-sm font-bold text-foreground">
             {video.title}
           </h3>
           <VideoStatusBadge status={video.status} />
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>{video.model}</span>
           <span>{video.aspect_ratio}</span>
           {video.total_duration_seconds && (
@@ -193,18 +193,18 @@ function VideoCard({
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-slate-200 bg-white p-12 text-center">
-      <Film className="mx-auto h-12 w-12 text-slate-300" />
-      <h3 className="mt-4 text-base font-bold text-slate-700">
+    <div className="rounded-[24px] border border-dashed border-border bg-white p-12 text-center">
+      <Film className="mx-auto h-12 w-12 text-muted-foreground" />
+      <h3 className="mt-4 text-base font-bold text-foreground">
         아직 영상이 없어요
       </h3>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         새 영상을 만들거나 AMP 워크플로우가 자동으로 만들 때까지 기다리세요.
       </p>
       <button
         type="button"
         onClick={onCreate}
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700"
+        className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90"
       >
         <Plus className="h-4 w-4" /> 새 영상 만들기
       </button>
@@ -232,7 +232,7 @@ function NewVideoModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 p-4 backdrop-blur-sm md:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 dark:bg-black/60 p-4 backdrop-blur-sm md:items-center"
       onClick={onCancel}
     >
       <motion.div
@@ -244,11 +244,11 @@ function NewVideoModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">새 영상 만들기</h2>
+          <h2 className="text-lg font-bold text-foreground">새 영상 만들기</h2>
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="닫기"
           >
             <X className="h-4 w-4" />
@@ -262,7 +262,7 @@ function NewVideoModal({
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="예: 새 기능 출시 알림"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
+              className="w-full rounded-2xl border border-border px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
             />
           </Field>
 
@@ -272,7 +272,7 @@ function NewVideoModal({
               onChange={(e) => setForm({ ...form, brief: e.target.value })}
               rows={3}
               placeholder="예: 우리 제품의 자동 배포 기능을 강조하는 짧은 홍보 영상"
-              className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
+              className="w-full resize-none rounded-2xl border border-border px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
             />
           </Field>
 
@@ -292,7 +292,7 @@ function NewVideoModal({
                     ),
                   })
                 }
-                className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-2xl border border-border px-3 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
               />
             </Field>
             <Field label="비율">
@@ -304,7 +304,7 @@ function NewVideoModal({
                     aspect: e.target.value as NewVideoForm["aspect"],
                   })
                 }
-                className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-2xl border border-border px-3 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
               >
                 <option value="9:16">9:16</option>
                 <option value="16:9">16:9</option>
@@ -320,7 +320,7 @@ function NewVideoModal({
                     model: e.target.value as NewVideoForm["model"],
                   })
                 }
-                className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-2xl border border-border px-3 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
               >
                 <option value="kling-3.0">kling-3.0</option>
                 <option value="kling-1.6-pro">kling-1.6-pro</option>
@@ -336,7 +336,7 @@ function NewVideoModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100"
+            className="rounded-full px-4 py-2 text-sm font-bold text-muted-foreground hover:bg-muted"
           >
             취소
           </button>
@@ -347,8 +347,8 @@ function NewVideoModal({
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold transition-colors",
               submitting
-                ? "bg-slate-100 text-slate-400"
-                : "bg-slate-900 text-white hover:bg-slate-700",
+                ? "bg-muted text-muted-foreground"
+                : "bg-primary text-primary-foreground hover:bg-primary/90",
             )}
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -369,7 +369,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </label>
       {children}
