@@ -20,11 +20,11 @@ import { cn } from "@/lib/utils";
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
 const SCENE_STATUS_COLOR: Record<SceneStatus, string> = {
-  pending: "bg-slate-100 text-slate-500",
-  generating: "bg-violet-50 text-violet-600",
-  quality_check: "bg-blue-50 text-blue-600",
-  ready: "bg-emerald-50 text-emerald-600",
-  failed: "bg-rose-50 text-rose-600",
+  pending: "bg-muted text-muted-foreground",
+  generating: "bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
+  quality_check: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+  ready: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+  failed: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400",
 };
 
 const SCENE_STATUS_LABEL: Record<SceneStatus, string> = {
@@ -44,7 +44,7 @@ export default function VideoDetailPage() {
 
   if (isLoading || !detail) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-12 text-sm text-slate-400">
+      <div className="mx-auto max-w-4xl px-4 py-12 text-sm text-muted-foreground">
         {error ? (
           <p className="text-rose-500">{(error as Error).message}</p>
         ) : (
@@ -71,18 +71,18 @@ export default function VideoDetailPage() {
       >
         <Link
           href={`/projects/${projectId}/videos`}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-700"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> 영상 목록
         </Link>
 
         <div className="mb-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
             {video.title}
           </h1>
           <VideoStatusBadge status={video.status} />
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span>{video.model}</span>
           <span>{video.aspect_ratio}</span>
           {totalDuration > 0 && (
@@ -103,9 +103,9 @@ export default function VideoDetailPage() {
         </div>
 
         {video.error_message && (
-          <div className="mt-4 flex gap-3 rounded-2xl border border-rose-100 bg-rose-50 p-4">
+          <div className="mt-4 flex gap-3 rounded-2xl border border-rose-100 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 p-4">
             <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500" />
-            <div className="text-sm text-rose-700">{video.error_message}</div>
+            <div className="text-sm text-rose-700 dark:text-rose-400">{video.error_message}</div>
           </div>
         )}
 
@@ -121,14 +121,14 @@ export default function VideoDetailPage() {
         </div>
 
         <div className="mt-8">
-          <h2 className="mb-4 text-base font-bold text-slate-900">
+          <h2 className="mb-4 text-base font-bold text-foreground">
             Scenes{" "}
-            <span className="ml-1 text-sm font-medium text-slate-400">
+            <span className="ml-1 text-sm font-medium text-muted-foreground">
               {scenes.length}개
             </span>
           </h2>
           {scenes.length === 0 ? (
-            <p className="text-sm text-slate-500">아직 scene이 없어요.</p>
+            <p className="text-sm text-muted-foreground">아직 scene이 없어요.</p>
           ) : (
             <div className="space-y-2">
               {scenes.map((s) => (
@@ -150,7 +150,7 @@ function FinalAssetCard({
   poster: string | null;
 }) {
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-100 bg-black shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
+    <div className="overflow-hidden rounded-[24px] border border-border bg-black shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         src={url}
@@ -159,11 +159,11 @@ function FinalAssetCard({
         className="aspect-[9/16] w-full bg-black object-contain md:aspect-video"
       />
       <div className="flex items-center justify-between bg-white p-4">
-        <span className="text-sm text-slate-500">최종 결과물</span>
+        <span className="text-sm text-muted-foreground">최종 결과물</span>
         <a
           href={url}
           download
-          className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700"
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90"
         >
           <Download className="h-4 w-4" /> 다운로드
         </a>
@@ -174,30 +174,30 @@ function FinalAssetCard({
 
 function ProgressCard({ percent }: { percent: number }) {
   return (
-    <div className="rounded-[24px] border border-slate-100 bg-white p-8 text-center shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
-      <Film className="mx-auto h-12 w-12 text-slate-300" />
-      <p className="mt-4 text-sm font-bold text-slate-700">생성 중</p>
-      <div className="mx-auto mt-4 h-2 max-w-md overflow-hidden rounded-full bg-slate-100">
+    <div className="rounded-[24px] border border-border bg-white p-8 text-center shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
+      <Film className="mx-auto h-12 w-12 text-muted-foreground" />
+      <p className="mt-4 text-sm font-bold text-foreground">생성 중</p>
+      <div className="mx-auto mt-4 h-2 max-w-md overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full bg-violet-500 transition-all"
           style={{ width: `${Math.max(2, percent)}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-slate-400">{percent}%</p>
+      <p className="mt-2 text-xs text-muted-foreground">{percent}%</p>
     </div>
   );
 }
 
 function SceneRow({ scene }: { scene: VideoScene }) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
+    <div className="rounded-2xl border border-border bg-white p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
       <div className="flex items-start gap-3">
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">
           #{scene.scene_index + 1}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-slate-800">{scene.description}</p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+          <p className="text-sm text-foreground">{scene.description}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{Number(scene.duration_seconds).toFixed(0)}s</span>
             {scene.retry_count > 0 && <span>재시도 {scene.retry_count}회</span>}
             {scene.generation_completed_at && (
