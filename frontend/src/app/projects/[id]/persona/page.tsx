@@ -100,10 +100,10 @@ export default function PersonaPage() {
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
         className="mb-8"
       >
-        <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">
+        <h1 className="text-3xl font-bold text-foreground md:text-4xl">
           페르소나
         </h1>
-        <p className="mt-2 text-sm text-slate-500 md:text-base">
+        <p className="mt-2 text-sm text-muted-foreground md:text-base">
           내가 쓴 글을 학습시켜서 AI가 같은 말투로 마케팅 글을 쓰게 합니다.
         </p>
       </motion.div>
@@ -155,13 +155,13 @@ function PersonaCard({
   onBuild: () => void;
 }) {
   return (
-    <div className="mb-6 rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="mb-6 rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
             <Sparkles className="h-5 w-5 text-violet-500" />내 페르소나
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             voice_samples를 분석해서 voice_profile을 추출합니다.
           </p>
         </div>
@@ -172,8 +172,8 @@ function PersonaCard({
           className={cn(
             "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors",
             canBuild && !building
-              ? "bg-slate-900 text-white hover:bg-slate-700"
-              : "bg-slate-100 text-slate-400",
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-muted text-muted-foreground",
           )}
         >
           {building ? (
@@ -186,19 +186,19 @@ function PersonaCard({
       </div>
 
       {buildMsg && (
-        <p className="mt-3 text-sm text-slate-600">{buildMsg}</p>
+        <p className="mt-3 text-sm text-muted-foreground">{buildMsg}</p>
       )}
 
       <div className="mt-6">
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중
           </div>
         ) : persona ? (
           <PersonaDetail persona={persona} />
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-border p-6 text-center">
+            <p className="text-sm text-muted-foreground">
               아직 페르소나가 없어요. 아래에서 voice 가져와서 분석을 실행하세요.
             </p>
           </div>
@@ -220,19 +220,19 @@ function PersonaDetail({
     <div className="space-y-5">
       {voiceEntries.length > 0 && (
         <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <MessageSquareText className="h-3.5 w-3.5" /> Voice profile
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {voiceEntries.map(([k, v]) => (
               <div
                 key={k}
-                className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                className="rounded-2xl border border-border bg-muted px-4 py-3"
               >
-                <div className="text-xs uppercase tracking-wider text-slate-400">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">
                   {k}
                 </div>
-                <div className="mt-0.5 text-sm font-medium text-slate-700">
+                <div className="mt-0.5 text-sm font-medium text-foreground">
                   {String(v)}
                 </div>
               </div>
@@ -246,20 +246,20 @@ function PersonaDetail({
           icon={<Heart className="h-3.5 w-3.5 text-rose-500" />}
           title="자주 쓰는 표현"
           items={persona.preferred_phrases}
-          tone="bg-rose-50 text-rose-600"
+          tone="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
         />
       )}
 
       {persona.forbidden_phrases.length > 0 && (
         <PhraseList
-          icon={<Ban className="h-3.5 w-3.5 text-slate-500" />}
+          icon={<Ban className="h-3.5 w-3.5 text-muted-foreground" />}
           title="금지 표현"
           items={persona.forbidden_phrases}
-          tone="bg-slate-100 text-slate-600"
+          tone="bg-muted text-muted-foreground"
         />
       )}
 
-      <div className="text-xs text-slate-400">
+      <div className="text-xs text-muted-foreground">
         마지막 분석:{" "}
         {new Date(persona.last_updated_at).toLocaleString("ko-KR")}
       </div>
@@ -280,7 +280,7 @@ function PhraseList({
 }) {
   return (
     <div>
-      <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
         {icon} {title}
       </div>
       <div className="flex flex-wrap gap-2">
@@ -315,21 +315,21 @@ function ImportCard({
   onImport: () => void;
 }) {
   return (
-    <div className="mb-6 rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+    <div className="mb-6 rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+      <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
         <Download className="h-5 w-5 text-blue-500" /> Voice 가져오기
       </h2>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         과거 X/Threads 글을 가져와서 voice_samples에 저장하고 RAG 인덱스를
         만듭니다.
       </p>
 
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+          <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
             플랫폼
           </label>
-          <div className="mt-2 inline-flex rounded-full bg-slate-100 p-1">
+          <div className="mt-2 inline-flex rounded-full bg-muted p-1">
             {(["x", "threads"] as const).map((p) => (
               <button
                 key={p}
@@ -338,8 +338,8 @@ function ImportCard({
                 className={cn(
                   "rounded-full px-4 py-1.5 text-sm font-bold transition-colors",
                   platform === p
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700",
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {PLATFORM_LABEL[p]}
@@ -349,7 +349,7 @@ function ImportCard({
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+          <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
             개수 (최대 200)
           </label>
           <input
@@ -360,7 +360,7 @@ function ImportCard({
             onChange={(e) =>
               setCount(Math.min(200, Math.max(10, Number(e.target.value) || 10)))
             }
-            className="mt-2 w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm focus:border-slate-400 focus:outline-none"
+            className="mt-2 w-full rounded-full border border-border bg-white px-4 py-2 text-sm focus:border-slate-400 focus:outline-none"
           />
         </div>
 
@@ -372,8 +372,8 @@ function ImportCard({
             className={cn(
               "inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors",
               importing
-                ? "bg-slate-100 text-slate-400"
-                : "bg-slate-900 text-white hover:bg-slate-700",
+                ? "bg-muted text-muted-foreground"
+                : "bg-primary text-primary-foreground hover:bg-primary/90",
             )}
           >
             {importing ? (
@@ -386,7 +386,7 @@ function ImportCard({
         </div>
       </div>
 
-      {msg && <p className="mt-4 text-sm text-slate-600">{msg}</p>}
+      {msg && <p className="mt-4 text-sm text-muted-foreground">{msg}</p>}
     </div>
   );
 }
@@ -403,22 +403,22 @@ function SamplesCard({
   onDelete: (s: VoiceSample) => void;
 }) {
   return (
-    <div className="rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-foreground">
           Voice 샘플{" "}
-          <span className="ml-1 text-sm font-medium text-slate-400">
+          <span className="ml-1 text-sm font-medium text-muted-foreground">
             {samples.length}개
           </span>
         </h2>
       </div>
 
       {loading ? (
-        <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
+        <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중
         </div>
       ) : samples.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           샘플이 없어요. 위에서 가져오기를 실행하세요.
         </p>
       ) : (
@@ -426,23 +426,23 @@ function SamplesCard({
           {samples.map((s) => (
             <li
               key={s.id}
-              className="group flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4"
+              className="group flex items-start gap-3 rounded-2xl border border-border bg-muted p-4"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="rounded-full bg-white px-2 py-0.5 font-bold uppercase tracking-wider text-slate-500">
+                  <span className="rounded-full bg-white px-2 py-0.5 font-bold uppercase tracking-wider text-muted-foreground">
                     {PLATFORM_LABEL[s.source_platform] ?? s.source_platform}
                   </span>
-                  <span className="text-slate-400">
+                  <span className="text-muted-foreground">
                     {formatKoDate(s.created_at)}
                   </span>
                   {s.engagement_score !== null && (
-                    <span className="text-slate-400">
+                    <span className="text-muted-foreground">
                       engagement {Number(s.engagement_score).toFixed(1)}
                     </span>
                   )}
                 </div>
-                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-700">
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-foreground">
                   {s.content}
                 </p>
               </div>
@@ -451,7 +451,7 @@ function SamplesCard({
                 onClick={() => onDelete(s)}
                 disabled={removingId === s.id}
                 aria-label="샘플 삭제"
-                className="rounded-full p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 disabled:opacity-30"
+                className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-rose-50 dark:bg-rose-950/40 hover:text-rose-500 disabled:opacity-30"
               >
                 {removingId === s.id ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
