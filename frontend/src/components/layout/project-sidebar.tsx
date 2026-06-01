@@ -10,6 +10,10 @@ import {
   ChevronLeft,
   Settings,
   LogOut,
+  Sparkles,
+  Film,
+  Workflow,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/use-user";
@@ -19,8 +23,12 @@ import { Logo } from "@/components/logo";
 const NAV_ITEMS = [
   { href: "", label: "대시보드", icon: LayoutDashboard },
   { href: "/promotion", label: "홍보", icon: Megaphone },
+  { href: "/persona", label: "페르소나", icon: Sparkles },
+  { href: "/videos", label: "영상", icon: Film },
+  { href: "/amp", label: "AMP 자동화", icon: Workflow },
   { href: "/insights", label: "인사이트", icon: BarChart3 },
   { href: "/issues", label: "운영 이슈", icon: AlertTriangle },
+  { href: "/cost", label: "비용", icon: DollarSign },
   { href: "/settings", label: "프로젝트 설정", icon: Settings },
 ];
 
