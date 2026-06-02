@@ -74,6 +74,7 @@ export default function AmpPage() {
   const [running, setRunning] = useState<AmpGraph | null>(null);
   const [runMsg, setRunMsg] = useState<string | null>(null);
   const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [decideMsg, setDecideMsg] = useState<string | null>(null);
 
   async function onRun(graph: AmpGraph) {
     if (running) return;
@@ -94,12 +95,21 @@ export default function AmpPage() {
   async function onDecide(approvalId: string, decision: "approved" | "rejected") {
     if (decidingId) return;
     setDecidingId(approvalId);
+    setDecideMsg(null);
     try {
-      await ampActions.decide(approvalId, decision);
+      const r = await ampActions.decide(approvalId, decision);
+      const resume = r.resume as { status?: string; reason?: string; error?: string } | null;
+      const resumeStatus = resume?.status ?? "?";
+      const detail = resume?.reason || resume?.error || "";
+      setDecideMsg(
+        `${decision === "approved" ? "승인" : "거절"} 완료. 그래프 재개 상태: ${resumeStatus}${
+          detail ? ` (${detail})` : ""
+        }. 결과는 위 "최근 실행"에서 확인하세요.`,
+      );
       mutateApprovals();
       mutateRuns();
     } catch (e) {
-      console.error(e);
+      setDecideMsg(e instanceof Error ? `실패: ${e.message}` : "처리 실패");
     } finally {
       setDecidingId(null);
     }
@@ -183,6 +193,9 @@ export default function AmpPage() {
             {approvals.length}개
           </span>
         </h2>
+        {decideMsg && (
+          <p className="mb-3 text-sm text-muted-foreground">{decideMsg}</p>
+        )}
         {approvalsLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중
@@ -243,11 +256,14 @@ function ApprovalRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
             <AlertTriangle className="h-3.5 w-3.5" />
-            {approval.approval_type}
+            {approval.item_type ?? approval.approval_type ?? "approval"}
+            {approval.ai_recommendation && (
+              <span className="ml-1 normal-case tracking-normal text-muted-foreground">
+                · AI: {approval.ai_recommendation}
+              </span>
+            )}
           </div>
-          <pre className="mt-2 max-h-40 overflow-auto rounded-2xl bg-card p-3 text-xs text-foreground">
-            {JSON.stringify(approval.payload, null, 2)}
-          </pre>
+          <ApprovalBody approval={approval} />
           <div className="mt-2 text-xs text-muted-foreground">
             {new Date(approval.created_at).toLocaleString("ko-KR")}
           </div>
@@ -277,6 +293,74 @@ function ApprovalRow({
         </div>
       </div>
     </li>
+  );
+}
+
+type DraftLike = { channel?: string; hook?: string; content?: string; text?: string };
+
+function ApprovalBody({ approval }: { approval: Approval }) {
+  const ctx = (approval.context ?? approval.payload) as
+    | { drafts?: DraftLike[]; strategy?: { channels?: string[]; reasoning?: string }; risk?: { level?: string; reasons?: string[] } }
+    | null
+    | undefined;
+
+  if (!ctx || (typeof ctx === "object" && Object.keys(ctx).length === 0)) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">
+        백엔드가 보낸 컨텍스트가 비어 있어요. 그래프가 빈 입력으로 돌았을
+        가능성이 큽니다 (예: AMP 페이지에서 수동 실행 시 트리거 payload 없음).
+      </p>
+    );
+  }
+
+  const drafts = Array.isArray(ctx.drafts) ? ctx.drafts : [];
+  const strategy = ctx.strategy;
+  const risk = ctx.risk;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {strategy && (strategy.channels?.length || strategy.reasoning) && (
+        <div className="rounded-xl bg-card px-3 py-2 text-xs">
+          <div className="font-bold text-foreground">전략</div>
+          {strategy.channels?.length ? (
+            <div className="text-muted-foreground">채널: {strategy.channels.join(", ")}</div>
+          ) : null}
+          {strategy.reasoning ? (
+            <div className="text-muted-foreground">{strategy.reasoning}</div>
+          ) : null}
+        </div>
+      )}
+      {risk && (risk.level || risk.reasons?.length) && (
+        <div className="rounded-xl bg-card px-3 py-2 text-xs">
+          <div className="font-bold text-foreground">리스크: {risk.level ?? "?"}</div>
+          {risk.reasons?.length ? (
+            <ul className="ml-4 list-disc text-muted-foreground">
+              {risk.reasons.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          ) : null}
+        </div>
+      )}
+      {drafts.length > 0 ? (
+        <div className="space-y-2">
+          <div className="text-xs font-bold text-foreground">초안 {drafts.length}개</div>
+          {drafts.map((d, i) => (
+            <div key={i} className="rounded-xl bg-card px-3 py-2 text-xs">
+              {d.channel && (
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {d.channel}
+                </div>
+              )}
+              {d.hook && <div className="font-bold text-foreground">{d.hook}</div>}
+              <pre className="whitespace-pre-wrap text-foreground">{d.content ?? d.text ?? ""}</pre>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          생성된 초안이 없어요. 그래프가 strategy 단계까지만 가서 멈춘 것 같습니다.
+        </p>
+      )}
+    </div>
   );
 }
 
