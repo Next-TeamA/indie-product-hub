@@ -158,7 +158,7 @@ function FinalAssetCard({
         controls
         className="aspect-[9/16] w-full bg-black object-contain md:aspect-video"
       />
-      <div className="flex items-center justify-between bg-white p-4">
+      <div className="flex items-center justify-between bg-card p-4">
         <span className="text-sm text-muted-foreground">최종 결과물</span>
         <a
           href={url}
@@ -174,7 +174,7 @@ function FinalAssetCard({
 
 function ProgressCard({ percent }: { percent: number }) {
   return (
-    <div className="rounded-[24px] border border-border bg-white p-8 text-center shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
+    <div className="rounded-[24px] border border-border bg-card p-8 text-center shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
       <Film className="mx-auto h-12 w-12 text-muted-foreground" />
       <p className="mt-4 text-sm font-bold text-foreground">생성 중</p>
       <div className="mx-auto mt-4 h-2 max-w-md overflow-hidden rounded-full bg-muted">
@@ -190,7 +190,7 @@ function ProgressCard({ percent }: { percent: number }) {
 
 function SceneRow({ scene }: { scene: VideoScene }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
       <div className="flex items-start gap-3">
         <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">
           #{scene.scene_index + 1}

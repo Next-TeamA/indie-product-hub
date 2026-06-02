@@ -51,13 +51,13 @@ const PLATFORM: Record<
   Platform,
   { label: string; chipBg: string; chipText: string }
 > = {
-  threads: { label: "Th", chipBg: "bg-orange-50", chipText: "text-orange-600" },
-  x: { label: "X", chipBg: "bg-slate-100", chipText: "text-slate-700" },
-  bluesky: { label: "Bs", chipBg: "bg-sky-50", chipText: "text-sky-600" },
+  threads: { label: "Th", chipBg: "bg-orange-50 dark:bg-orange-950/40", chipText: "text-orange-600 dark:text-orange-400" },
+  x: { label: "X", chipBg: "bg-muted", chipText: "text-foreground" },
+  bluesky: { label: "Bs", chipBg: "bg-sky-50 dark:bg-sky-950/40", chipText: "text-sky-600 dark:text-sky-400" },
   mastodon: {
     label: "Mt",
-    chipBg: "bg-violet-50",
-    chipText: "text-violet-600",
+    chipBg: "bg-violet-50 dark:bg-violet-950/40",
+    chipText: "text-violet-600 dark:text-violet-400",
   },
 };
 
@@ -65,11 +65,11 @@ const STATUS: Record<
   PromotionStatus,
   { label: string; bg: string; text: string }
 > = {
-  draft: { label: "초안", bg: "bg-amber-50", text: "text-amber-600" },
-  scheduled: { label: "예약됨", bg: "bg-blue-50", text: "text-blue-600" },
-  publishing: { label: "게시 중", bg: "bg-blue-50", text: "text-blue-600" },
-  published: { label: "발행됨", bg: "bg-emerald-50", text: "text-emerald-600" },
-  failed: { label: "실패", bg: "bg-rose-50", text: "text-rose-600" },
+  draft: { label: "초안", bg: "bg-amber-50 dark:bg-amber-950/40", text: "text-amber-600 dark:text-amber-400" },
+  scheduled: { label: "예약됨", bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-blue-600 dark:text-blue-400" },
+  publishing: { label: "게시 중", bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-blue-600 dark:text-blue-400" },
+  published: { label: "발행됨", bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-600 dark:text-emerald-400" },
+  failed: { label: "실패", bg: "bg-rose-50 dark:bg-rose-950/40", text: "text-rose-600 dark:text-rose-400" },
 };
 
 // --- Helpers ---
@@ -231,14 +231,14 @@ export default function PromotionPage() {
   const primaryPost = selectedPosts[0];
   const selectedIsPast = selected < todayStr;
   const viewSwitcher = (
-    <div className="inline-flex rounded-full border border-slate-100 bg-slate-50 p-1">
+    <div className="inline-flex rounded-full border border-border bg-muted p-1">
       <button
         onClick={() => setViewMode("calendar")}
         className={cn(
           "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
           viewMode === "calendar"
-            ? "bg-white text-slate-800 shadow-sm"
-            : "text-slate-400 hover:text-slate-600",
+            ? "bg-card text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-muted-foreground",
         )}
       >
         <CalendarDays className="h-3.5 w-3.5" />
@@ -249,8 +249,8 @@ export default function PromotionPage() {
         className={cn(
           "flex h-8 items-center gap-2 rounded-full px-3 text-[12px] font-bold transition-colors",
           viewMode === "feed"
-            ? "bg-white text-slate-800 shadow-sm"
-            : "text-slate-400 hover:text-slate-600",
+            ? "bg-card text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-muted-foreground",
         )}
       >
         <MessagesSquare className="h-3.5 w-3.5" />
@@ -260,7 +260,7 @@ export default function PromotionPage() {
   );
 
   return (
-    <div className="w-full flex flex-col h-dvh bg-white selection:bg-slate-800 selection:text-white">
+    <div className="w-full flex flex-col h-dvh bg-card selection:bg-slate-800 selection:text-white">
       {/* Header */}
       <motion.div
         className="px-8 py-6 flex items-center justify-between shrink-0"
@@ -273,10 +273,10 @@ export default function PromotionPage() {
             PROMOTION
           </p>
           <div className="flex items-center gap-3">
-            <h1 className="text-[24px] font-bold tracking-tight text-slate-800">
+            <h1 className="text-[24px] font-bold tracking-tight text-foreground">
               홍보 캘린더
             </h1>
-            <span className="text-[15px] font-semibold text-slate-400">
+            <span className="text-[15px] font-semibold text-muted-foreground">
               {viewYear}년 {KO_MONTHS[viewMonth]}
             </span>
           </div>
@@ -285,14 +285,14 @@ export default function PromotionPage() {
           <div className="flex items-center gap-1 mr-2">
             <button
               onClick={prevMonth}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
               aria-label="이전 달"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={nextMonth}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
               aria-label="다음 달"
             >
               <ChevronRight className="w-4 h-4" />
@@ -300,14 +300,14 @@ export default function PromotionPage() {
           </div>
           <Link
             href={`/projects/${projectId}/promotion/campaign/new`}
-            className="flex items-center gap-2 h-9 px-4 rounded-full border border-blue-100 bg-blue-50 text-blue-600 text-[13px] font-semibold hover:bg-blue-100 transition-colors"
+            className="flex items-center gap-2 h-9 px-4 rounded-full border border-blue-100 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[13px] font-semibold hover:bg-blue-100 dark:bg-blue-900/40 transition-colors"
           >
             <Sparkles className="w-4 h-4" />
             2주 홍보 콘텐츠 전략 생성
           </Link>
           <Link
             href={`/projects/${projectId}/promotion/post/new`}
-            className="flex items-center gap-2 h-9 px-4 rounded-full bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+            className="flex items-center gap-2 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-slate-800 transition-colors"
           >
             <Plus className="w-4 h-4" />
             홍보 등록
@@ -315,7 +315,7 @@ export default function PromotionPage() {
           <button
             onClick={handleDeleteAllPosts}
             disabled={promos.length === 0 || promos.every((p) => p.status === "publishing") || clearingAll}
-            className="flex items-center gap-2 h-9 px-4 rounded-full border border-rose-100 bg-white text-rose-500 text-[13px] font-semibold hover:bg-rose-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-2 h-9 px-4 rounded-full border border-rose-100 dark:border-rose-900/50 bg-card text-rose-500 text-[13px] font-semibold hover:bg-rose-50 dark:bg-rose-950/40 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
           >
             {clearingAll ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -328,20 +328,20 @@ export default function PromotionPage() {
       </motion.div>
 
       {/* Stats bar */}
-      <div className="border-y border-slate-50 px-8 py-3 flex items-center gap-8 text-[12px] font-semibold shrink-0">
-        <div className="flex items-center gap-2 text-slate-400">
-          이번 주 <span className="text-slate-800">{weekCount} posts</span>
+      <div className="border-y border-border px-8 py-3 flex items-center gap-8 text-[12px] font-semibold shrink-0">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          이번 주 <span className="text-foreground">{weekCount} posts</span>
         </div>
         {lastPub && (
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex items-center gap-2 text-muted-foreground">
             마지막 발행{" "}
-            <span className="text-slate-800">{toKoDate(lastPub.date)}</span>
+            <span className="text-foreground">{toKoDate(lastPub.date)}</span>
           </div>
         )}
         {nextSched && (
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex items-center gap-2 text-muted-foreground">
             다음 예정{" "}
-            <span className="text-slate-800">
+            <span className="text-foreground">
               {toKoDate(nextSched.date)} {nextSched.time}
             </span>
           </div>
@@ -350,7 +350,7 @@ export default function PromotionPage() {
           onClick={handleToggleScheduled}
           disabled={!canToggleSchedule || activatingSchedule}
           aria-pressed={scheduleToggleOn}
-          className="ml-auto flex items-center gap-3 rounded-full px-1 py-0.5 text-slate-400 transition-colors hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+          className="ml-auto flex items-center gap-3 rounded-full px-1 py-0.5 text-muted-foreground transition-colors hover:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="text-[11px] font-bold uppercase tracking-wider">
             예약 발행
@@ -364,12 +364,12 @@ export default function PromotionPage() {
             className={cn(
               "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
               scheduleToggleOn ? "bg-blue-500" : "bg-slate-200",
-              futureDraftCount > 0 && "bg-blue-100",
+              futureDraftCount > 0 && "bg-blue-100 dark:bg-blue-900/40",
             )}
           >
             <span
               className={cn(
-                "inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform",
+                "inline-flex h-5 w-5 items-center justify-center rounded-full bg-card shadow-sm transition-transform",
                 scheduleToggleOn ? "translate-x-5" : "translate-x-0.5",
               )}
             >
@@ -384,7 +384,7 @@ export default function PromotionPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="shrink-0 px-6 py-4 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                 Calendar
               </p>
             </div>
@@ -398,20 +398,20 @@ export default function PromotionPage() {
             {WEEKDAYS.map((d) => (
               <div
                 key={d}
-                className="text-center text-[11px] font-bold text-slate-400 py-2 uppercase tracking-widest"
+                className="text-center text-[11px] font-bold text-muted-foreground py-2 uppercase tracking-widest"
               >
                 {d}
               </div>
             ))}
           </div>
           {/* Grid */}
-          <div className="grid grid-cols-7 border-l border-t border-slate-50 flex-1">
+          <div className="grid grid-cols-7 border-l border-t border-border flex-1">
             {cells.map((day, i) => {
               if (day === null) {
                 return (
                   <div
                     key={`empty-${i}`}
-                    className="border-r border-b border-slate-50 bg-slate-50/20"
+                    className="border-r border-b border-border bg-muted/20"
                   />
                 );
               }
@@ -426,12 +426,12 @@ export default function PromotionPage() {
                   key={dateStr}
                   onClick={() => !isPast && setSelected(dateStr)}
                   className={cn(
-                    "border-r border-b border-slate-50 min-h-[100px] p-2 transition-all duration-200",
+                    "border-r border-b border-border min-h-[100px] p-2 transition-all duration-200",
                     isPast
-                      ? "opacity-40 cursor-default bg-slate-50/20"
+                      ? "opacity-40 cursor-default bg-muted/20"
                       : isSel
-                        ? "bg-blue-50/30 cursor-pointer"
-                        : "hover:bg-slate-50/50 cursor-pointer",
+                        ? "bg-blue-50/30 dark:bg-blue-950/40 cursor-pointer"
+                        : "hover:bg-muted/50 cursor-pointer",
                   )}
                 >
                   <div className="mb-2">
@@ -441,8 +441,8 @@ export default function PromotionPage() {
                         isToday
                           ? "bg-slate-800 text-white shadow-sm"
                           : isSel
-                            ? "text-blue-600"
-                            : "text-slate-400",
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-muted-foreground",
                       )}
                     >
                       {day}
@@ -474,22 +474,22 @@ export default function PromotionPage() {
 
           {/* Right panel (Selected Day Info) */}
           <motion.aside
-            className="w-80 shrink-0 border-l border-slate-50 flex flex-col overflow-y-auto bg-slate-50/30"
+            className="w-80 shrink-0 border-l border-border flex flex-col overflow-y-auto bg-muted/30"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, duration: 0.5, ease: EASE_OUT_EXPO }}
           >
           <div className="p-6">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-1.5">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em] mb-1.5">
               선택한 날
             </p>
-            <p className="text-[20px] font-bold text-slate-800 mb-6">
+            <p className="text-[20px] font-bold text-foreground mb-6">
               {toKoDate(selected)}
             </p>
 
             {/* Primary post card */}
             {primaryPost ? (
-              <div className="bg-white rounded-[20px] border border-slate-100 p-5 mb-5 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+              <div className="bg-card rounded-[20px] border border-border p-5 mb-5 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
                 {/* Meta row */}
                 <div className="flex items-center gap-2 mb-3">
                   <span
@@ -501,7 +501,7 @@ export default function PromotionPage() {
                   >
                     {PLATFORM[primaryPost.platform].label}
                   </span>
-                  <span className="text-[12px] font-semibold text-slate-400">
+                  <span className="text-[12px] font-semibold text-muted-foreground">
                     {primaryPost.time}
                   </span>
                   <span
@@ -515,15 +515,15 @@ export default function PromotionPage() {
                   </span>
                 </div>
                 {/* Content preview */}
-                <p className="text-[14px] font-semibold text-slate-800 leading-snug mb-1 truncate">
+                <p className="text-[14px] font-semibold text-foreground leading-snug mb-1 truncate">
                   {primaryPost.hook}
                 </p>
-                <p className="text-[13px] font-medium text-slate-500 line-clamp-3 mb-4 whitespace-pre-line leading-relaxed">
+                <p className="text-[13px] font-medium text-muted-foreground line-clamp-3 mb-4 whitespace-pre-line leading-relaxed">
                   {primaryPost.content}
                 </p>
                 {/* Hero image */}
                 {primaryPost.images?.length > 0 ? (
-                  <div className="w-full aspect-video rounded-xl overflow-hidden border border-slate-100 mb-4">
+                  <div className="w-full aspect-video rounded-xl overflow-hidden border border-border mb-4">
                     <img
                       src={primaryPost.images[0]}
                       alt=""
@@ -531,8 +531,8 @@ export default function PromotionPage() {
                     />
                   </div>
                 ) : (
-                  <div className="w-full aspect-video rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
-                    <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">
+                  <div className="w-full aspect-video rounded-xl bg-muted border border-border flex items-center justify-center mb-4">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                       hero shot
                     </span>
                   </div>
@@ -541,21 +541,21 @@ export default function PromotionPage() {
                 <div className="flex gap-2">
                   <Link
                     href={`/projects/${projectId}/promotion/post/${primaryPost.id}`}
-                    className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-slate-100 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-border text-[12px] font-bold text-muted-foreground hover:bg-muted transition-colors"
                   >
                     상세 보기 <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                   <button
                     onClick={() => handleDeletePost(primaryPost.id)}
-                    className="w-10 h-10 rounded-xl border border-slate-100 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors"
+                    className="w-10 h-10 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:bg-rose-950/40 hover:border-rose-100 dark:border-rose-900/50 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-white/50 border border-dashed border-slate-200 rounded-[20px] p-8 mb-5 text-center">
-                <p className="text-[13px] font-medium text-slate-400">
+              <div className="bg-card/50 border border-dashed border-border rounded-[20px] p-8 mb-5 text-center">
+                <p className="text-[13px] font-medium text-muted-foreground">
                   예정된 게시물이 없습니다.
                 </p>
                 {!selectedIsPast && (
@@ -572,7 +572,7 @@ export default function PromotionPage() {
             {/* Additional posts */}
             {selectedPosts.length > 1 && (
               <div className="flex flex-col gap-2 mb-6">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em] mb-1">
                   그 외 게시물
                 </p>
                 {selectedPosts.slice(1).map((post) => {
@@ -584,7 +584,7 @@ export default function PromotionPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => setExpandedPostId(isExpanded ? null : post.id)}
-                          className="flex items-center gap-3 rounded-xl p-3 border border-slate-100 bg-white hover:bg-slate-50 transition-colors group flex-1 min-w-0 text-left"
+                          className="flex items-center gap-3 rounded-xl p-3 border border-border bg-card hover:bg-muted transition-colors group flex-1 min-w-0 text-left"
                         >
                           <span
                             className={cn(
@@ -595,25 +595,25 @@ export default function PromotionPage() {
                           >
                             {pm.label}
                           </span>
-                          <span className="text-[12px] font-semibold text-slate-600 truncate flex-1">
+                          <span className="text-[12px] font-semibold text-muted-foreground truncate flex-1">
                             {post.hook || post.content}
                           </span>
                           <ChevronRight
                             className={cn(
-                              "w-3.5 h-3.5 text-slate-300 transition-all shrink-0",
-                              isExpanded ? "rotate-90 text-slate-500" : "group-hover:text-slate-500",
+                              "w-3.5 h-3.5 text-muted-foreground transition-all shrink-0",
+                              isExpanded ? "rotate-90 text-muted-foreground" : "group-hover:text-muted-foreground",
                             )}
                           />
                         </button>
                         <button
                           onClick={() => handleDeletePost(post.id)}
-                          className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                          className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:bg-rose-950/40 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       {isExpanded && (
-                        <div className="mx-0 rounded-xl border border-slate-100 bg-slate-50 p-3 flex flex-col gap-2">
+                        <div className="mx-0 rounded-xl border border-border bg-muted p-3 flex flex-col gap-2">
                           <div className="flex items-center justify-between">
                             <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", sm.bg, sm.text)}>
                               {sm.label}
@@ -626,11 +626,11 @@ export default function PromotionPage() {
                             </Link>
                           </div>
                           {post.hook && (
-                            <p className="text-[12px] font-bold text-slate-700 leading-snug">
+                            <p className="text-[12px] font-bold text-foreground leading-snug">
                               {post.hook}
                             </p>
                           )}
-                          <p className="text-[12px] text-slate-600 leading-relaxed whitespace-pre-wrap">
+                          <p className="text-[12px] text-muted-foreground leading-relaxed whitespace-pre-wrap">
                             {post.content}
                           </p>
                           {post.hashtags && post.hashtags.length > 0 && (
@@ -647,15 +647,15 @@ export default function PromotionPage() {
             )}
 
             {/* Tags / Category Divider */}
-            <div className="pt-6 border-t border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-3">
+            <div className="pt-6 border-t border-border">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em] mb-3">
                 자주 사용하는 태그
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {["런칭", "업데이트", "회고", "Q&A", "개발일지"].map((tag) => (
                   <span
                     key={tag}
-                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-100 text-slate-500 cursor-pointer hover:border-slate-300 hover:text-slate-800 transition-all shadow-sm"
+                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-card border border-border text-muted-foreground cursor-pointer hover:border-slate-300 hover:text-foreground transition-all shadow-sm"
                   >
                     #{tag}
                   </span>
@@ -667,17 +667,17 @@ export default function PromotionPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden bg-white">
-          <div className="shrink-0 px-8 py-4 flex items-center justify-between border-b border-slate-50">
+        <div className="flex-1 flex flex-col overflow-hidden bg-card">
+          <div className="shrink-0 px-8 py-4 flex items-center justify-between border-b border-border">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                 Feed
               </p>
             </div>
             {viewSwitcher}
           </div>
           <div className="flex-1 overflow-y-auto px-4">
-          <div className="mx-auto w-full max-w-[720px] border-x border-slate-100">
+          <div className="mx-auto w-full max-w-[720px] border-x border-border">
             {feedPosts.length > 0 ? (
               feedPosts.map((post) => {
                 const pm = PLATFORM[post.platform];
@@ -685,11 +685,11 @@ export default function PromotionPage() {
                 return (
                   <article
                     key={post.id}
-                    className="border-b border-slate-100 bg-white px-6 py-5"
+                    className="border-b border-border bg-card px-6 py-5"
                   >
                     <div className="flex gap-3">
                       <div className="relative flex shrink-0 flex-col items-center">
-                        <div className="z-10 flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-[16px] font-bold text-white ring-4 ring-white">
+                        <div className="z-10 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-[16px] font-bold text-primary-foreground ring-4 ring-white">
                           리
                         </div>
                         <div className="mt-2 w-px flex-1 bg-slate-200" />
@@ -699,20 +699,20 @@ export default function PromotionPage() {
                         <div className="mb-1 flex items-start gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className="text-[14px] font-bold text-slate-900">
+                              <span className="text-[14px] font-bold text-foreground">
                                 @리갈약속
                               </span>
-                              <span className="text-[12px] font-semibold text-slate-400">
+                              <span className="text-[12px] font-semibold text-muted-foreground">
                                 {toKoDate(post.date)} {post.time}
                               </span>
                               {post.campaign_day && (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
                                   Day {post.campaign_day}
                                 </span>
                               )}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                              <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
                                 Threads
                               </span>
                               <span
@@ -739,14 +739,14 @@ export default function PromotionPage() {
                           <div className="flex shrink-0 items-center gap-1">
                             <Link
                               href={`/projects/${projectId}/promotion/post/${post.id}`}
-                              className="flex h-8 items-center gap-1.5 rounded-full border border-slate-100 px-3 text-[12px] font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                              className="flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[12px] font-bold text-muted-foreground transition-colors hover:bg-muted"
                             >
                               상세 보기
                               <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
                             <button
                               onClick={() => handleDeletePost(post.id)}
-                              className="flex h-8 w-8 items-center justify-center rounded-full border border-rose-100 text-rose-500 transition-colors hover:bg-rose-50"
+                              className="flex h-8 w-8 items-center justify-center rounded-full border border-rose-100 dark:border-rose-900/50 text-rose-500 transition-colors hover:bg-rose-50 dark:bg-rose-950/40"
                               aria-label="홍보글 삭제"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -755,25 +755,25 @@ export default function PromotionPage() {
                         </div>
 
                         <div className="pt-1">
-                          <p className="text-[17px] font-bold leading-7 text-slate-900">
+                          <p className="text-[17px] font-bold leading-7 text-foreground">
                             {post.hook}
                           </p>
-                          <p className="mt-3 whitespace-pre-line text-[15px] font-medium leading-7 text-slate-700">
+                          <p className="mt-3 whitespace-pre-line text-[15px] font-medium leading-7 text-foreground">
                             {post.content}
                           </p>
                         </div>
 
-                        <div className="mt-4 flex items-center gap-5 text-slate-400">
-                          <button className="text-[13px] font-semibold hover:text-slate-600">
+                        <div className="mt-4 flex items-center gap-5 text-muted-foreground">
+                          <button className="text-[13px] font-semibold hover:text-muted-foreground">
                             좋아요
                           </button>
-                          <button className="text-[13px] font-semibold hover:text-slate-600">
+                          <button className="text-[13px] font-semibold hover:text-muted-foreground">
                             댓글
                           </button>
-                          <button className="text-[13px] font-semibold hover:text-slate-600">
+                          <button className="text-[13px] font-semibold hover:text-muted-foreground">
                             공유
                           </button>
-                          <span className="ml-auto text-[12px] font-bold text-slate-300">
+                          <span className="ml-auto text-[12px] font-bold text-muted-foreground">
                             {textLength} / 500
                           </span>
                         </div>
@@ -784,15 +784,15 @@ export default function PromotionPage() {
               })
             ) : (
               <div className="px-8 py-16 text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   <MessagesSquare className="h-5 w-5" />
                 </div>
-                <p className="text-[14px] font-bold text-slate-500">
+                <p className="text-[14px] font-bold text-muted-foreground">
                   아직 표시할 홍보글이 없습니다.
                 </p>
                 <Link
                   href={`/projects/${projectId}/promotion/campaign/new`}
-                  className="mt-4 inline-flex h-9 items-center gap-2 rounded-full bg-slate-900 px-4 text-[13px] font-bold text-white transition-colors hover:bg-slate-800"
+                  className="mt-4 inline-flex h-9 items-center gap-2 rounded-full bg-primary px-4 text-[13px] font-bold text-primary-foreground transition-colors hover:bg-slate-800"
                 >
                   <Sparkles className="h-4 w-4" />
                   2주 전략 생성

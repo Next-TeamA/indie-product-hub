@@ -45,26 +45,26 @@ const PLATFORM_META: Record<
 > = {
   threads: {
     name: "Threads",
-    bg: "bg-orange-50",
-    text: "text-orange-600",
+    bg: "bg-orange-50 dark:bg-orange-950/40",
+    text: "text-orange-600 dark:text-orange-400",
     maxChars: 500,
   },
   x: {
     name: "X",
-    bg: "bg-slate-100",
-    text: "text-slate-700",
+    bg: "bg-muted",
+    text: "text-foreground",
     maxChars: 280,
   },
   bluesky: {
     name: "Bluesky",
-    bg: "bg-sky-50",
-    text: "text-sky-600",
+    bg: "bg-sky-50 dark:bg-sky-950/40",
+    text: "text-sky-600 dark:text-sky-400",
     maxChars: 300,
   },
   mastodon: {
     name: "Mastodon",
-    bg: "bg-violet-50",
-    text: "text-violet-600",
+    bg: "bg-violet-50 dark:bg-violet-950/40",
+    text: "text-violet-600 dark:text-violet-400",
     maxChars: 500,
   },
 };
@@ -73,11 +73,11 @@ const STATUS_META: Record<
   PromotionStatus,
   { label: string; bg: string; text: string }
 > = {
-  draft: { label: "초안", bg: "bg-slate-100", text: "text-slate-500" },
-  scheduled: { label: "예약됨", bg: "bg-blue-50", text: "text-blue-600" },
-  publishing: { label: "게시 중", bg: "bg-blue-50", text: "text-blue-600" },
-  published: { label: "발행됨", bg: "bg-emerald-50", text: "text-emerald-600" },
-  failed: { label: "실패", bg: "bg-rose-50", text: "text-rose-600" },
+  draft: { label: "초안", bg: "bg-muted", text: "text-muted-foreground" },
+  scheduled: { label: "예약됨", bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-blue-600 dark:text-blue-400" },
+  publishing: { label: "게시 중", bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-blue-600 dark:text-blue-400" },
+  published: { label: "발행됨", bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-600 dark:text-emerald-400" },
+  failed: { label: "실패", bg: "bg-rose-50 dark:bg-rose-950/40", text: "text-rose-600 dark:text-rose-400" },
 };
 
 const TONES = ["친근한", "전문적", "유머"] as const;
@@ -420,10 +420,10 @@ export default function PostEditorPage() {
   if (loading) return null;
 
   return (
-    <div className="w-full flex flex-col h-dvh bg-white selection:bg-slate-800 selection:text-white relative">
+    <div className="w-full flex flex-col h-dvh bg-card selection:bg-slate-800 selection:text-white relative">
       {/* Header */}
       <motion.div
-        className="px-8 py-5 flex items-center justify-between shrink-0 border-b border-slate-50"
+        className="px-8 py-5 flex items-center justify-between shrink-0 border-b border-border"
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
@@ -431,16 +431,16 @@ export default function PostEditorPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push(`/projects/${projectId}/promotion`)}
-            className="p-2 -ml-2 rounded-full hover:bg-slate-50 transition-colors"
+            className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors"
           >
-            <ChevronLeft className="w-5 h-5 text-slate-400" />
+            <ChevronLeft className="w-5 h-5 text-muted-foreground" />
           </button>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-0.5">
               PROMOTION &rsaquo; POST
             </p>
             <div className="flex items-center gap-2">
-              <h1 className="text-[20px] font-bold tracking-tight text-slate-800">
+              <h1 className="text-[20px] font-bold tracking-tight text-foreground">
                 홍보글 만들기
               </h1>
               <span
@@ -459,14 +459,14 @@ export default function PostEditorPage() {
           <button
             onClick={handleDelete}
             disabled={!promotion}
-            className="w-9 h-9 rounded-xl border border-slate-100 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors disabled:opacity-30"
+            className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:bg-rose-950/40 transition-colors disabled:opacity-30"
           >
             <Trash2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleSave("draft")}
             disabled={!editContent.trim() || saving}
-            className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 h-10 px-5 rounded-full bg-slate-800 text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" /> {saving ? "저장 중..." : "임시저장"}
           </button>
@@ -475,14 +475,14 @@ export default function PostEditorPage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Form: Input */}
-        <div className="w-[400px] shrink-0 border-r border-slate-50 overflow-y-auto bg-slate-50/20">
+        <div className="w-[400px] shrink-0 border-r border-border overflow-y-auto bg-muted/20">
           <div className="p-8 flex flex-col gap-8">
             <Field
               label="이번 포스트 핵심 메시지"
               action={
                 <button
                   onClick={() => setShowTemplateModal(true)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md"
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 transition-colors bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:bg-blue-900/40 px-2.5 py-1 rounded-md"
                 >
                   <Bookmark className="w-3 h-3" />
                   템플릿 보기
@@ -492,7 +492,7 @@ export default function PostEditorPage() {
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full px-4 py-3 text-[14px] font-medium text-slate-800 rounded-2xl bg-white border border-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none shadow-sm placeholder:text-slate-300"
+                className="w-full px-4 py-3 text-[14px] font-medium text-foreground rounded-2xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none shadow-sm placeholder:text-muted-foreground"
                 placeholder={"전달하고 싶은 내용을 입력하세요."}
                 rows={4}
               />
@@ -509,7 +509,7 @@ export default function PostEditorPage() {
                         "px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all",
                         tone === t
                           ? "bg-slate-800 text-white shadow-md"
-                          : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600",
+                          : "bg-card border border-border text-muted-foreground hover:text-muted-foreground",
                       )}
                     >
                       {t}
@@ -527,7 +527,7 @@ export default function PostEditorPage() {
                         "px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all",
                         contentType === ct
                           ? "bg-slate-800 text-white shadow-md"
-                          : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600",
+                          : "bg-card border border-border text-muted-foreground hover:text-muted-foreground",
                       )}
                     >
                       {ct}
@@ -539,26 +539,26 @@ export default function PostEditorPage() {
 
             <Field label="이미지">
               {imagePreview ? (
-                <div className="relative rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                <div className="relative rounded-2xl overflow-hidden border border-border shadow-sm">
                   <img
                     src={imagePreview}
                     alt="업로드 이미지"
                     className="w-full object-cover max-h-48"
                   />
                   {uploading && (
-                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                      <RefreshCw className="w-5 h-5 animate-spin text-slate-400" />
+                    <div className="absolute inset-0 bg-card/60 flex items-center justify-center">
+                      <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
                   )}
                   <button
                     onClick={handleRemoveImage}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/60 flex items-center justify-center text-white hover:bg-slate-900/80 transition-colors"
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary/60 flex items-center justify-center text-primary-foreground hover:bg-primary/80 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-2xl bg-white border border-dashed border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-400 transition-colors cursor-pointer shadow-sm">
+                <label className="flex flex-col items-center justify-center gap-2 w-full h-28 rounded-2xl bg-card border border-dashed border-border text-muted-foreground hover:border-blue-300 hover:text-blue-400 transition-colors cursor-pointer shadow-sm">
                   <ImageIcon className="w-5 h-5" />
                   <span className="text-[12px] font-semibold">클릭해서 이미지 업로드</span>
                   <input
@@ -588,10 +588,10 @@ export default function PostEditorPage() {
                       className={cn(
                         "px-4 py-2 rounded-xl text-[12px] font-bold transition-all shadow-sm border",
                         !supported
-                          ? "bg-slate-50 border-slate-100 text-slate-200 cursor-not-allowed"
+                          ? "bg-muted border-border text-slate-200 cursor-not-allowed"
                           : on
                             ? `${meta.bg} ${meta.text} border-transparent`
-                            : "bg-white border-slate-100 text-slate-300",
+                            : "bg-card border-border text-muted-foreground",
                       )}
                     >
                       {meta.name}{!supported && " (준비 중)"}
@@ -601,11 +601,11 @@ export default function PostEditorPage() {
               </div>
             </Field>
 
-            <div className="mt-4 p-6 rounded-[24px] bg-blue-50/50 border border-blue-100/50 shadow-inner">
+            <div className="mt-4 p-6 rounded-[24px] bg-blue-50/50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50/50 shadow-inner">
               <p className="text-[14px] font-bold text-blue-900 mb-1">
                 AI 홍보글 생성
               </p>
-              <p className="text-[12px] font-medium text-blue-600/70 mb-4">
+              <p className="text-[12px] font-medium text-blue-600 dark:text-blue-400/70 mb-4">
                 프로젝트 정보를 분석해 글을 작성합니다
               </p>
               <button
@@ -625,10 +625,10 @@ export default function PostEditorPage() {
         </div>
 
         {/* Right Preview */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/30">
-          <div className="px-8 py-4 border-b border-slate-100 flex items-center justify-between bg-white/60 backdrop-blur-md shrink-0">
+        <div className="flex-1 flex flex-col overflow-hidden bg-muted/30">
+          <div className="px-8 py-4 border-b border-border flex items-center justify-between bg-card/60 backdrop-blur-md shrink-0">
             <div className="flex items-center gap-3">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                 Preview
               </span>
               <span
@@ -641,7 +641,7 @@ export default function PostEditorPage() {
                 {activePlatform}
               </span>
             </div>
-            <div className="flex bg-slate-100 p-1 rounded-xl">
+            <div className="flex bg-muted p-1 rounded-xl">
               {(Object.keys(PLATFORM_META) as Platform[])
                 .filter((p) => selectedPlatforms.includes(p))
                 .map((p) => (
@@ -651,8 +651,8 @@ export default function PostEditorPage() {
                     className={cn(
                       "px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all",
                       activePlatform === p
-                        ? "bg-white text-slate-800 shadow-sm"
-                        : "text-slate-400",
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground",
                     )}
                   >
                     {PLATFORM_META[p].name}
@@ -663,28 +663,28 @@ export default function PostEditorPage() {
 
           <div className="flex-1 overflow-y-auto p-10 flex flex-col items-center">
             <motion.div
-              className="w-full max-w-lg bg-white border border-slate-100 rounded-[32px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.06)]"
+              className="w-full max-w-lg bg-card border border-border rounded-[32px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.06)]"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
             >
               <div className="p-8 flex flex-col gap-5">
                 <div className="flex items-center gap-3.5 mb-2.5">
-                  <div className="w-11 h-11 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-[16px]">
+                  <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-black text-[16px]">
                     {(projectInfo?.service_name || "P").charAt(0)}
                   </div>
                   <div className="flex-1">
-                    <p className="text-[16px] font-bold text-slate-900">
+                    <p className="text-[16px] font-bold text-foreground">
                       @
                       {snsUsernames[activePlatform] || (projectInfo?.service_name || "product")
                         .toLowerCase()
                         .replace(/\s/g, "")}
                     </p>
-                    <p className="text-[13px] font-medium text-slate-400 uppercase tracking-wider">
+                    <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">
                       {activePlatform}
                     </p>
                   </div>
-                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-slate-50 text-slate-400 border border-slate-100">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-muted text-muted-foreground border border-border">
                     AI ASSISTED
                   </span>
                 </div>
@@ -693,7 +693,7 @@ export default function PostEditorPage() {
                   ref={hookTextareaRef}
                   value={editHook}
                   onChange={(e) => setEditHook(e.target.value)}
-                  className="w-full text-[20px] font-extrabold leading-snug text-slate-900 bg-transparent border-none outline-none resize-none placeholder:text-slate-200 overflow-hidden"
+                  className="w-full text-[20px] font-extrabold leading-snug text-foreground bg-transparent border-none outline-none resize-none placeholder:text-slate-200 overflow-hidden"
                   rows={1}
                   placeholder="훅 문구를 입력하세요..."
                 />
@@ -701,7 +701,7 @@ export default function PostEditorPage() {
                   ref={contentTextareaRef}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full text-[15px] font-medium text-slate-700 leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-slate-200 overflow-hidden"
+                  className="w-full text-[15px] font-medium text-foreground leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-slate-200 overflow-hidden"
                   rows={4}
                   placeholder="본문 내용을 입력하세요..."
                 />
@@ -710,7 +710,7 @@ export default function PostEditorPage() {
                   {editHashtags.map((tag) => (
                     <span
                       key={tag}
-                      className="text-[14px] font-bold text-slate-400"
+                      className="text-[14px] font-bold text-muted-foreground"
                     >
                       #{tag.replace("#", "")}
                     </span>
@@ -718,7 +718,7 @@ export default function PostEditorPage() {
                 </div>
 
                 {imagePreview && (
-                  <div className="w-full rounded-2xl overflow-hidden border border-slate-100">
+                  <div className="w-full rounded-2xl overflow-hidden border border-border">
                     <img
                       src={imagePreview}
                       alt="첨부 이미지"
@@ -727,8 +727,8 @@ export default function PostEditorPage() {
                   </div>
                 )}
 
-                <div className="pt-5 border-t border-slate-50 flex items-center justify-between">
-                  <p className="text-[13px] font-semibold text-slate-400 underline underline-offset-4">
+                <div className="pt-5 border-t border-border flex items-center justify-between">
+                  <p className="text-[13px] font-semibold text-muted-foreground underline underline-offset-4">
                     ↗ {(projectInfo?.site_url || "").replace("https://", "")}
                   </p>
                   <p
@@ -736,7 +736,7 @@ export default function PostEditorPage() {
                       "text-[11px] font-bold",
                       charCount > pm.maxChars
                         ? "text-rose-500"
-                        : "text-slate-300",
+                        : "text-muted-foreground",
                     )}
                   >
                     {charCount} / {pm.maxChars}
@@ -744,18 +744,18 @@ export default function PostEditorPage() {
                 </div>
               </div>
             </motion.div>
-            <p className="mt-6 text-[12px] font-semibold text-slate-300 uppercase tracking-widest">
+            <p className="mt-6 text-[12px] font-semibold text-muted-foreground uppercase tracking-widest">
               Direct Edit Mode
             </p>
           </div>
 
           {/* Bottom Bar */}
-          <div className="px-8 py-5 border-t border-slate-50 bg-white flex items-center justify-end shrink-0">
+          <div className="px-8 py-5 border-t border-border bg-card flex items-center justify-end shrink-0">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowScheduleModal(true)}
                 disabled={!editContent.trim()}
-                className="flex items-center gap-2 px-6 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-6 h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <CalendarDays className="w-4 h-4" /> 발행 예약
               </button>
@@ -771,7 +771,7 @@ export default function PostEditorPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
               onClick={() => setShowScheduleModal(false)}
             />
             <motion.div
@@ -779,23 +779,23 @@ export default function PostEditorPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-              className="relative z-10 w-full max-w-md rounded-[24px] border border-slate-100 bg-white p-6 shadow-[0_12px_48px_-16px_rgba(0,0,0,0.16)]"
+              className="relative z-10 w-full max-w-md rounded-[24px] border border-border bg-card p-6 shadow-[0_12px_48px_-16px_rgba(0,0,0,0.16)]"
             >
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
                     Schedule
                   </p>
-                  <h2 className="text-[20px] font-bold tracking-tight text-slate-900">
+                  <h2 className="text-[20px] font-bold tracking-tight text-foreground">
                     발행 예약
                   </h2>
-                  <p className="mt-2 text-[13px] font-medium leading-6 text-slate-500">
+                  <p className="mt-2 text-[13px] font-medium leading-6 text-muted-foreground">
                     선택한 날짜와 시간에 이 게시물이 발행되도록 예약합니다.
                   </p>
                 </div>
                 <button
                   onClick={() => setShowScheduleModal(false)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-muted-foreground"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -803,41 +803,41 @@ export default function PostEditorPage() {
 
               <div className="grid gap-4">
                 <label className="block">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     예약 날짜
                   </span>
                   <div
                     onClick={() => openPicker(scheduleDateInputRef.current)}
-                    className="mt-2 flex h-12 cursor-pointer items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 transition-all focus-within:ring-2 focus-within:ring-blue-100"
+                    className="mt-2 flex h-12 cursor-pointer items-center gap-2 rounded-xl border border-border bg-muted/60 px-3 transition-all focus-within:ring-2 focus-within:ring-blue-100"
                   >
-                    <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
+                    <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <input
                       ref={scheduleDateInputRef}
                       type="date"
                       value={scheduleDate}
                       min={todayStr}
                       onChange={(e) => handleScheduleDateChange(e.target.value)}
-                      className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-slate-800 outline-none"
+                      className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-foreground outline-none"
                     />
                   </div>
                 </label>
 
                 <label className="block">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     예약 시간
                   </span>
                   <div
                     onClick={() => openPicker(scheduleTimeInputRef.current)}
-                    className="mt-2 flex h-12 cursor-pointer items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 transition-all focus-within:ring-2 focus-within:ring-blue-100"
+                    className="mt-2 flex h-12 cursor-pointer items-center gap-2 rounded-xl border border-border bg-muted/60 px-3 transition-all focus-within:ring-2 focus-within:ring-blue-100"
                   >
-                    <Clock3 className="h-4 w-4 shrink-0 text-slate-400" />
+                    <Clock3 className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <input
                       ref={scheduleTimeInputRef}
                       type="time"
                       value={scheduleTime}
                       min={scheduleDate === todayStr ? nowTimeStr : undefined}
                       onChange={(e) => handleScheduleTimeChange(e.target.value)}
-                      className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-slate-800 outline-none"
+                      className="h-full flex-1 cursor-pointer bg-transparent text-[14px] font-semibold text-foreground outline-none"
                     />
                   </div>
                 </label>
@@ -846,14 +846,14 @@ export default function PostEditorPage() {
               <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                 <button
                   onClick={() => setShowScheduleModal(false)}
-                  className="h-11 rounded-xl px-5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-slate-50 sm:mr-auto"
+                  className="h-11 rounded-xl px-5 text-[13px] font-bold text-muted-foreground transition-colors hover:bg-muted sm:mr-auto"
                 >
                   취소
                 </button>
                 <button
                   onClick={() => handleSave("published")}
                   disabled={!editContent.trim() || saving}
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-100 bg-white px-5 text-[13px] font-bold text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 text-[13px] font-bold text-foreground transition-all hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <Send className="h-4 w-4" />
                   지금 발행
@@ -861,7 +861,7 @@ export default function PostEditorPage() {
                 <button
                   onClick={() => handleSave("scheduled")}
                   disabled={!editContent.trim() || !scheduleDate || isPastSchedule || saving}
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[13px] font-bold text-primary-foreground shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <CalendarDays className="h-4 w-4" />
                   {saving ? "예약 중..." : "예약하기"}
@@ -880,7 +880,7 @@ export default function PostEditorPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
               onClick={() => setShowTemplateModal(false)}
             />
             <motion.div
@@ -888,42 +888,42 @@ export default function PostEditorPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-              className="relative z-10 w-full max-w-4xl bg-white rounded-[24px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.12)] border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden"
+              className="relative z-10 w-full max-w-4xl bg-card rounded-[24px] shadow-[0_12px_48px_-16px_rgba(0,0,0,0.12)] border border-border flex flex-col max-h-[85vh] overflow-hidden"
             >
-              <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between shrink-0 bg-white">
+              <div className="px-8 py-6 border-b border-border flex items-center justify-between shrink-0 bg-card">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-blue-50 rounded-xl">
+                  <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
                     <Bookmark className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <h2 className="text-[18px] font-bold text-slate-800">
+                    <h2 className="text-[18px] font-bold text-foreground">
                       효과적인 홍보 템플릿
                     </h2>
-                    <p className="text-[12px] font-medium text-slate-400 mt-0.5">
+                    <p className="text-[12px] font-medium text-muted-foreground mt-0.5">
                       원하는 템플릿을 클릭하면 자동으로 내용이 입력됩니다.
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowTemplateModal(false)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-muted-foreground transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+              <div className="flex-1 overflow-y-auto p-8 bg-muted/30">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {PROMO_TEMPLATES.map((tpl) => (
                     <div
                       key={tpl.name}
-                      className="bg-white rounded-[20px] p-5 border border-slate-100 shadow-sm flex flex-col gap-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
+                      className="bg-card rounded-[20px] p-5 border border-border shadow-sm flex flex-col gap-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
                       onClick={() => {
                         setMessage(tpl.content);
                         setShowTemplateModal(false);
                       }}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-50 border border-slate-100 text-slate-500 uppercase tracking-widest">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted border border-border text-muted-foreground uppercase tracking-widest">
                           {tpl.tag}
                         </span>
                         <div className="flex gap-0.5">
@@ -941,14 +941,14 @@ export default function PostEditorPage() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-[14px] font-bold text-slate-800 mb-0.5 group-hover:text-blue-600 transition-colors">
+                        <p className="text-[14px] font-bold text-foreground mb-0.5 group-hover:text-blue-600 dark:text-blue-400 transition-colors">
                           {tpl.name}
                         </p>
-                        <p className="text-[11px] font-semibold text-slate-400">
+                        <p className="text-[11px] font-semibold text-muted-foreground">
                           {tpl.platform}
                         </p>
                       </div>
-                      <div className="bg-slate-50/50 rounded-xl p-3.5 border border-slate-50 text-[11px] text-slate-500 leading-relaxed font-mono whitespace-pre-wrap line-clamp-8">
+                      <div className="bg-muted/50 rounded-xl p-3.5 border border-border text-[11px] text-muted-foreground leading-relaxed font-mono whitespace-pre-wrap line-clamp-8">
                         {tpl.content}
                       </div>
                     </div>
@@ -999,7 +999,7 @@ function Field({
   return (
     <div className={cn("flex flex-col gap-2.5", className)}>
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
           {label}
         </label>
         {action}

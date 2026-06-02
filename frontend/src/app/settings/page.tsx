@@ -9,7 +9,9 @@ import {
   ChevronLeft, Save, Plus, Trash2, Copy, Check,
   Globe, RefreshCw, LogOut, Shield,
   GitBranch, MessageCircle, X,
+  Palette, Sun, Moon, Monitor,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
 import {
   getProfile, updateProfile,
@@ -29,10 +31,11 @@ const fadeUp = {
 };
 
 // ─── 탭 설정 ────────────────────────────────────────────────
-type Tab = "profile" | "notifications" | "api-keys" | "project" | "accounts";
+type Tab = "profile" | "appearance" | "notifications" | "api-keys" | "project" | "accounts";
 
 const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
   { id: "profile",       label: "프로필",        Icon: User     },
+  { id: "appearance",    label: "외형",          Icon: Palette  },
   { id: "notifications", label: "알림 설정",     Icon: Bell     },
   { id: "api-keys",      label: "API 키 관리",   Icon: Key      },
   { id: "project",       label: "프로젝트 정보", Icon: FileText },
@@ -101,6 +104,7 @@ export default function SettingsPage() {
         {/* 콘텐츠 영역 */}
         <main className="flex-1 min-w-0">
           {activeTab === "profile"       && <ProfileTab />}
+          {activeTab === "appearance"    && <AppearanceTab />}
           {activeTab === "notifications" && <NotificationsTab />}
           {activeTab === "api-keys"      && <ApiKeysTab />}
           {activeTab === "project"       && <ProjectTab />}
@@ -184,6 +188,61 @@ function ProfileTab() {
             {saved ? "저장됨" : saving ? "저장 중..." : "저장"}
           </button>
         </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── 외형 탭 (테마) ──────────────────────────────────────────
+function AppearanceTab() {
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // next-themes는 hydration 후에만 실제 값을 반환하므로 mounted 가드 필요
+  useEffect(() => { setMounted(true); }, []);
+
+  const current = mounted ? (theme ?? "system") : "system";
+
+  const OPTIONS: { id: "light" | "dark" | "system"; label: string; desc: string; Icon: React.ElementType }[] = [
+    { id: "light",  label: "라이트", desc: "항상 밝은 모드",                              Icon: Sun     },
+    { id: "dark",   label: "다크",   desc: "항상 어두운 모드",                            Icon: Moon    },
+    { id: "system", label: "시스템", desc: "운영체제 설정을 따라감 (현재: " + (mounted && resolvedTheme === "dark" ? "다크" : "라이트") + ")", Icon: Monitor },
+  ];
+
+  return (
+    <motion.div variants={stagger} initial="hidden" animate="show" className="flex flex-col gap-5">
+      <motion.div variants={fadeUp}>
+        <p className="text-xs font-semibold text-muted-foreground tracking-widest uppercase mb-1">Appearance</p>
+        <h2 className="text-xl font-bold">외형</h2>
+        <p className="text-sm text-muted-foreground mt-1">테마를 고르면 이 브라우저에 영구 저장됩니다.</p>
+      </motion.div>
+
+      <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {OPTIONS.map((opt) => {
+          const selected = current === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => setTheme(opt.id)}
+              className={`text-left rounded-2xl border p-5 transition-colors ${
+                selected
+                  ? "border-foreground bg-card ring-2 ring-foreground/20"
+                  : "border-border bg-card hover:border-foreground/40"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  selected ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
+                }`}>
+                  <opt.Icon className="w-4 h-4" />
+                </div>
+                {selected && <Check className="w-4 h-4 text-foreground ml-auto" />}
+              </div>
+              <p className="font-semibold text-sm">{opt.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
+            </button>
+          );
+        })}
       </motion.div>
     </motion.div>
   );

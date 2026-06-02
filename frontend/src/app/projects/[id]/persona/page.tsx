@@ -155,7 +155,7 @@ function PersonaCard({
   onBuild: () => void;
 }) {
   return (
-    <div className="mb-6 rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="mb-6 rounded-[24px] border border-border bg-card p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
@@ -315,7 +315,7 @@ function ImportCard({
   onImport: () => void;
 }) {
   return (
-    <div className="mb-6 rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="mb-6 rounded-[24px] border border-border bg-card p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
         <Download className="h-5 w-5 text-blue-500" /> Voice 가져오기
       </h2>
@@ -338,7 +338,7 @@ function ImportCard({
                 className={cn(
                   "rounded-full px-4 py-1.5 text-sm font-bold transition-colors",
                   platform === p
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -360,7 +360,7 @@ function ImportCard({
             onChange={(e) =>
               setCount(Math.min(200, Math.max(10, Number(e.target.value) || 10)))
             }
-            className="mt-2 w-full rounded-full border border-border bg-white px-4 py-2 text-sm focus:border-slate-400 focus:outline-none"
+            className="mt-2 w-full rounded-full border border-border bg-card px-4 py-2 text-sm focus:border-slate-400 focus:outline-none"
           />
         </div>
 
@@ -403,7 +403,7 @@ function SamplesCard({
   onDelete: (s: VoiceSample) => void;
 }) {
   return (
-    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="rounded-[24px] border border-border bg-card p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">
           Voice 샘플{" "}
@@ -430,7 +430,7 @@ function SamplesCard({
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="rounded-full bg-white px-2 py-0.5 font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="rounded-full bg-card px-2 py-0.5 font-bold uppercase tracking-wider text-muted-foreground">
                     {PLATFORM_LABEL[s.source_platform] ?? s.source_platform}
                   </span>
                   <span className="text-muted-foreground">

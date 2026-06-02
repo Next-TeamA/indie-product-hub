@@ -72,7 +72,7 @@ export default function CostPage() {
               className={cn(
                 "rounded-full px-4 py-1.5 text-sm font-bold transition-colors",
                 days === w.days
-                  ? "bg-white text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -104,7 +104,7 @@ export default function CostPage() {
 
 function TotalCard({ total, days }: { total: number; days: number }) {
   return (
-    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="rounded-[24px] border border-border bg-card p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
         <DollarSign className="h-3.5 w-3.5" /> 최근 {days}일 합계
       </div>
@@ -124,7 +124,7 @@ function ServiceCard({
   total: number;
 }) {
   return (
-    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="rounded-[24px] border border-border bg-card p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <h2 className="text-base font-bold text-foreground">서비스별</h2>
       {items.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">데이터가 없어요.</p>
@@ -166,7 +166,7 @@ function ServiceCard({
 function DayChart({ items }: { items: CostByDay[] }) {
   const max = Math.max(0.001, ...items.map((d) => d.cost_usd));
   return (
-    <div className="rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="rounded-[24px] border border-border bg-card p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <h2 className="text-base font-bold text-foreground">일별 추이</h2>
       {items.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">데이터가 없어요.</p>
@@ -198,7 +198,7 @@ function DayChart({ items }: { items: CostByDay[] }) {
 
 function RecentCard({ rows }: { rows: CostLedgerRow[] }) {
   return (
-    <div className="mt-8 rounded-[24px] border border-border bg-white p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
+    <div className="mt-8 rounded-[24px] border border-border bg-card p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] md:p-8">
       <h2 className="text-base font-bold text-foreground">최근 항목</h2>
       {rows.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">기록이 없어요.</p>

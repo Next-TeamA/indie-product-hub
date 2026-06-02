@@ -73,9 +73,9 @@ type FieldProps = {
 function Field({ label, helper, children }: FieldProps) {
   return (
     <label className="block">
-      <span className="text-[12px] font-bold text-slate-700">{label}</span>
+      <span className="text-[12px] font-bold text-foreground">{label}</span>
       {helper && (
-        <span className="ml-2 text-[11px] font-medium text-slate-400">
+        <span className="ml-2 text-[11px] font-medium text-muted-foreground">
           {helper}
         </span>
       )}
@@ -85,7 +85,7 @@ function Field({ label, helper, children }: FieldProps) {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-medium text-slate-800 outline-none transition-colors placeholder:text-slate-300 focus:border-slate-400";
+  "w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-slate-400";
 
 type WizardStep = "input" | "persona" | "strategy" | "generating";
 
@@ -142,7 +142,7 @@ function evaluationFor(
 function Stepper({ activeStep }: { activeStep: WizardStep }) {
   const activeIndex = wizardSteps.findIndex((step) => step.id === activeStep);
   return (
-    <div className="grid gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-2 md:grid-cols-4">
+    <div className="grid gap-2 rounded-2xl border border-border bg-muted/50 p-2 md:grid-cols-4">
       {wizardSteps.map((step, index) => {
         const isActive = step.id === activeStep;
         const isDone = index < activeIndex;
@@ -151,19 +151,19 @@ function Stepper({ activeStep }: { activeStep: WizardStep }) {
             key={step.id}
             className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold ${
               isActive
-                ? "bg-slate-900 text-white"
+                ? "bg-primary text-primary-foreground"
                 : isDone
-                  ? "bg-white text-emerald-600"
-                  : "text-slate-400"
+                  ? "bg-card text-emerald-600 dark:text-emerald-400"
+                  : "text-muted-foreground"
             }`}
           >
             <span
               className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
                 isActive
-                  ? "bg-white/15"
+                  ? "bg-card/15"
                   : isDone
-                    ? "bg-emerald-50"
-                    : "bg-white"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40"
+                    : "bg-card"
               }`}
             >
               {index + 1}
@@ -191,20 +191,20 @@ function PersonaCard({
       onClick={onSelect}
       className={`min-h-[118px] rounded-2xl border p-4 text-left transition-all ${
         selected
-          ? "border-blue-300 bg-blue-50/70 shadow-sm shadow-blue-100"
-          : "border-slate-100 bg-white hover:border-slate-300"
+          ? "border-blue-300 bg-blue-50/70 dark:bg-blue-950/40 shadow-sm shadow-blue-100"
+          : "border-border bg-card hover:border-slate-300"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[14px] font-black text-slate-900">{option.name}</p>
-          <p className="mt-1 truncate text-[11px] font-semibold text-slate-400">
+          <p className="text-[14px] font-black text-foreground">{option.name}</p>
+          <p className="mt-1 truncate text-[11px] font-semibold text-muted-foreground">
             {option.tone}
           </p>
         </div>
-        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-600" />}
+        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />}
       </div>
-      <p className="mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-slate-600">
+      <p className="mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-muted-foreground">
         {option.comment}
       </p>
     </button>
@@ -229,29 +229,29 @@ function OptionCard({
   onSelect: () => void;
 }) {
   const titleClass = selected
-    ? "text-[14px] font-black text-slate-900"
-    : "text-[14px] font-black text-slate-900";
+    ? "text-[14px] font-black text-foreground"
+    : "text-[14px] font-black text-foreground";
   const metaClass = selected
-    ? "mt-1 truncate text-[11px] font-semibold text-blue-600/70"
-    : "mt-1 truncate text-[11px] font-semibold text-slate-400";
+    ? "mt-1 truncate text-[11px] font-semibold text-blue-600 dark:text-blue-400/70"
+    : "mt-1 truncate text-[11px] font-semibold text-muted-foreground";
   const descriptionClass = selected
-    ? "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-slate-600"
-    : "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-slate-500";
+    ? "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-muted-foreground"
+    : "mt-3 line-clamp-2 text-[12px] font-medium leading-5 text-muted-foreground";
   const reasonBoxClass = selected
-    ? "mt-3 rounded-lg bg-white/80 px-3 py-2"
-    : "mt-3 rounded-lg bg-slate-50 px-3 py-2";
+    ? "mt-3 rounded-lg bg-card/80 px-3 py-2"
+    : "mt-3 rounded-lg bg-muted px-3 py-2";
   const cautionBoxClass = selected
-    ? "mt-2 rounded-lg bg-amber-50/80 px-3 py-2"
-    : "mt-2 rounded-lg bg-amber-50/60 px-3 py-2";
+    ? "mt-2 rounded-lg bg-amber-50/80 dark:bg-amber-950/40 px-3 py-2"
+    : "mt-2 rounded-lg bg-amber-50/60 dark:bg-amber-950/40 px-3 py-2";
   const mutedLabelClass = selected
-    ? "text-[10px] font-bold text-slate-400"
-    : "text-[10px] font-bold text-slate-400";
+    ? "text-[10px] font-bold text-muted-foreground"
+    : "text-[10px] font-bold text-muted-foreground";
   const cautionLabelClass = selected
-    ? "text-[10px] font-bold text-amber-600"
-    : "text-[10px] font-bold text-amber-600";
+    ? "text-[10px] font-bold text-amber-600 dark:text-amber-400"
+    : "text-[10px] font-bold text-amber-600 dark:text-amber-400";
   const detailTextClass = selected
-    ? "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-slate-600"
-    : "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-slate-600";
+    ? "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-muted-foreground"
+    : "mt-0.5 line-clamp-2 text-[11px] font-medium leading-5 text-muted-foreground";
   const cautionTextClass = selected
     ? "mt-0.5 line-clamp-1 text-[11px] font-medium leading-5 text-amber-800/80"
     : "mt-0.5 line-clamp-1 text-[11px] font-medium leading-5 text-amber-800/80";
@@ -262,8 +262,8 @@ function OptionCard({
       onClick={onSelect}
       className={`min-h-[190px] rounded-2xl border p-4 text-left transition-all ${
         selected
-          ? "border-blue-300 bg-blue-50/70 shadow-sm shadow-blue-100"
-          : "border-slate-100 bg-white text-slate-900 hover:border-slate-300"
+          ? "border-blue-300 bg-blue-50/70 dark:bg-blue-950/40 shadow-sm shadow-blue-100"
+          : "border-border bg-card text-foreground hover:border-slate-300"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -271,7 +271,7 @@ function OptionCard({
           <p className={titleClass}>{title}</p>
           <p className={metaClass}>{meta}</p>
         </div>
-        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-600" />}
+        {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />}
       </div>
       <p className={descriptionClass}>{description}</p>
       {reason && (
@@ -310,40 +310,40 @@ function GenerationProgress({
   const remaining = Math.max(0, estimateSeconds - elapsedSeconds);
 
   return (
-    <section className="rounded-[24px] border border-slate-100 bg-slate-50/70 p-5 shadow-sm md:p-8">
+    <section className="rounded-[24px] border border-border bg-muted/70 p-5 shadow-sm md:p-8">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
-          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
             Campaign Agent Working
           </p>
-          <h2 className="text-[26px] font-bold tracking-tight text-slate-900">
+          <h2 className="text-[26px] font-bold tracking-tight text-foreground">
             {projectName
               ? `${projectName}의 2주 홍보 계획을 만들고 있어요`
               : "2주 홍보 계획을 만들고 있어요"}
           </h2>
-          <p className="mt-3 max-w-xl text-[14px] font-medium leading-7 text-slate-500">
+          <p className="mt-3 max-w-xl text-[14px] font-medium leading-7 text-muted-foreground">
             보통 2-3분 정도 걸립니다. 지금은 홍보 전략, 14일 콘텐츠 흐름, 날짜별
             Threads 초안을 한 번에 구성하고 있어요.
           </p>
         </div>
 
-        <div className="grid min-w-[220px] grid-cols-2 gap-3 rounded-2xl border border-white bg-white/70 p-4">
+        <div className="grid min-w-[220px] grid-cols-2 gap-3 rounded-2xl border border-white bg-card/70 p-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
               Elapsed
             </p>
-            <p className="mt-1 text-[22px] font-black tabular-nums text-slate-900">
+            <p className="mt-1 text-[22px] font-black tabular-nums text-foreground">
               {formatElapsed(elapsedSeconds)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
               Estimate
             </p>
-            <p className="mt-1 text-[22px] font-black tabular-nums text-slate-900">
+            <p className="mt-1 text-[22px] font-black tabular-nums text-foreground">
               {remaining > 0 ? `~${Math.ceil(remaining / 60)}분` : "마무리"}
             </p>
           </div>
@@ -351,13 +351,13 @@ function GenerationProgress({
       </div>
 
       <div className="mt-8">
-        <div className="mb-3 flex items-center justify-between text-[12px] font-bold text-slate-500">
+        <div className="mb-3 flex items-center justify-between text-[12px] font-bold text-muted-foreground">
           <span>{generationSteps[activeStep].title}</span>
           <span>{progress}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white">
+        <div className="h-2 overflow-hidden rounded-full bg-card">
           <div
-            className="h-full rounded-full bg-slate-900 transition-all duration-700 ease-out"
+            className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -372,19 +372,19 @@ function GenerationProgress({
               key={step.title}
               className={`flex gap-4 rounded-2xl border px-4 py-4 transition-colors ${
                 isActive
-                  ? "border-slate-200 bg-white"
+                  ? "border-border bg-card"
                   : isDone
-                    ? "border-emerald-100 bg-white/70"
-                    : "border-transparent bg-white/40"
+                    ? "border-emerald-100 dark:border-emerald-900/50 bg-card/70"
+                    : "border-transparent bg-card/40"
               }`}
             >
               <div
                 className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
                   isDone
-                    ? "bg-emerald-50 text-emerald-600"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
                     : isActive
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {isDone ? (
@@ -396,10 +396,10 @@ function GenerationProgress({
                 )}
               </div>
               <div>
-                <p className="text-[14px] font-bold text-slate-900">
+                <p className="text-[14px] font-bold text-foreground">
                   {step.title}
                 </p>
-                <p className="mt-1 text-[13px] font-medium leading-6 text-slate-500">
+                <p className="mt-1 text-[13px] font-medium leading-6 text-muted-foreground">
                   {step.description}
                 </p>
               </div>
@@ -549,13 +549,13 @@ export default function NewPromotionCampaignPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-white px-6 py-6 text-slate-900">
+    <div className="min-h-dvh bg-card px-6 py-6 text-foreground">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="flex items-center justify-between">
           <div>
             <Link
               href={`/projects/${projectId}/promotion`}
-              className="mb-4 inline-flex items-center gap-2 text-[13px] font-bold text-slate-400 transition-colors hover:text-slate-700"
+              className="mb-4 inline-flex items-center gap-2 text-[13px] font-bold text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
               홍보 캘린더
@@ -563,13 +563,13 @@ export default function NewPromotionCampaignPage() {
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
               Campaign Agent
             </p>
-            <h1 className="text-[28px] font-bold tracking-tight text-slate-900">
+            <h1 className="text-[28px] font-bold tracking-tight text-foreground">
               2주 홍보 콘텐츠 전략 생성
             </h1>
           </div>
-          <div className="hidden rounded-2xl border border-slate-100 px-5 py-4 text-right md:block">
-            <p className="text-[12px] font-bold text-slate-500">Threads 기준</p>
-            <p className="mt-1 text-[12px] font-medium text-slate-400">
+          <div className="hidden rounded-2xl border border-border px-5 py-4 text-right md:block">
+            <p className="text-[12px] font-bold text-muted-foreground">Threads 기준</p>
+            <p className="mt-1 text-[12px] font-medium text-muted-foreground">
               내일부터 14일간 오후 7시 초안 배치
             </p>
           </div>
@@ -699,25 +699,25 @@ export default function NewPromotionCampaignPage() {
               </Field>
             </section>
 
-            <aside className="h-fit rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
-              <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
+            <aside className="h-fit rounded-2xl border border-border bg-muted/50 p-5">
+              <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                 <Sparkles className="h-4 w-4" />
               </div>
-              <h2 className="text-[16px] font-bold text-slate-900">
+              <h2 className="text-[16px] font-bold text-foreground">
                 다음 단계
               </h2>
-              <p className="mt-2 text-[13px] font-medium leading-6 text-slate-500">
+              <p className="mt-2 text-[13px] font-medium leading-6 text-muted-foreground">
                 먼저 프로젝트 맥락을 분석한 뒤, 고정된 페르소나 선택지마다
                 이 프로젝트에 맞는 이유와 주의할 점을 제안합니다.
               </p>
-              <div className="mt-5 space-y-2 text-[12px] font-semibold text-slate-500">
+              <div className="mt-5 space-y-2 text-[12px] font-semibold text-muted-foreground">
                 <p>선택지는 AI가 새로 만들지 않습니다.</p>
                 <p>AI는 정해진 선택지에 대한 판단만 작성합니다.</p>
                 <p>전략 선택 후 14일 초안 생성이 시작됩니다.</p>
               </div>
 
               {error && (
-                <div className="mt-5 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-600">
+                <div className="mt-5 rounded-xl border border-rose-100 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-[13px] font-semibold text-rose-600 dark:text-rose-400">
                   {error}
                 </div>
               )}
@@ -725,7 +725,7 @@ export default function NewPromotionCampaignPage() {
               <button
                 type="submit"
                 disabled={loading || generating}
-                className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-[13px] font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-bold text-primary-foreground transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {generating ? (
                   <>
@@ -748,10 +748,10 @@ export default function NewPromotionCampaignPage() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
                   Persona Direction
                 </p>
-                <h2 className="mt-1 text-[22px] font-bold tracking-tight text-slate-900">
+                <h2 className="mt-1 text-[22px] font-bold tracking-tight text-foreground">
                   어떤 사람처럼 보이며 홍보할까요?
                 </h2>
-                <p className="mt-1 max-w-2xl text-[13px] font-medium leading-6 text-slate-500">
+                <p className="mt-1 max-w-2xl text-[13px] font-medium leading-6 text-muted-foreground">
                   고정된 선택지 중 하나를 고르면 다음 단계에서 전략을 비교합니다.
                 </p>
               </div>
@@ -759,7 +759,7 @@ export default function NewPromotionCampaignPage() {
                 <button
                   type="button"
                   onClick={() => setWizardStep("input")}
-                  className="h-11 rounded-xl border border-slate-200 px-4 text-[13px] font-bold text-slate-600 transition-colors hover:border-slate-300"
+                  className="h-11 rounded-xl border border-border px-4 text-[13px] font-bold text-muted-foreground transition-colors hover:border-slate-300"
                 >
                   이전
                 </button>
@@ -767,7 +767,7 @@ export default function NewPromotionCampaignPage() {
                   type="button"
                   onClick={handlePersonaNext}
                   disabled={!selectedPersonaId}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[13px] font-bold text-primary-foreground transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   다음: 전략 제안 보기
                 </button>
@@ -775,7 +775,7 @@ export default function NewPromotionCampaignPage() {
             </div>
 
             {error && (
-              <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-600">
+              <div className="rounded-xl border border-rose-100 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-[13px] font-semibold text-rose-600 dark:text-rose-400">
                 {error}
               </div>
             )}
@@ -798,10 +798,10 @@ export default function NewPromotionCampaignPage() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
                   Campaign Strategy
                 </p>
-                <h2 className="mt-1 text-[22px] font-bold tracking-tight text-slate-900">
+                <h2 className="mt-1 text-[22px] font-bold tracking-tight text-foreground">
                   2주 캠페인을 어떤 방식으로 운영할까요?
                 </h2>
-                <p className="mt-1 max-w-2xl text-[13px] font-medium leading-6 text-slate-500">
+                <p className="mt-1 max-w-2xl text-[13px] font-medium leading-6 text-muted-foreground">
                   전략을 고르면 바로 14일 콘텐츠 초안 생성을 시작합니다.
                 </p>
               </div>
@@ -809,7 +809,7 @@ export default function NewPromotionCampaignPage() {
                 <button
                   type="button"
                   onClick={() => setWizardStep("persona")}
-                  className="h-11 rounded-xl border border-slate-200 px-4 text-[13px] font-bold text-slate-600 transition-colors hover:border-slate-300"
+                  className="h-11 rounded-xl border border-border px-4 text-[13px] font-bold text-muted-foreground transition-colors hover:border-slate-300"
                 >
                   이전
                 </button>
@@ -817,7 +817,7 @@ export default function NewPromotionCampaignPage() {
                   type="button"
                   onClick={handleStrategyGenerate}
                   disabled={!selectedStrategyId}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[13px] font-bold text-primary-foreground transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Sparkles className="h-4 w-4" />
                   2주 콘텐츠 생성 시작
@@ -826,7 +826,7 @@ export default function NewPromotionCampaignPage() {
             </div>
 
             {error && (
-              <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-600">
+              <div className="rounded-xl border border-rose-100 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-[13px] font-semibold text-rose-600 dark:text-rose-400">
                 {error}
               </div>
             )}
