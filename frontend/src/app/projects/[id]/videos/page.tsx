@@ -55,7 +55,7 @@ export default function VideosPage() {
     setSubmitting(true);
     setSubmitErr(null);
     try {
-      await ampActions.run({
+      const result = await ampActions.run({
         graph: "video_production",
         trigger_type: "manual",
         payload: {
@@ -66,6 +66,17 @@ export default function VideosPage() {
           model: form.model,
         },
       });
+      // 워크플로우가 즉시 실패한 경우(예: 백엔드 의존성 문제, 입력 검증 실패)
+      // 모달을 닫지 말고 에러 메시지로 사용자에게 알림
+      if (result.status === "failed" || result.status === "cancelled") {
+        const detail =
+          (typeof result.error_message === "string" && result.error_message) ||
+          (typeof result.error === "string" && result.error) ||
+          (typeof result.reason === "string" && result.reason) ||
+          "워크플로우가 즉시 실패했습니다";
+        setSubmitErr(`서버 응답: ${result.status} -- ${detail}`);
+        return;
+      }
       setForm(DEFAULT_FORM);
       setCreating(false);
       mutate();
