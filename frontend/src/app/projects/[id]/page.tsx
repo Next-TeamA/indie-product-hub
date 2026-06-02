@@ -33,10 +33,10 @@ import { cn } from "@/lib/utils";
 // ─── Empty state stats ──────────────
 
 const EMPTY_STATS = [
-  { id: "impressions", label: "총 노출", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-blue-400/30", text: "text-blue-600" },
+  { id: "impressions", label: "총 노출", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-blue-400/30", text: "text-blue-600 dark:text-blue-400" },
   { id: "clicks", label: "총 클릭", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-indigo-400/30", text: "text-indigo-600" },
-  { id: "conversion", label: "전환율", value: "0%", change: "0%", up: true, data: [] as number[], color: "bg-rose-400/30", text: "text-rose-600" },
-  { id: "likes", label: "좋아요", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-emerald-400/30", text: "text-emerald-600" },
+  { id: "conversion", label: "전환율", value: "0%", change: "0%", up: true, data: [] as number[], color: "bg-rose-400/30", text: "text-rose-600 dark:text-rose-400" },
+  { id: "likes", label: "좋아요", value: "0", change: "0%", up: true, data: [] as number[], color: "bg-emerald-400/30", text: "text-emerald-600 dark:text-emerald-400" },
 ];
 
 const CATEGORY_ICON: Record<string, React.ElementType> = {
@@ -47,7 +47,7 @@ const WEEKDAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"];
 
 const PLATFORM_DOT: Record<string, string> = {
   threads: "bg-orange-400",
-  x: "bg-slate-500",
+  x: "bg-muted0",
   bluesky: "bg-sky-400",
   mastodon: "bg-violet-400",
 };
@@ -66,12 +66,12 @@ function SectionHeader({
   return (
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center gap-3">
-        <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">{title}</h2>
+        <h2 className="text-[20px] font-bold text-foreground tracking-tight">{title}</h2>
         {extra}
       </div>
       <Link
         href={href}
-        className="group inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all"
+        className="group inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
       >
         상세보기
         <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -130,7 +130,7 @@ export default function DashboardPage() {
       change: marketingData.changes?.impressions ? `${marketingData.changes.impressions > 0 ? "+" : ""}${marketingData.changes.impressions}%` : "--",
       up: (marketingData.changes?.impressions ?? 0) >= 0,
       data: dailyPct,
-      color: "bg-blue-400/30", text: "text-blue-600",
+      color: "bg-blue-400/30", text: "text-blue-600 dark:text-blue-400",
     },
     {
       id: "clicks", label: "총 클릭",
@@ -146,7 +146,7 @@ export default function DashboardPage() {
       change: "--",
       up: true,
       data: dailyPct,
-      color: "bg-rose-400/30", text: "text-rose-600",
+      color: "bg-rose-400/30", text: "text-rose-600 dark:text-rose-400",
     },
     {
       id: "likes", label: "좋아요",
@@ -154,7 +154,7 @@ export default function DashboardPage() {
       change: marketingData.changes?.likes ? `${marketingData.changes.likes > 0 ? "+" : ""}${marketingData.changes.likes}%` : "--",
       up: (marketingData.changes?.likes ?? 0) >= 0,
       data: dailyPct,
-      color: "bg-emerald-400/30", text: "text-emerald-600",
+      color: "bg-emerald-400/30", text: "text-emerald-600 dark:text-emerald-400",
     },
   ] : EMPTY_STATS;
 
@@ -205,20 +205,20 @@ export default function DashboardPage() {
           : "배포 플랫폼을 연결하면 운영 상태가 분석됩니다.";
 
   const CARD_CLASS =
-    "bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]";
+    "bg-card rounded-[24px] border border-border p-6 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]";
 
   return (
-    <div className="px-10 py-6 w-full min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
+    <div className="px-10 py-6 w-full min-h-dvh bg-card selection:bg-slate-800 selection:text-white">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-7xl mx-auto space-y-4"
       >
         {/* 헤더 */}
-        <div className="border-b border-slate-50 pb-4">
-          <h1 className="text-[26px] font-bold tracking-tight text-slate-800">
+        <div className="border-b border-border pb-4">
+          <h1 className="text-[26px] font-bold tracking-tight text-foreground">
             {project?.name ?? "Dashboard"}{" "}
-            <span className="text-slate-300 font-normal ml-2 text-[18px]">Dashboard</span>
+            <span className="text-muted-foreground font-normal ml-2 text-[18px]">Dashboard</span>
           </h1>
         </div>
 
@@ -238,15 +238,15 @@ export default function DashboardPage() {
                   className={cn(
                     "p-4 rounded-2xl border transition-all text-left",
                     activeMetric === m.id
-                      ? "bg-slate-50 border-slate-200 shadow-sm"
-                      : "bg-white border-slate-100 hover:bg-slate-50",
+                      ? "bg-muted border-border shadow-sm"
+                      : "bg-card border-border hover:bg-muted",
                   )}
                 >
-                  <p className="text-[10px] font-bold uppercase mb-1.5 text-slate-400">{m.label}</p>
-                  <p className={cn("text-[20px] font-bold leading-none", activeMetric === m.id ? "text-slate-800" : "text-slate-600")}>
+                  <p className="text-[10px] font-bold uppercase mb-1.5 text-muted-foreground">{m.label}</p>
+                  <p className={cn("text-[20px] font-bold leading-none", activeMetric === m.id ? "text-foreground" : "text-muted-foreground")}>
                     {m.value}
                   </p>
-                  <p className={cn("text-[11px] font-bold mt-2", m.change === "--" ? "text-slate-400" : m.up ? "text-emerald-500" : "text-rose-500")}>
+                  <p className={cn("text-[11px] font-bold mt-2", m.change === "--" ? "text-muted-foreground" : m.up ? "text-emerald-500" : "text-rose-500")}>
                     {m.change}
                   </p>
                 </button>
@@ -267,33 +267,33 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="h-28 flex flex-col items-center justify-center gap-2.5 px-2">
-                <p className="text-[13px] text-slate-400">
+                <p className="text-[13px] text-muted-foreground">
                   SNS를 연결하면 성과 데이터가 표시됩니다
                 </p>
                 <Link
                   href={`/projects/${id}/settings`}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-slate-900 text-white text-[12px] font-bold hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-[12px] font-bold hover:bg-slate-800 transition-colors"
                 >
                   SNS 연결하기
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             )}
-            <div className="flex justify-between border-t border-slate-50 pt-2.5 text-[11px] font-bold text-slate-300 mb-5">
+            <div className="flex justify-between border-t border-border pt-2.5 text-[11px] font-bold text-muted-foreground mb-5">
               {["월", "화", "수", "목", "금", "토", "일"].map((d) => (
                 <span key={d} className="flex-1 text-center">{d}</span>
               ))}
             </div>
 
             {/* 이번 주 주요 일정 */}
-            <div className="border-t border-slate-100 pt-4">
+            <div className="border-t border-border pt-4">
               <div className="flex items-center gap-2 mb-3">
-                <Calendar className="w-4 h-4 text-slate-500" />
-                <h3 className="text-[13px] font-bold text-slate-800">이번 주 주요 일정</h3>
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <h3 className="text-[13px] font-bold text-foreground">이번 주 주요 일정</h3>
               </div>
               <div className="space-y-2">
                 {weekEvents.length === 0 ? (
-                  <p className="text-[13px] text-slate-400 py-2">
+                  <p className="text-[13px] text-muted-foreground py-2">
                     이번 주 예정된 일정이 없습니다
                   </p>
                 ) : (
@@ -309,12 +309,12 @@ export default function DashboardPage() {
                         className="flex items-center gap-4 group"
                       >
                         <div className="flex flex-col items-center w-7 shrink-0">
-                          <span className="text-[15px] font-bold text-slate-700 leading-none">{day}</span>
-                          <span className="text-[10px] font-bold text-slate-400 mt-1.5">{weekday}</span>
+                          <span className="text-[15px] font-bold text-foreground leading-none">{day}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground mt-1.5">{weekday}</span>
                         </div>
-                        <div className="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 group-hover:bg-slate-100 transition-colors min-w-0">
+                        <div className="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-muted group-hover:bg-muted transition-colors min-w-0">
                           <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
-                          <span className="text-[13px] font-semibold text-slate-700 truncate">{ev.hook}</span>
+                          <span className="text-[13px] font-semibold text-foreground truncate">{ev.hook}</span>
                         </div>
                       </Link>
                     );
@@ -334,17 +334,17 @@ export default function DashboardPage() {
 
                 {/* Marketing Summary */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
                     <TrendingUp className="w-4 h-4 text-blue-500" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-1">
                       Marketing Summary
                     </p>
-                    <p className="text-[15px] font-bold text-slate-800 leading-snug mb-1.5">
+                    <p className="text-[15px] font-bold text-foreground leading-snug mb-1.5">
                       {marketingHeadline}
                     </p>
-                    <p className="text-[12px] text-slate-500 leading-relaxed">
+                    <p className="text-[12px] text-muted-foreground leading-relaxed">
                       {marketingDetail}
                     </p>
                   </div>
@@ -352,17 +352,17 @@ export default function DashboardPage() {
 
                 {/* Operations Summary */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
-                    <ArrowUpRight className="w-4 h-4 text-emerald-600" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
+                    <ArrowUpRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
                       Operations Summary
                     </p>
-                    <p className="text-[15px] font-bold text-slate-800 leading-snug mb-1.5">
+                    <p className="text-[15px] font-bold text-foreground leading-snug mb-1.5">
                       {operationsHeadline}
                     </p>
-                    <p className="text-[12px] text-slate-500 leading-relaxed">
+                    <p className="text-[12px] text-muted-foreground leading-relaxed">
                       {operationsDetail}
                     </p>
                   </div>
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                 href={`/projects/${id}/issues`}
                 extra={
                   criticalCount > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-full">
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                       {criticalCount} Critical
                     </span>
@@ -389,11 +389,11 @@ export default function DashboardPage() {
               <div className="space-y-2 mb-4">
                 {issuesLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-slate-300" />
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : openIssues.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-[13px] text-slate-400">미해결 이슈가 없습니다</p>
+                    <p className="text-[13px] text-muted-foreground">미해결 이슈가 없습니다</p>
                   </div>
                 ) : (
                   openIssues.slice(0, 3).map((issue) => {
@@ -402,20 +402,20 @@ export default function DashboardPage() {
                       <Link
                         key={issue.id}
                         href={`/projects/${id}/issues`}
-                        className="p-3.5 rounded-2xl bg-white border border-slate-100 flex items-center gap-3 hover:bg-slate-50 transition-all group cursor-pointer shadow-sm"
+                        className="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3 hover:bg-muted transition-all group cursor-pointer shadow-sm"
                       >
-                        <div className={cn("p-2 rounded-xl", issue.severity === "critical" ? "bg-rose-50" : "bg-amber-50")}>
+                        <div className={cn("p-2 rounded-xl", issue.severity === "critical" ? "bg-rose-50 dark:bg-rose-950/40" : "bg-amber-50 dark:bg-amber-950/40")}>
                           <Icon className={cn("w-4 h-4", issue.severity === "critical" ? "text-rose-500" : "text-amber-500")} />
                         </div>
                         <div className="flex-1 min-w-0 text-left">
-                          <p className="text-[13px] font-bold text-slate-800 truncate">{issue.title}</p>
-                          <p className="text-[10px] font-medium text-slate-400 mt-0.5 uppercase">
+                          <p className="text-[13px] font-bold text-foreground truncate">{issue.title}</p>
+                          <p className="text-[10px] font-medium text-muted-foreground mt-0.5 uppercase">
                             {issue.category} · {new Date(issue.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
                           </p>
                         </div>
                         <div className={cn(
                           "px-2 py-0.5 rounded text-[10px] font-black uppercase border shrink-0",
-                          issue.severity === "critical" ? "text-rose-500 border-rose-100" : "text-amber-500 border-amber-100",
+                          issue.severity === "critical" ? "text-rose-500 border-rose-100 dark:border-rose-900/50" : "text-amber-500 border-amber-100 dark:border-amber-900/50",
                         )}>
                           {issue.severity}
                         </div>
@@ -426,35 +426,35 @@ export default function DashboardPage() {
               </div>
 
               {/* System Health */}
-              <div className="border-t border-slate-100 pt-4">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
+              <div className="border-t border-border pt-4">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5">
                   System Health
                 </p>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="p-3 rounded-xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 mb-1">DEPLOY</p>
+                  <div className="p-3 rounded-xl border border-border">
+                    <p className="text-[10px] font-bold text-muted-foreground mb-1">DEPLOY</p>
                     <p className={cn(
                       "text-[15px] font-bold",
                       deploySuccessRate !== null && deploySuccessRate >= 90
-                        ? "text-emerald-600"
+                        ? "text-emerald-600 dark:text-emerald-400"
                         : deploySuccessRate !== null
-                          ? "text-amber-600"
-                          : "text-slate-400",
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-muted-foreground",
                     )}>
                       {deploySuccessRate !== null ? `${deploySuccessRate}%` : "--"}
                     </p>
                   </div>
-                  <div className="p-3 rounded-xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 mb-1">ISSUES</p>
+                  <div className="p-3 rounded-xl border border-border">
+                    <p className="text-[10px] font-bold text-muted-foreground mb-1">ISSUES</p>
                     <p className={cn(
                       "text-[15px] font-bold",
-                      criticalCount > 0 ? "text-rose-600" : "text-emerald-600",
+                      criticalCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400",
                     )}>
                       {criticalCount > 0 ? `${criticalCount} Critical` : "All Clear"}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400 mt-3">
+                <div className="flex items-center gap-2 text-muted-foreground mt-3">
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-bold">
                     {recentDeploy

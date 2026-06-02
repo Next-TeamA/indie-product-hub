@@ -48,21 +48,21 @@ const fadeUp = {
 
 const SEVERITY_CFG = {
   high: {
-    border: "border-rose-100",
-    text: "text-rose-600",
-    bg: "bg-rose-50/50",
+    border: "border-rose-100 dark:border-rose-900/50",
+    text: "text-rose-600 dark:text-rose-400",
+    bg: "bg-rose-50/50 dark:bg-rose-950/40",
     label: "긴급",
   },
   medium: {
-    border: "border-amber-100",
-    text: "text-amber-600",
-    bg: "bg-amber-50/50",
+    border: "border-amber-100 dark:border-amber-900/50",
+    text: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50/50 dark:bg-amber-950/40",
     label: "보통",
   },
   low: {
-    border: "border-blue-100",
-    text: "text-blue-600",
-    bg: "bg-blue-50/50",
+    border: "border-blue-100 dark:border-blue-900/50",
+    text: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50/50 dark:bg-blue-950/40",
     label: "낮음",
   },
 };
@@ -161,7 +161,7 @@ export default function InsightsPage() {
     : [];
 
   return (
-    <div className="px-10 py-10 w-full min-h-dvh bg-white selection:bg-slate-800 selection:text-white">
+    <div className="px-10 py-10 w-full min-h-dvh bg-card selection:bg-slate-800 selection:text-white">
       <motion.div
         variants={stagger}
         initial="hidden"
@@ -177,7 +177,7 @@ export default function InsightsPage() {
             <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 mb-1.5">
               Insights
             </p>
-            <h1 className="text-[26px] font-bold tracking-tight text-slate-800">
+            <h1 className="text-[26px] font-bold tracking-tight text-foreground">
               인사이트
             </h1>
           </div>
@@ -189,14 +189,14 @@ export default function InsightsPage() {
               className={cn(
                 "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold transition-all border cursor-pointer",
                 syncing
-                  ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed"
-                  : "bg-white text-slate-500 border-slate-200 hover:text-slate-700 hover:border-slate-300 shadow-sm",
+                  ? "bg-muted text-muted-foreground border-border cursor-not-allowed"
+                  : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-slate-300 shadow-sm",
               )}
             >
               <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
               {syncing ? "동기화 중..." : "동기화"}
             </button>
-          <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner">
+          <div className="flex bg-muted p-1 rounded-xl border border-border shadow-inner">
             {[
               { id: "marketing", label: "홍보 인사이트", icon: Megaphone },
               { id: "operations", label: "운영 인사이트", icon: Newspaper },
@@ -207,8 +207,8 @@ export default function InsightsPage() {
                 className={cn(
                   "flex items-center gap-2 px-5 py-2 rounded-lg text-[13px] font-semibold transition-all cursor-pointer",
                   activeTab === id
-                    ? "bg-white text-slate-800 shadow-sm"
-                    : "text-slate-400 hover:text-slate-600",
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-muted-foreground",
                 )}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -248,7 +248,7 @@ export default function InsightsPage() {
                     up: (marketingData?.changes?.clicks ?? 0) >= 0,
                     icon: MousePointer,
                     accent: "text-violet-500",
-                    iconBg: "bg-violet-50",
+                    iconBg: "bg-violet-50 dark:bg-violet-950/40",
                   },
                   {
                     label: "좋아요",
@@ -257,7 +257,7 @@ export default function InsightsPage() {
                     up: (marketingData?.changes?.likes ?? 0) >= 0,
                     icon: Users,
                     accent: "text-emerald-500",
-                    iconBg: "bg-emerald-50",
+                    iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
                   },
                   {
                     label: "참여율",
@@ -266,22 +266,22 @@ export default function InsightsPage() {
                     up: true,
                     icon: Target,
                     accent: "text-rose-500",
-                    iconBg: "bg-rose-50",
+                    iconBg: "bg-rose-50 dark:bg-rose-950/40",
                   },
                 ].map((card) => (
                   <div
                     key={card.label}
-                    className="bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1"
+                    className="bg-card rounded-[20px] border border-border p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-5">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
                         {card.label}
                       </p>
                       <div className={cn("p-2 rounded-xl", card.iconBg)}>
                         <card.icon className="w-4 h-4" />
                       </div>
                     </div>
-                    <p className="text-[26px] font-bold tracking-tight text-slate-800 mb-1 leading-none">
+                    <p className="text-[26px] font-bold tracking-tight text-foreground mb-1 leading-none">
                       {card.value}
                     </p>
                     <div className="flex items-center gap-1.5 mt-2">
@@ -293,12 +293,12 @@ export default function InsightsPage() {
                       <span
                         className={cn(
                           "text-[12px] font-semibold",
-                          card.up ? "text-emerald-600" : "text-rose-600",
+                          card.up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
                         )}
                       >
                         {card.change}
                       </span>
-                      <span className="text-[11px] font-medium text-slate-400">
+                      <span className="text-[11px] font-medium text-muted-foreground">
                         vs 지난주
                       </span>
                     </div>
@@ -308,8 +308,8 @@ export default function InsightsPage() {
 
               {/* 주간 노출 & 채널 성과 */}
               <div className="grid grid-cols-5 gap-5 items-stretch">
-                <div className="col-span-3 bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
-                  <p className="text-[15px] font-semibold text-slate-800 mb-8">
+                <div className="col-span-3 bg-card rounded-[20px] border border-border p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+                  <p className="text-[15px] font-semibold text-foreground mb-8">
                     주간 노출 추이
                   </p>
                   <div className="flex items-end gap-3 h-40 px-2">
@@ -320,29 +320,29 @@ export default function InsightsPage() {
                         return daily.map((val, i) => (
                           <motion.div
                             key={i}
-                            className="flex-1 bg-slate-50 rounded-t-xl relative group hover:bg-slate-100 transition-colors cursor-default border border-slate-100/50"
+                            className="flex-1 bg-muted rounded-t-xl relative group hover:bg-muted transition-colors cursor-default border border-border/50"
                             initial={{ height: 0 }}
                             animate={{ height: `${(val / maxVal) * 100}%` }}
                             transition={{ delay: i * 0.05, duration: 0.5, ease: EASE_OUT_EXPO }}
                           >
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white border border-slate-100 px-2 py-1 rounded-md shadow-sm">
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-card border border-border px-2 py-1 rounded-md shadow-sm">
                               {val.toLocaleString()}
                             </div>
                           </motion.div>
                         ));
                       }
                       return (
-                        <div className="flex-1 flex items-center justify-center text-[13px] text-slate-400">
+                        <div className="flex-1 flex items-center justify-center text-[13px] text-muted-foreground">
                           SNS 채널을 연결하고 게시물을 발행하면 데이터가 표시됩니다
                         </div>
                       );
                     })()}
                   </div>
-                  <div className="flex justify-between mt-4 border-t border-slate-50 pt-3">
+                  <div className="flex justify-between mt-4 border-t border-border pt-3">
                     {["월", "화", "수", "목", "금", "토", "일"].map((d) => (
                       <span
                         key={d}
-                        className="text-[11px] font-semibold text-slate-300 flex-1 text-center"
+                        className="text-[11px] font-semibold text-muted-foreground flex-1 text-center"
                       >
                         {d}
                       </span>
@@ -350,17 +350,17 @@ export default function InsightsPage() {
                   </div>
                 </div>
 
-                <div className="col-span-2 bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
-                  <p className="text-[15px] font-semibold text-slate-800 mb-6">
+                <div className="col-span-2 bg-card rounded-[20px] border border-border p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+                  <p className="text-[15px] font-semibold text-foreground mb-6">
                     채널별 성과
                   </p>
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b border-slate-50">
+                      <tr className="border-b border-border">
                         {["채널", "노출", "CTR", "추이"].map((h) => (
                           <th
                             key={h}
-                            className="pb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                            className="pb-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
                           >
                             {h}
                           </th>
@@ -371,15 +371,15 @@ export default function InsightsPage() {
                       {channelData.map((row) => (
                         <tr
                           key={row.channel}
-                          className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
+                          className="hover:bg-muted/50 transition-colors group cursor-pointer"
                         >
-                          <td className="py-4 text-[13px] font-bold text-slate-700">
+                          <td className="py-4 text-[13px] font-bold text-foreground">
                             {row.channel}
                           </td>
-                          <td className="py-4 text-[12px] font-medium text-slate-400">
+                          <td className="py-4 text-[12px] font-medium text-muted-foreground">
                             {row.impressions}
                           </td>
-                          <td className="py-4 text-[12px] font-semibold text-slate-700">
+                          <td className="py-4 text-[12px] font-semibold text-foreground">
                             {row.ctr}
                           </td>
                           <td className="py-4">
@@ -387,8 +387,8 @@ export default function InsightsPage() {
                               className={cn(
                                 "text-[11px] font-bold px-2 py-0.5 rounded-md",
                                 row.up
-                                  ? "text-emerald-600 bg-emerald-50"
-                                  : "text-rose-600 bg-rose-50",
+                                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                                  : "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40",
                               )}
                             >
                               {row.trend}
@@ -402,35 +402,35 @@ export default function InsightsPage() {
               </div>
 
               {/* 인기 게시물 */}
-              <div className="bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+              <div className="bg-card rounded-[20px] border border-border p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    <p className="text-[15px] font-semibold text-slate-800">
+                    <p className="text-[15px] font-semibold text-foreground">
                       반응이 좋았던 게시물
                     </p>
                   </div>
-                  <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-widest leading-none">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest leading-none">
                     최근 30일
                   </span>
                 </div>
                 <div className="grid grid-cols-4 gap-5">
                   {marketingData?.best_post ? [marketingData.best_post].map((post, idx) => (
-                    <div key={idx} className="bg-white rounded-[16px] border border-slate-100 p-4 shadow-sm">
+                    <div key={idx} className="bg-card rounded-[16px] border border-border p-4 shadow-sm">
                       <p className="text-[11px] font-bold text-indigo-500 mb-2">{post.platform} / {post.tone}</p>
-                      <p className="text-[13px] font-medium text-slate-700 line-clamp-3">{post.hook}</p>
-                      <div className="flex items-center gap-3 mt-3 text-[11px] text-slate-400">
+                      <p className="text-[13px] font-medium text-foreground line-clamp-3">{post.hook}</p>
+                      <div className="flex items-center gap-3 mt-3 text-[11px] text-muted-foreground">
                         <span>{post.impressions.toLocaleString()} views</span>
                         <span>{post.engagement.toLocaleString()} engagement</span>
                       </div>
                     </div>
                   )) : TOP_POSTS.length === 0 ? (
-                    <div className="col-span-4 text-center py-12 text-[13px] text-slate-400">
+                    <div className="col-span-4 text-center py-12 text-[13px] text-muted-foreground">
                       게시물을 발행하면 반응이 좋았던 게시물이 여기에 표시됩니다
                     </div>
                   ) : TOP_POSTS.map((post) => (
                     <div key={post.rank} className="group cursor-pointer">
-                      <div className="relative aspect-[16/10] rounded-[16px] overflow-hidden mb-3 border border-slate-100 shadow-sm">
+                      <div className="relative aspect-[16/10] rounded-[16px] overflow-hidden mb-3 border border-border shadow-sm">
                         <img
                           src={post.image}
                           alt={post.platform}
@@ -444,14 +444,14 @@ export default function InsightsPage() {
                         >
                           {post.platform}
                         </span>
-                        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-[10px] font-black text-white">
+                        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-card/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-[10px] font-black text-white">
                           #{post.rank}
                         </div>
                       </div>
-                      <p className="text-[13px] font-medium text-slate-600 leading-snug line-clamp-2 mb-3 group-hover:text-slate-900 transition-colors">
+                      <p className="text-[13px] font-medium text-muted-foreground leading-snug line-clamp-2 mb-3 group-hover:text-foreground transition-colors">
                         {post.content}
                       </p>
-                      <div className="flex items-center justify-between border-t border-slate-50 pt-3 text-[11px] font-semibold text-slate-400">
+                      <div className="flex items-center justify-between border-t border-border pt-3 text-[11px] font-semibold text-muted-foreground">
                         <div className="flex items-center gap-3">
                           <span className="flex items-center gap-1">
                             <Heart className="w-3 h-3 text-rose-400" />{" "}
@@ -462,7 +462,7 @@ export default function InsightsPage() {
                             {post.comments}
                           </span>
                         </div>
-                        <span className="text-slate-300">
+                        <span className="text-muted-foreground">
                           {post.impressions} Views
                         </span>
                       </div>
@@ -480,10 +480,10 @@ export default function InsightsPage() {
               transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
               className="flex flex-col gap-5"
             >
-              <div className="bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+              <div className="bg-card rounded-[20px] border border-border p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-2 mb-6">
-                  <AlertCircle className="w-4 h-4 text-slate-400" />
-                  <p className="text-[15px] font-semibold text-slate-800">
+                  <AlertCircle className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-[15px] font-semibold text-foreground">
                     주요 이슈 리포트
                   </p>
                 </div>
@@ -495,13 +495,13 @@ export default function InsightsPage() {
                       <div
                         key={idx}
                         className={cn(
-                          "rounded-2xl border p-4 flex items-center gap-4 transition-all hover:bg-slate-50/50",
+                          "rounded-2xl border p-4 flex items-center gap-4 transition-all hover:bg-muted/50",
                           cfg.border,
                         )}
                       >
                         <span
                           className={cn(
-                            "shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider bg-slate-50 border border-slate-100",
+                            "shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider bg-muted border border-border",
                             cfg.text,
                           )}
                         >
@@ -516,11 +516,11 @@ export default function InsightsPage() {
                           >
                             {issue.title}
                           </p>
-                          <p className="text-[12px] font-medium text-slate-500 mt-0.5 line-clamp-1">
+                          <p className="text-[12px] font-medium text-muted-foreground mt-0.5 line-clamp-1">
                             {issue.description}
                           </p>
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-300 shrink-0">
+                        <span className="text-[11px] font-semibold text-muted-foreground shrink-0">
                           {issue.time}
                         </span>
                       </div>
@@ -529,40 +529,40 @@ export default function InsightsPage() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+              <div className="bg-card rounded-[20px] border border-border p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
-                    <Newspaper className="w-4 h-4 text-slate-400" />
-                    <p className="text-[15px] font-semibold text-slate-800">
+                    <Newspaper className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-[15px] font-semibold text-foreground">
                       시장 및 기술 동향
                     </p>
                   </div>
-                  <button className="text-[11px] font-bold text-slate-300 hover:text-slate-600 transition-colors flex items-center gap-1 uppercase tracking-widest">
+                  <button className="text-[11px] font-bold text-muted-foreground hover:text-muted-foreground transition-colors flex items-center gap-1 uppercase tracking-widest">
                     전체 보기 <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="grid grid-cols-4 gap-5">
                   {newsData.map((news, i) => (
                     <div key={i} className="group cursor-pointer">
-                      <div className="relative rounded-xl overflow-hidden mb-3 border border-slate-50 bg-slate-50 p-3">
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-900/10 text-slate-600 uppercase tracking-wider">
+                      <div className="relative rounded-xl overflow-hidden mb-3 border border-border bg-muted p-3">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-primary/10 text-muted-foreground uppercase tracking-wider">
                           {news.tag}
                         </span>
                       </div>
-                      <p className="text-[13px] font-semibold text-slate-700 leading-snug line-clamp-2 mb-1.5 group-hover:text-blue-600 transition-colors">
+                      <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2 mb-1.5 group-hover:text-blue-600 dark:text-blue-400 transition-colors">
                         {news.title}
                       </p>
                       {news.summary && (
-                        <p className="text-[11px] text-slate-500 line-clamp-2 mb-1.5">
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 mb-1.5">
                           {news.summary}
                         </p>
                       )}
                       {news.action && (
-                        <p className="text-[11px] font-medium text-blue-600 line-clamp-1 mb-1.5">
+                        <p className="text-[11px] font-medium text-blue-600 dark:text-blue-400 line-clamp-1 mb-1.5">
                           {news.action}
                         </p>
                       )}
-                      <div className="flex justify-between items-center text-[11px] font-medium text-slate-400">
+                      <div className="flex justify-between items-center text-[11px] font-medium text-muted-foreground">
                         <span>{news.source}</span>
                         <span className="text-slate-200">{news.time}</span>
                       </div>
@@ -571,18 +571,18 @@ export default function InsightsPage() {
                 </div>
               </div>
               {/* Threads 멘션 */}
-              <div className="bg-white rounded-[20px] border border-slate-100 p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
+              <div className="bg-card rounded-[20px] border border-border p-6 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-2 mb-6">
-                  <AtSign className="w-4 h-4 text-slate-400" />
-                  <p className="text-[15px] font-semibold text-slate-800">
+                  <AtSign className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-[15px] font-semibold text-foreground">
                     Threads 멘션
                   </p>
-                  <span className="text-[11px] font-bold text-slate-300 ml-auto">
+                  <span className="text-[11px] font-bold text-muted-foreground ml-auto">
                     {threadsMentions.length}건
                   </span>
                 </div>
                 {threadsMentions.length === 0 ? (
-                  <div className="text-center py-8 text-[13px] text-slate-400">
+                  <div className="text-center py-8 text-[13px] text-muted-foreground">
                     아직 멘션이 없습니다. Threads에서 제품이 언급되면 여기에 표시됩니다.
                   </div>
                 ) : (
@@ -590,17 +590,17 @@ export default function InsightsPage() {
                     {threadsMentions.slice(0, 5).map((mention, i) => (
                       <div
                         key={i}
-                        className="rounded-xl border border-slate-100 p-4 hover:bg-slate-50/50 transition-colors"
+                        className="rounded-xl border border-border p-4 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[12px] font-bold text-blue-600">
+                          <span className="text-[12px] font-bold text-blue-600 dark:text-blue-400">
                             @{mention.username}
                           </span>
-                          <span className="text-[11px] text-slate-300">
+                          <span className="text-[11px] text-muted-foreground">
                             {mention.timestamp ? new Date(mention.timestamp).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) : ""}
                           </span>
                         </div>
-                        <p className="text-[13px] text-slate-600 line-clamp-3">
+                        <p className="text-[13px] text-muted-foreground line-clamp-3">
                           {mention.text}
                         </p>
                       </div>

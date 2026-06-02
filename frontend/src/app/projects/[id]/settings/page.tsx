@@ -161,26 +161,26 @@ export default function ProjectSettingsPage() {
         : [];
 
   return (
-    <div className="px-10 py-10 w-full min-h-dvh bg-white">
+    <div className="px-10 py-10 w-full min-h-dvh bg-card">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-3xl mx-auto space-y-10"
       >
         <div>
-          <h1 className="text-[24px] font-bold text-slate-800">프로젝트 설정</h1>
-          <p className="text-[14px] text-slate-400 mt-1">
+          <h1 className="text-[24px] font-bold text-foreground">프로젝트 설정</h1>
+          <p className="text-[14px] text-muted-foreground mt-1">
             이 프로젝트에 연결된 서비스를 관리합니다.
           </p>
         </div>
 
         {/* GitHub Repository */}
-        <section className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
+        <section className="bg-card rounded-2xl border border-border p-6 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[16px] font-bold text-slate-800">GitHub 레포지토리</h2>
+            <h2 className="text-[16px] font-bold text-foreground">GitHub 레포지토리</h2>
             {connectedProviders.github ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-emerald-600 font-medium">연결됨</span>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">연결됨</span>
                 <button
                   onClick={async () => {
                     setConnecting("github");
@@ -201,7 +201,7 @@ export default function ProjectSettingsPage() {
               <button
                 onClick={() => handleConnect("github")}
                 disabled={connecting === "github"}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
               >
                 {connecting === "github" ? "연결 중..." : "GitHub 연결하기"}
               </button>
@@ -213,7 +213,7 @@ export default function ProjectSettingsPage() {
               {/* Organization selector */}
               {loadingOrgs ? (
                 <div className="flex items-center justify-center h-10">
-                  <RefreshCw className="w-4 h-4 animate-spin text-slate-300" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
                 </div>
               ) : orgs.length > 1 && (
                 <div className="flex gap-2 flex-wrap mb-1">
@@ -224,15 +224,15 @@ export default function ProjectSettingsPage() {
                       className={cn(
                         "flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all cursor-pointer",
                         selectedOrg === org.login
-                          ? "border-blue-200 bg-blue-50 text-blue-700"
-                          : "border-slate-200 text-slate-500 hover:bg-slate-50",
+                          ? "border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400"
+                          : "border-border text-muted-foreground hover:bg-muted",
                       )}
                     >
                       {org.avatar_url && (
                         <img src={org.avatar_url} alt="" className="w-4 h-4 rounded-full" />
                       )}
                       {org.login}
-                      {org.is_personal && <span className="text-[10px] text-slate-400">(개인)</span>}
+                      {org.is_personal && <span className="text-[10px] text-muted-foreground">(개인)</span>}
                     </button>
                   ))}
                 </div>
@@ -245,17 +245,17 @@ export default function ProjectSettingsPage() {
                   value={repoSearch}
                   onChange={(e) => setRepoSearch(e.target.value)}
                   placeholder="레포지토리 검색..."
-                  className="w-full h-10 pl-10 pr-4 text-sm rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full h-10 pl-10 pr-4 text-sm rounded-xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-border divide-y divide-slate-50">
                 {loadingRepos ? (
                   <div className="p-4 text-center">
-                    <RefreshCw className="w-4 h-4 animate-spin text-slate-300 mx-auto" />
+                    <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground mx-auto" />
                   </div>
                 ) : filteredRepos.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-slate-400">레포지토리 없음</div>
+                  <div className="p-4 text-center text-sm text-muted-foreground">레포지토리 없음</div>
                 ) : (
                   filteredRepos.slice(0, 30).map((repo) => (
                     <button
@@ -263,19 +263,19 @@ export default function ProjectSettingsPage() {
                       onClick={() => setSelectedRepo(repo.full_name)}
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer",
-                        selectedRepo === repo.full_name ? "bg-blue-50/50" : "hover:bg-slate-50",
+                        selectedRepo === repo.full_name ? "bg-blue-50/50 dark:bg-blue-950/40" : "hover:bg-muted",
                       )}
                     >
                       <div className={cn(
                         "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                        selectedRepo === repo.full_name ? "border-blue-500 bg-blue-500" : "border-slate-200",
+                        selectedRepo === repo.full_name ? "border-blue-500 bg-blue-500" : "border-border",
                       )}>
                         {selectedRepo === repo.full_name && <Check className="w-2.5 h-2.5 text-white" />}
                       </div>
-                      <span className="text-sm font-medium text-slate-700 truncate">{repo.name}</span>
-                      {repo.private ? <Lock className="w-3 h-3 text-slate-300 shrink-0" /> : <Globe className="w-3 h-3 text-slate-300 shrink-0" />}
+                      <span className="text-sm font-medium text-foreground truncate">{repo.name}</span>
+                      {repo.private ? <Lock className="w-3 h-3 text-muted-foreground shrink-0" /> : <Globe className="w-3 h-3 text-muted-foreground shrink-0" />}
                       {repo.language && (
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">{repo.language}</span>
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{repo.language}</span>
                       )}
                     </button>
                   ))
@@ -286,8 +286,8 @@ export default function ProjectSettingsPage() {
         </section>
 
         {/* Deploy Platform */}
-        <section className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
-          <h2 className="text-[16px] font-bold text-slate-800 mb-4">배포 플랫폼</h2>
+        <section className="bg-card rounded-2xl border border-border p-6 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
+          <h2 className="text-[16px] font-bold text-foreground mb-4">배포 플랫폼</h2>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
             {(["vercel", "railway"] as const).map((p) => (
@@ -297,8 +297,8 @@ export default function ProjectSettingsPage() {
                 className={cn(
                   "flex items-center justify-center gap-2 h-12 rounded-xl border font-medium transition-all cursor-pointer text-sm",
                   deployPlatform === p
-                    ? "border-blue-200 bg-blue-50/50 text-blue-700"
-                    : "border-slate-200 text-slate-500 hover:bg-slate-50",
+                    ? "border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400"
+                    : "border-border text-muted-foreground hover:bg-muted",
                 )}
               >
                 <Rocket className="w-4 h-4" />
@@ -312,7 +312,7 @@ export default function ProjectSettingsPage() {
             <button
               onClick={() => handleConnect(deployPlatform)}
               disabled={connecting === deployPlatform}
-              className="w-full h-11 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              className="w-full h-11 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted cursor-pointer disabled:opacity-50"
             >
               {connecting === deployPlatform ? "연결 중..." : `${deployPlatform === "vercel" ? "Vercel" : "Railway"} 연결하기`}
             </button>
@@ -320,28 +320,28 @@ export default function ProjectSettingsPage() {
 
           {deployPlatform && connectedProviders[deployPlatform] && deployProjects.length > 0 && (
             <>
-              <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+              <div className="max-h-40 overflow-y-auto rounded-xl border border-border divide-y divide-slate-50">
                 {deployProjects.map((proj) => (
                   <button
                     key={proj.id}
                     onClick={() => setSelectedDeployProject(proj.id)}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer",
-                      selectedDeployProject === proj.id ? "bg-blue-50/50" : "hover:bg-slate-50",
+                      selectedDeployProject === proj.id ? "bg-blue-50/50 dark:bg-blue-950/40" : "hover:bg-muted",
                     )}
                   >
                     <div className={cn(
                       "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                      selectedDeployProject === proj.id ? "border-blue-500 bg-blue-500" : "border-slate-200",
+                      selectedDeployProject === proj.id ? "border-blue-500 bg-blue-500" : "border-border",
                     )}>
                       {selectedDeployProject === proj.id && <Check className="w-2.5 h-2.5 text-white" />}
                     </div>
-                    <span className="text-sm font-medium text-slate-700">{proj.name}</span>
+                    <span className="text-sm font-medium text-foreground">{proj.name}</span>
                   </button>
                 ))}
               </div>
               {deployPlatform === "vercel" && (
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   프로젝트가 안 보이나요?{" "}
                   <a href="https://vercel.com/~/integrations" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
                     Vercel Integration 설정에서 "All Projects" 허용
@@ -353,8 +353,8 @@ export default function ProjectSettingsPage() {
         </section>
 
         {/* SNS Accounts */}
-        <section className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
-          <h2 className="text-[16px] font-bold text-slate-800 mb-4">SNS 계정</h2>
+        <section className="bg-card rounded-2xl border border-border p-6 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
+          <h2 className="text-[16px] font-bold text-foreground mb-4">SNS 계정</h2>
           <div className="space-y-3">
             {[
               { id: "x", label: "X (Twitter)", icon: "X" },
@@ -362,18 +362,18 @@ export default function ProjectSettingsPage() {
             ].map((sns) => (
               <div
                 key={sns.id}
-                className="flex items-center justify-between h-12 px-4 rounded-xl border border-slate-200"
+                className="flex items-center justify-between h-12 px-4 rounded-xl border border-border"
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                  <span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
                     {sns.icon}
                   </span>
-                  <span className="text-sm font-medium text-slate-700">{sns.label}</span>
+                  <span className="text-sm font-medium text-foreground">{sns.label}</span>
                 </div>
                 {connectedProviders[sns.id] ? (
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-500" />
-                    <span className="text-xs text-emerald-600">연결됨</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400">연결됨</span>
                     <button
                       onClick={() => handleConnect(sns.id)}
                       className="text-xs text-muted-foreground hover:text-foreground cursor-pointer ml-1"
@@ -385,7 +385,7 @@ export default function ProjectSettingsPage() {
                   <button
                     onClick={() => handleConnect(sns.id)}
                     disabled={connecting === sns.id}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700 cursor-pointer disabled:opacity-50"
+                    className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:text-blue-400 cursor-pointer disabled:opacity-50"
                   >
                     {connecting === sns.id ? "연결 중..." : "연결하기"}
                   </button>
@@ -404,7 +404,7 @@ export default function ProjectSettingsPage() {
               "flex items-center gap-2 px-6 h-11 rounded-xl text-sm font-bold transition-all",
               saved
                 ? "bg-emerald-500 text-white"
-                : "bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50",
+                : "bg-primary text-primary-foreground hover:bg-slate-800 disabled:opacity-50",
             )}
           >
             {saved ? (

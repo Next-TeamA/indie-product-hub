@@ -135,7 +135,7 @@ export default function AmpPage() {
               onClick={() => onRun(g)}
               disabled={!!running}
               className={cn(
-                "rounded-[24px] border border-border bg-white p-5 text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] transition-all",
+                "rounded-[24px] border border-border bg-card p-5 text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] transition-all",
                 running === g
                   ? "ring-2 ring-violet-300"
                   : !running && "hover:-translate-y-0.5 hover:border-border",
@@ -188,7 +188,7 @@ export default function AmpPage() {
             <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중
           </div>
         ) : approvals.length === 0 ? (
-          <div className="rounded-[24px] border border-dashed border-border bg-white p-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-[24px] border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
             처리할 승인이 없어요.
           </div>
         ) : (
@@ -245,7 +245,7 @@ function ApprovalRow({
             <AlertTriangle className="h-3.5 w-3.5" />
             {approval.approval_type}
           </div>
-          <pre className="mt-2 max-h-40 overflow-auto rounded-2xl bg-white p-3 text-xs text-foreground">
+          <pre className="mt-2 max-h-40 overflow-auto rounded-2xl bg-card p-3 text-xs text-foreground">
             {JSON.stringify(approval.payload, null, 2)}
           </pre>
           <div className="mt-2 text-xs text-muted-foreground">
@@ -257,7 +257,7 @@ function ApprovalRow({
             type="button"
             onClick={() => onDecide(approval.id, "rejected")}
             disabled={deciding}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-4 py-2 text-sm font-bold text-foreground hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-foreground hover:bg-muted disabled:opacity-50"
           >
             <XCircle className="h-4 w-4" /> 거절
           </button>
@@ -283,7 +283,7 @@ function ApprovalRow({
 function RunRow({ run }: { run: WorkflowRun }) {
   const meta = RUN_STATUS_META[run.status];
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-white p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-foreground">

@@ -145,13 +145,13 @@ function VideoCard({
   return (
     <Link
       href={`/projects/${projectId}/videos/${video.id}`}
-      className="group block overflow-hidden rounded-[24px] border border-border bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-0.5"
+      className="group block overflow-hidden rounded-[24px] border border-border bg-card shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-0.5"
     >
       <div className="relative flex aspect-[9/16] items-center justify-center bg-gradient-to-br from-muted to-muted sm:aspect-video">
         <Film className="h-10 w-10 text-muted-foreground transition-transform group-hover:scale-110" />
         {video.status !== "ready" && (
           <div className="absolute inset-0 flex items-end p-3">
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/60">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-card/60">
               <div
                 className="h-full rounded-full bg-violet-500 transition-all"
                 style={{ width: `${video.progress_percent}%` }}
@@ -193,7 +193,7 @@ function VideoCard({
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-border bg-white p-12 text-center">
+    <div className="rounded-[24px] border border-dashed border-border bg-card p-12 text-center">
       <Film className="mx-auto h-12 w-12 text-muted-foreground" />
       <h3 className="mt-4 text-base font-bold text-foreground">
         아직 영상이 없어요
@@ -240,7 +240,7 @@ function NewVideoModal({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 20, opacity: 0 }}
         transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-        className="w-full max-w-lg rounded-[24px] bg-white p-6 shadow-2xl md:p-8"
+        className="w-full max-w-lg rounded-[24px] bg-card p-6 shadow-2xl md:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
