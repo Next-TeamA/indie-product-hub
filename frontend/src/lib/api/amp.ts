@@ -28,8 +28,14 @@ export type Approval = {
   project_id: string;
   workflow_run_id: string;
   status: "pending" | "approved" | "rejected";
-  approval_type: string;
-  payload: unknown;
+  // 백엔드 컬럼은 item_type. approval_type은 legacy alias.
+  item_type?: string;
+  approval_type?: string;
+  // 백엔드는 'context'에 drafts/risk/strategy 넣음. payload는 legacy alias.
+  context?: unknown;
+  payload?: unknown;
+  ai_recommendation?: string;
+  priority?: string;
   created_at: string;
   decided_at: string | null;
   decided_by: string | null;
