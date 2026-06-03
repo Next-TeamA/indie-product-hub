@@ -17,3 +17,4 @@ export * from "./videos";
 export * from "./media";
 export * from "./amp";
 export * from "./cost";
+export * from "./interactions";
