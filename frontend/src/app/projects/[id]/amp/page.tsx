@@ -122,7 +122,7 @@ export default function AmpPage() {
   }
 
   async function runContent(payload: {
-    topic: string;
+    topic?: string;
     channels: Channel[];
     audience?: string;
     tone?: string;
@@ -130,45 +130,50 @@ export default function AmpPage() {
   }) {
     setRunning("content_creation");
     setRunMsg(null);
+    setContentOpen(false); // 즉시 닫고 진행 상태는 페이지/run 상세에서
     try {
       const r = await ampActions.run({
         graph: "content_creation",
         trigger_type: "manual",
         payload,
       });
-      reportRun("content_creation", r.status, asRunDetail(r));
+      handleRunResult("content_creation", r);
     } catch (e) {
       setRunMsg(e instanceof Error ? `실행 실패: ${e.message}` : "실행 실패");
     } finally {
       setRunning(null);
-      setContentOpen(false);
     }
   }
 
   async function runEngagement(interaction: Interaction) {
     setRunning("engagement");
     setRunMsg(null);
+    setMentionOpen(false);
     try {
       const r = await ampActions.run({
         graph: "engagement",
         trigger_type: "manual",
         payload: { interaction_id: interaction.id },
       });
-      reportRun("engagement", r.status, asRunDetail(r));
+      handleRunResult("engagement", r);
     } catch (e) {
       setRunMsg(e instanceof Error ? `실행 실패: ${e.message}` : "실행 실패");
     } finally {
       setRunning(null);
-      setMentionOpen(false);
     }
   }
 
-  function reportRun(graph: AmpGraph, status: string, detail: string | null) {
-    setRunMsg(
-      `${GRAPH_LABEL[graph]} 실행: ${status}${detail ? ` -- ${detail}` : ""}`,
-    );
+  function handleRunResult(graph: AmpGraph, r: { status: string; workflow_run_id?: string; paused_at?: string; error?: string }) {
     mutateRuns();
     mutateApprovals();
+    // paused 또는 completed면 상세 페이지로 보내 사용자가 결과 확인
+    if (r.workflow_run_id && (r.status === "paused_awaiting_approval" || r.status === "completed")) {
+      router.push(`/projects/${projectId}/amp/runs/${r.workflow_run_id}`);
+      return;
+    }
+    setRunMsg(
+      `${GRAPH_LABEL[graph]} 실행: ${r.status}${asRunDetail(r) ? ` -- ${asRunDetail(r)}` : ""}`,
+    );
   }
 
   async function onDecide(approvalId: string, decision: "approved" | "rejected") {
@@ -562,7 +567,7 @@ function ContentCreationModal({
 }: {
   onCancel: () => void;
   onSubmit: (payload: {
-    topic: string;
+    topic?: string;
     channels: Channel[];
     audience?: string;
     tone?: string;
@@ -585,16 +590,12 @@ function ContentCreationModal({
 
   function submit() {
     setErr(null);
-    if (!topic.trim()) {
-      setErr("주제를 입력하세요");
-      return;
-    }
     if (channels.length === 0) {
       setErr("채널을 1개 이상 선택하세요");
       return;
     }
     onSubmit({
-      topic: topic.trim(),
+      topic: topic.trim() || undefined,
       channels,
       audience: audience.trim() || undefined,
       tone: tone.trim() || undefined,
@@ -631,12 +632,12 @@ function ContentCreationModal({
         </div>
 
         <div className="space-y-4">
-          <Field label="주제 (필수)">
+          <Field label="주제 (선택 -- 비우면 AI가 프로젝트 컨텍스트 보고 알아서 결정)">
             <textarea
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               rows={2}
-              placeholder="예: v2 출시 알림 -- 자동 배포가 핵심 변경점"
+              placeholder="예: v2 출시 알림 -- 자동 배포가 핵심 변경점 (비워도 됨)"
               className="w-full resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:border-foreground/40 focus:outline-none"
             />
           </Field>
@@ -690,7 +691,7 @@ function ContentCreationModal({
               onChange={(e) => setImageNeeded(e.target.checked)}
               className="h-4 w-4 rounded border-border"
             />
-            이미지 자동 생성 (asset_gen)
+            이미지 자동 생성 (Flux Pro · ~$0.05/장 · X/Threads에 첨부됨)
           </label>
 
           {err && <p className="text-sm text-rose-500">{err}</p>}

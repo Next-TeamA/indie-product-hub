@@ -74,18 +74,38 @@ def _explicit_from_payload(payload: dict) -> dict | None:
     if format_ not in VALID_FORMATS:
         format_ = "single"
 
+    is_video = bool(payload.get("video_needed") or format_ == "video")
+
+    strategy = {
+        "should_publish": True,
+        "channels": valid_ch,
+        "format": format_,
+        "topic": topic,
+        "tone_hint": tone_hint or None,
+        "audience": audience or None,
+        "image_needed": bool(payload.get("image_needed")),
+        "video_needed": is_video,
+        "reasoning": "Manual explicit input -- LLM bypass.",
+    }
+
+    # 영상 메타 (asset_gen._enqueue_video가 이 필드 읽음)
+    if is_video:
+        brief = (payload.get("brief") or "").strip()
+        if brief:
+            strategy["video_prompt"] = brief
+        if payload.get("duration_seconds") or payload.get("video_duration"):
+            strategy["video_duration"] = int(
+                payload.get("duration_seconds") or payload.get("video_duration") or 30
+            )
+        if payload.get("model") or payload.get("video_model"):
+            strategy["video_model"] = (
+                payload.get("model") or payload.get("video_model")
+            )
+        if payload.get("aspect_ratio"):
+            strategy["video_aspect_ratio"] = payload.get("aspect_ratio")
+
     return {
-        "strategy": {
-            "should_publish": True,
-            "channels": valid_ch,
-            "format": format_,
-            "topic": topic,
-            "tone_hint": tone_hint or None,
-            "audience": audience or None,
-            "image_needed": bool(payload.get("image_needed")),
-            "video_needed": bool(payload.get("video_needed") or format_ == "video"),
-            "reasoning": "Manual explicit input -- LLM bypass.",
-        },
+        "strategy": strategy,
         "current_node": "strategy",
         "tier_used": {"strategy": "explicit"},
         "cost_usd": 0.0,

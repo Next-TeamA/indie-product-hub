@@ -38,6 +38,7 @@ async def publish_node(state: AMPState) -> dict:
             "hook": draft.get("hook", ""),
             "content": draft.get("content", ""),
             "hashtags": draft.get("hashtags", []),
+            "images": draft.get("images", []),
             "status": "publishing",
             "ai_model": draft.get("model"),
             "voice_match_score": draft.get("voice_match_score"),

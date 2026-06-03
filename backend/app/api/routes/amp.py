@@ -37,11 +37,27 @@ async def run_amp(
     if body.graph not in ("content_creation", "engagement", "video_production"):
         raise ValidationError(f"Unknown graph: {body.graph}")
 
+    payload = dict(body.payload or {})
+
+    # video_production 그래프는 영상이 목적이므로 video_needed=true 강제.
+    # 채널/format도 비어 있으면 영상 친화적 기본값 주입 (strategy 노드에서
+    # explicit 분기로 인정되도록).
+    if body.graph == "video_production":
+        payload.setdefault("video_needed", True)
+        payload.setdefault("format", "video")
+        if not payload.get("channels"):
+            payload["channels"] = ["youtube", "instagram", "tiktok"]
+        if not payload.get("topic"):
+            # brief 또는 title 어느 쪽이든 topic 으로 승격
+            payload["topic"] = (
+                payload.get("brief") or payload.get("title") or "Product video"
+            )
+
     result = await run_graph(
         graph_name=body.graph,
         project_id=project_id,
         user_id=user["id"],
-        trigger={"type": body.trigger_type, "payload": body.payload},
+        trigger={"type": body.trigger_type, "payload": payload},
     )
     return result
 
