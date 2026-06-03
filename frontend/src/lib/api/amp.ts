@@ -41,6 +41,28 @@ export type Approval = {
   decided_by: string | null;
 };
 
+export type Channel =
+  | "x"
+  | "threads"
+  | "instagram"
+  | "youtube"
+  | "tiktok"
+  | "linkedin";
+
+export type ContentCreationPayload = {
+  topic: string;
+  channels: Channel[];
+  audience?: string;
+  tone?: string;
+  format?: "single" | "thread" | "video";
+  image_needed?: boolean;
+  video_needed?: boolean;
+};
+
+export type EngagementPayload = {
+  interaction_id?: string;
+};
+
 export type RunInput = {
   graph: AmpGraph;
   trigger_type?: string;
