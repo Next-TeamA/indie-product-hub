@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
 type NewVideoForm = {
-  title: string;
   brief: string;
   duration: number;
   aspect: "9:16" | "16:9" | "1:1";
@@ -29,7 +28,6 @@ type NewVideoForm = {
 };
 
 const DEFAULT_FORM: NewVideoForm = {
-  title: "",
   brief: "",
   duration: 5,
   aspect: "9:16",
@@ -38,6 +36,7 @@ const DEFAULT_FORM: NewVideoForm = {
 
 export default function VideosPage() {
   const { id: projectId } = useParams<{ id: string }>();
+  const router = useRouter();
   const { videos, isLoading, mutate } = useVideos(projectId);
   const ampActions = useAmpActions(projectId);
 
@@ -48,8 +47,8 @@ export default function VideosPage() {
 
   async function onCreate() {
     if (submitting) return;
-    if (!form.title.trim() || !form.brief.trim()) {
-      setSubmitErr("제목과 brief를 입력하세요");
+    if (!form.brief.trim()) {
+      setSubmitErr("brief를 입력하세요");
       return;
     }
     setSubmitting(true);
@@ -59,15 +58,13 @@ export default function VideosPage() {
         graph: "video_production",
         trigger_type: "manual",
         payload: {
-          title: form.title.trim(),
           brief: form.brief.trim(),
           duration_seconds: form.duration,
           aspect_ratio: form.aspect,
           model: form.model,
         },
       });
-      // 워크플로우가 즉시 실패한 경우(예: 백엔드 의존성 문제, 입력 검증 실패)
-      // 모달을 닫지 말고 에러 메시지로 사용자에게 알림
+      // 즉시 실패면 모달에 그대로 표시
       if (result.status === "failed" || result.status === "cancelled") {
         const detail =
           (typeof result.error_message === "string" && result.error_message) ||
@@ -77,9 +74,15 @@ export default function VideosPage() {
         setSubmitErr(`서버 응답: ${result.status} -- ${detail}`);
         return;
       }
+      // 정상 진행 -> 즉시 모달 닫고 run 상세 페이지로 보내서 생성 중인 모습 보여줌
       setForm(DEFAULT_FORM);
       setCreating(false);
       mutate();
+      const runId =
+        typeof result.workflow_run_id === "string" ? result.workflow_run_id : null;
+      if (runId) {
+        router.push(`/projects/${projectId}/amp/runs/${runId}`);
+      }
     } catch (e) {
       setSubmitErr(e instanceof Error ? e.message : "영상 생성 트리거 실패");
     } finally {
@@ -267,17 +270,7 @@ function NewVideoModal({
         </div>
 
         <div className="space-y-4">
-          <Field label="제목">
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="예: 새 기능 출시 알림"
-              className="w-full rounded-2xl border border-border px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
-            />
-          </Field>
-
-          <Field label="Brief (AI가 시나리오 만들 때 참고)">
+          <Field label="Brief (영상에서 다룰 내용. 본문 첫 줄로도 쓰임)">
             <textarea
               value={form.brief}
               onChange={(e) => setForm({ ...form, brief: e.target.value })}
