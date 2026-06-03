@@ -31,6 +31,7 @@ from app.api.routes.fal_webhook import router as fal_webhook_router
 from app.api.routes.videos import router as videos_router
 from app.api.routes.voice_samples import router as voice_samples_router
 from app.api.routes.cost import router as cost_router
+from app.api.routes.interactions import router as interactions_router
 
 
 @asynccontextmanager
@@ -97,3 +98,4 @@ app.include_router(fal_webhook_router, prefix="/api")
 app.include_router(videos_router, prefix="/api")
 app.include_router(voice_samples_router, prefix="/api")
 app.include_router(cost_router, prefix="/api")
+app.include_router(interactions_router, prefix="/api")
