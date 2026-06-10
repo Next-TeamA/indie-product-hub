@@ -32,8 +32,15 @@ class RailwayAPIClient:
         httpx auth=(id, secret) skips the urlencode step and Railway rejects it
         with 'not properly encoded'.
         """
-        encoded_id = quote(settings.railway_client_id, safe="")
-        encoded_secret = quote(settings.railway_client_secret, safe="")
+        cid = (settings.railway_client_id or "").strip()
+        csec = (settings.railway_client_secret or "").strip()
+        if not cid or not csec:
+            raise ExternalAPIError(
+                "Railway",
+                f"OAuth client credentials missing (id_len={len(cid)} secret_len={len(csec)})",
+            )
+        encoded_id = quote(cid, safe="")
+        encoded_secret = quote(csec, safe="")
         token = base64.b64encode(f"{encoded_id}:{encoded_secret}".encode("ascii")).decode("ascii")
         return f"Basic {token}"
 
