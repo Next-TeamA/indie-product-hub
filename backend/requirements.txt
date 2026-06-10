@@ -46,6 +46,8 @@ pycparser==3.0
 pydantic==2.13.4
 pydantic-settings==2.14.1
 pydantic_core==2.46.4
+# pydantic[email] -> EmailStr 검증용 (project_members invitation 등)
+email-validator>=2.1.0
 Pygments==2.20.0
 pyiceberg==0.11.1
 PyJWT==2.12.1
