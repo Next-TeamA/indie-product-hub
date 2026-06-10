@@ -27,12 +27,22 @@ CREATE TABLE IF NOT EXISTS project_deployments (
   last_checked_at       timestamptz,
   metadata              jsonb NOT NULL DEFAULT '{}',
   created_at            timestamptz NOT NULL DEFAULT now(),
-  updated_at            timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(project_id, platform, external_project_id, COALESCE(external_service_id, ''))
+  updated_at            timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_deployments_project
   ON project_deployments(project_id, role);
+
+-- Unique: 같은 project 안에서 (platform, external_project_id, external_service_id) 중복 금지.
+-- NULL 도 동일 값으로 취급하기 위해 partial unique index 두 개로 분리
+-- (Postgres 15+ 의 NULLS NOT DISTINCT 도 가능하지만 호환성 위해 partial 방식).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_deployments_with_service
+  ON project_deployments (project_id, platform, external_project_id, external_service_id)
+  WHERE external_service_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_deployments_no_service
+  ON project_deployments (project_id, platform, external_project_id)
+  WHERE external_service_id IS NULL;
 
 -- ============================================================
 -- Dependencies: 한 deployment 가 다른 deployment 에 의존
