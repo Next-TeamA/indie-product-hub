@@ -25,15 +25,18 @@ class RailwayAPIClient:
         return f"{self.AUTH_URL}?{urlencode(params)}"
 
     async def exchange_code(self, code: str) -> dict:
-        """Exchange auth code for access token."""
+        """Exchange auth code for access token.
+
+        Railway requires client credentials via HTTP Basic auth, not request body.
+        """
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
+                auth=(settings.railway_client_id, settings.railway_client_secret),
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
                 data={
-                    "client_id": settings.railway_client_id,
-                    "client_secret": settings.railway_client_secret,
-                    "code": code,
                     "grant_type": "authorization_code",
+                    "code": code,
                     "redirect_uri": f"{settings.backend_url}/api/accounts/callback/railway",
                 },
             )
