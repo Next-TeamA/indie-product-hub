@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.project_access import verify_project_access
 from app.core.encryption import decrypt_token
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.supabase import supabase, safe_maybe_single
@@ -12,16 +13,41 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 @router.get("")
 async def list_projects(user: dict = Depends(get_current_user)):
-    result = (
-        supabase.table("projects")
-        .select("*")
+    # 사용자가 멤버인 프로젝트 id 모음 (owner 포함)
+    member_rows = (
+        supabase.table("project_members")
+        .select("project_id, role")
         .eq("user_id", user["id"])
-        .order("created_at", desc=True)
         .execute()
+        .data
+        or []
     )
-    # Enrich with issue counts
-    projects = result.data or []
+    role_by_pid = {m["project_id"]: m["role"] for m in member_rows}
+    project_ids = list(role_by_pid.keys())
+
+    if project_ids:
+        result = (
+            supabase.table("projects")
+            .select("*")
+            .in_("id", project_ids)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        projects = result.data or []
+    else:
+        # legacy fallback: project_members 가 아직 없는 환경에서
+        # projects.user_id 가 본인인 프로젝트도 같이 보여줌.
+        result = (
+            supabase.table("projects")
+            .select("*")
+            .eq("user_id", user["id"])
+            .order("created_at", desc=True)
+            .execute()
+        )
+        projects = result.data or []
+
     for proj in projects:
+        proj["_role"] = role_by_pid.get(proj["id"], "owner")
         issues = (
             supabase.table("issues")
             .select("id", count="exact")
@@ -34,16 +60,11 @@ async def list_projects(user: dict = Depends(get_current_user)):
 
 
 @router.get("/{project_id}")
-async def get_project(project_id: str, user: dict = Depends(get_current_user)):
-    data = safe_maybe_single(
-        supabase.table("projects")
-        .select("*")
-        .eq("id", project_id)
-        .eq("user_id", user["id"])
-    )
-    if not data:
-        raise NotFoundError("Project", project_id)
-    return data
+async def get_project(
+    project_id: str,
+    project: dict = Depends(verify_project_access),
+):
+    return project
 
 
 @router.post("", status_code=201)

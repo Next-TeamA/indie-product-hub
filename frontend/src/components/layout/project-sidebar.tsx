@@ -14,6 +14,7 @@ import {
   Film,
   Workflow,
   DollarSign,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/use-user";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/insights", label: "인사이트", icon: BarChart3 },
   { href: "/issues", label: "운영 이슈", icon: AlertTriangle },
   { href: "/cost", label: "비용", icon: DollarSign },
+  { href: "/members", label: "멤버", icon: Users },
   { href: "/settings", label: "프로젝트 설정", icon: Settings },
 ];
 

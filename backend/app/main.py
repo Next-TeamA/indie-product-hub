@@ -34,6 +34,10 @@ from app.api.routes.cost import router as cost_router
 from app.api.routes.interactions import router as interactions_router
 from app.api.routes.github_app import router as github_app_router
 from app.api.routes.github_app_webhook import router as github_app_webhook_router
+from app.api.routes.project_members import (
+    router as project_members_router,
+    me_router as my_invitations_router,
+)
 
 
 @asynccontextmanager
@@ -103,3 +107,5 @@ app.include_router(cost_router, prefix="/api")
 app.include_router(interactions_router, prefix="/api")
 app.include_router(github_app_router, prefix="/api")
 app.include_router(github_app_webhook_router, prefix="/api")
+app.include_router(project_members_router, prefix="/api")
+app.include_router(my_invitations_router, prefix="/api")
