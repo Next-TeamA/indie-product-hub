@@ -32,6 +32,8 @@ from app.api.routes.videos import router as videos_router
 from app.api.routes.voice_samples import router as voice_samples_router
 from app.api.routes.cost import router as cost_router
 from app.api.routes.interactions import router as interactions_router
+from app.api.routes.github_app import router as github_app_router
+from app.api.routes.github_app_webhook import router as github_app_webhook_router
 
 
 @asynccontextmanager
@@ -99,3 +101,5 @@ app.include_router(videos_router, prefix="/api")
 app.include_router(voice_samples_router, prefix="/api")
 app.include_router(cost_router, prefix="/api")
 app.include_router(interactions_router, prefix="/api")
+app.include_router(github_app_router, prefix="/api")
+app.include_router(github_app_webhook_router, prefix="/api")

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Check, Search, Lock, Globe } from "lucide-react";
+import { Check, Search, Lock, Globe, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   connectAccount,
@@ -11,6 +11,7 @@ import {
   type GitHubOrg,
   type GitHubRepo,
 } from "@/lib/api/accounts";
+import { getInstallUrl } from "@/lib/api/github-app";
 
 function GithubIcon({ className }: { className?: string }) {
   return (
@@ -108,6 +109,16 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
     }
   };
 
+  const handleAddOrg = async () => {
+    try {
+      onBeforeOAuth?.();
+      const { url } = await getInstallUrl();
+      window.location.href = url;
+    } catch (e) {
+      console.error("install url 발급 실패", e);
+    }
+  };
+
   const filtered = repos.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -162,27 +173,34 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
             </div>
 
             {/* Organization selector */}
-            {orgs.length > 1 && (
-              <div className="flex gap-2 flex-wrap">
-                {orgs.map((org) => (
-                  <button
-                    key={org.login}
-                    onClick={() => handleOrgSelect(org.login)}
-                    className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
-                      selectedOrg === org.login
-                        ? "border-foreground/20 bg-foreground/5 text-foreground"
-                        : "border-border text-muted-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    {org.avatar_url && (
-                      <img src={org.avatar_url} alt="" className="w-4 h-4 rounded-full" />
-                    )}
-                    {org.login}
-                    {org.is_personal && <span className="text-[10px] text-muted-foreground/60">(개인)</span>}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex gap-2 flex-wrap">
+              {orgs.map((org) => (
+                <button
+                  key={org.login}
+                  onClick={() => handleOrgSelect(org.login)}
+                  className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
+                    selectedOrg === org.login
+                      ? "border-foreground/20 bg-foreground/5 text-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {org.avatar_url && (
+                    <img src={org.avatar_url} alt="" className="w-4 h-4 rounded-full" />
+                  )}
+                  {org.login}
+                  {org.is_personal && <span className="text-[10px] text-muted-foreground/60">(개인)</span>}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={handleAddOrg}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-border text-xs font-medium text-muted-foreground hover:bg-muted/50 cursor-pointer"
+                title="다른 organization 에 LaunchPad GitHub App 설치"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Organization 추가
+              </button>
+            </div>
 
             {/* Search */}
             <div className="relative">
