@@ -18,14 +18,19 @@ class RailwayAPIClient:
         """Get Railway OAuth URL for user to authorize.
 
         project:viewer lets us list projects via externalWorkspaces in the
-        Public API. Without it, the projects query returns an empty array
-        even with a valid OIDC token.
+        Public API. Without it, the projects query returns 'Not Authorized'.
+
+        prompt=consent forces Railway to show the consent screen even on
+        re-connect -- otherwise it silently reuses the old grant, so users
+        who connected before we added project:viewer would keep getting a
+        token without it.
         """
         params = {
             "client_id": settings.railway_client_id,
             "redirect_uri": f"{settings.backend_url}/api/accounts/callback/railway",
             "response_type": "code",
             "scope": "openid email profile offline_access project:viewer",
+            "prompt": "consent",
             "state": state,
         }
         return f"{self.AUTH_URL}?{urlencode(params)}"
