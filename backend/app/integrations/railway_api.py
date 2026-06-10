@@ -15,12 +15,17 @@ class RailwayAPIClient:
     TOKEN_URL = "https://backboard.railway.com/oauth/token"
 
     def get_auth_url(self, state: str) -> str:
-        """Get Railway OAuth URL for user to authorize."""
+        """Get Railway OAuth URL for user to authorize.
+
+        project:viewer lets us list projects via externalWorkspaces in the
+        Public API. Without it, the projects query returns an empty array
+        even with a valid OIDC token.
+        """
         params = {
             "client_id": settings.railway_client_id,
             "redirect_uri": f"{settings.backend_url}/api/accounts/callback/railway",
             "response_type": "code",
-            "scope": "openid email profile offline_access",
+            "scope": "openid email profile offline_access project:viewer",
             "state": state,
         }
         return f"{self.AUTH_URL}?{urlencode(params)}"
@@ -102,13 +107,34 @@ class RailwayAPIClient:
             }
 
     async def list_projects(self, token: str) -> list[dict]:
+        """List projects via externalWorkspaces -- the OAuth-flow-compatible query.
+
+        Generic `projects { edges { node ... } }` returns empty for OAuth tokens;
+        Railway exposes user-granted projects through externalWorkspaces.
+        """
         data = await self._query(token, """
             query {
-                projects { edges { node { id name description } } }
+                externalWorkspaces {
+                    id
+                    name
+                    projects {
+                        id
+                        name
+                    }
+                }
             }
         """)
-        edges = data.get("projects", {}).get("edges", [])
-        return [e["node"] for e in edges]
+        workspaces = data.get("externalWorkspaces") or []
+        projects: list[dict] = []
+        for ws in workspaces:
+            ws_name = ws.get("name") or ""
+            for p in (ws.get("projects") or []):
+                projects.append({
+                    "id": p["id"],
+                    "name": p["name"],
+                    "description": f"Workspace: {ws_name}" if ws_name else "",
+                })
+        return projects
 
     async def list_deployments(self, token: str, service_id: str, environment_id: str | None = None) -> list[dict]:
         query = """
