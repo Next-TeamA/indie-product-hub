@@ -13,16 +13,23 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 @router.get("")
 async def list_projects(user: dict = Depends(get_current_user)):
-    # 사용자가 멤버인 프로젝트 id 모음 (owner 포함)
-    member_rows = (
-        supabase.table("project_members")
-        .select("project_id, role")
-        .eq("user_id", user["id"])
-        .execute()
-        .data
-        or []
-    )
-    role_by_pid = {m["project_id"]: m["role"] for m in member_rows}
+    # 사용자가 멤버인 프로젝트 id 모음 (owner 포함).
+    # project_members 테이블이 아예 없는 환경(migration 010 미적용)도 견디게 try.
+    role_by_pid: dict[str, str] = {}
+    try:
+        member_rows = (
+            supabase.table("project_members")
+            .select("project_id, role")
+            .eq("user_id", user["id"])
+            .execute()
+            .data
+            or []
+        )
+        role_by_pid = {m["project_id"]: m["role"] for m in member_rows}
+    except Exception:
+        # table 자체 부재 등 -- legacy fallback 으로 떨어짐
+        role_by_pid = {}
+
     project_ids = list(role_by_pid.keys())
 
     if project_ids:
@@ -35,8 +42,7 @@ async def list_projects(user: dict = Depends(get_current_user)):
         )
         projects = result.data or []
     else:
-        # legacy fallback: project_members 가 아직 없는 환경에서
-        # projects.user_id 가 본인인 프로젝트도 같이 보여줌.
+        # legacy fallback: projects.user_id 가 본인인 프로젝트
         result = (
             supabase.table("projects")
             .select("*")
