@@ -183,8 +183,18 @@ async def list_railway_projects(user: dict = Depends(get_current_user)):
         raise AppError("Railway account not connected", 400)
 
     from app.core.encryption import decrypt_token
-    token = decrypt_token(account["access_token"])
-    projects = await railway_client.list_projects(token)
+    try:
+        token = decrypt_token(account["access_token"])
+        logger.info("railway.list_projects start token_len=%d", len(token))
+        projects = await railway_client.list_projects(token)
+        logger.info("railway.list_projects ok count=%d", len(projects))
+    except Exception as exc:
+        tb = traceback.format_exc()
+        logger.error("railway.list_projects failed:\n%s", tb)
+        return JSONResponse(
+            status_code=500,
+            content={"error": "RAILWAY_LIST_PROJECTS_FAILED", "step": exc.__class__.__name__, "message": str(exc), "traceback": tb.splitlines()[-10:]},
+        )
     return [
         {
             "id": p["id"],
