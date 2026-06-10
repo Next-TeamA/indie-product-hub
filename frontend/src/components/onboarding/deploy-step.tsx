@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Check, Plus, Trash2, Link2 } from "lucide-react";
+import { Check, Plus, RefreshCw, Trash2, Link2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   connectAccount,
+  disconnectAccount,
   listAccounts,
   listVercelProjects,
   listRailwayProjects,
@@ -87,7 +88,7 @@ interface DeployStepProps {
 export function DeployStep({ onNext, onBack, onBeforeOAuth }: DeployStepProps) {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<Platform | null>(null);
-  const [connectedPlatforms, setConnectedPlatforms] = useState<Record<string, boolean>>({});
+  const [connectedPlatforms, setConnectedPlatforms] = useState<Record<string, { accountId: string }>>({});
   const [picker, setPicker] = useState<Platform | null>(null);
 
   const [vercelProjects, setVercelProjects] = useState<VercelProject[]>([]);
@@ -107,10 +108,10 @@ export function DeployStep({ onNext, onBack, onBeforeOAuth }: DeployStepProps) {
   const refresh = useCallback(async () => {
     try {
       const accounts = await listAccounts();
-      const connected: Record<string, boolean> = {};
+      const connected: Record<string, { accountId: string }> = {};
       for (const a of accounts) {
         if (a.provider === "vercel" || a.provider === "railway") {
-          connected[a.provider] = true;
+          connected[a.provider] = { accountId: a.id };
         }
       }
       setConnectedPlatforms(connected);
@@ -132,6 +133,20 @@ export function DeployStep({ onNext, onBack, onBeforeOAuth }: DeployStepProps) {
   const handleConnect = async (p: Platform) => {
     setConnecting(p);
     try {
+      onBeforeOAuth?.();
+      const { auth_url } = await connectAccount(p, "/projects/new");
+      window.location.href = auth_url;
+    } catch {
+      setConnecting(null);
+    }
+  };
+
+  const handleReconnect = async (p: Platform) => {
+    const accountId = connectedPlatforms[p]?.accountId;
+    if (!accountId) return;
+    setConnecting(p);
+    try {
+      await disconnectAccount(accountId);
       onBeforeOAuth?.();
       const { auth_url } = await connectAccount(p, "/projects/new");
       window.location.href = auth_url;
@@ -277,13 +292,25 @@ export function DeployStep({ onNext, onBack, onBeforeOAuth }: DeployStepProps) {
                   {connecting === p.id ? "연결 중..." : "계정 연결"}
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => openPicker(p.id)}
-                  className="w-full h-9 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition inline-flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" /> 프로젝트 추가
-                </button>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => openPicker(p.id)}
+                    className="w-full h-9 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> 프로젝트 추가
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReconnect(p.id)}
+                    disabled={connecting !== null}
+                    className="self-end text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 px-1 py-0.5 disabled:opacity-50"
+                    title="권한 갱신을 위해 disconnect 후 다시 연결합니다"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    {connecting === p.id ? "재연결 중..." : "재연결"}
+                  </button>
+                </div>
               )}
             </div>
           );
