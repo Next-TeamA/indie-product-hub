@@ -12,6 +12,7 @@ from app.workers.tasks.cleanup import cleanup_expired_oauth_states
 from app.workers.tasks.sync_knowledge import sync_project_knowledge
 from app.workers.tasks.agent_tasks import daily_project_health_check, daily_market_analysis
 from app.workers.tasks.health_ping import health_ping_all_projects
+from app.workers.tasks.deployment_health import check_all_projects as deployment_health_sweep
 
 scheduler = AsyncIOScheduler()
 
@@ -24,6 +25,18 @@ def setup_scheduler():
         smart_sync_metrics,
         IntervalTrigger(minutes=30),
         id="smart_sync_metrics",
+        replace_existing=True,
+    )
+
+    # Multi-platform deployment health check: every 5 minutes.
+    # Walks every project_deployments row, probes external_url/health_check_url
+    # in parallel, applies cascade-aware effective status, writes
+    # deployment_health_history (for SLO) and opens alerts with
+    # topology_context on healthy -> down transitions.
+    scheduler.add_job(
+        deployment_health_sweep,
+        IntervalTrigger(minutes=5),
+        id="deployment_health_sweep",
         replace_existing=True,
     )
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -11,22 +12,36 @@ import {
   Link2,
   X,
   AlertCircle,
-  CheckCircle2,
   ExternalLink,
   RefreshCw,
+  Activity,
+  ArrowRight,
 } from "lucide-react";
-import { usePlatformDeployments } from "@/hooks/use-platform-deployments";
+import {
+  usePlatformDeployments,
+  useTopology,
+} from "@/hooks/use-platform-deployments";
 import {
   createPlatformDeployment,
   updatePlatformDeployment,
   deletePlatformDeployment,
   createDependency,
   deleteDependency,
+  manualPing,
   type DeploymentRole,
+  type DeploymentEnvironment,
   type Platform,
   type DependencyKind,
   type PlatformDeployment,
+  type HealthStatus,
+  type SLOTarget,
 } from "@/lib/api/platform-deployments";
+import { TopologyGraph } from "@/components/deployments/topology-graph";
+import {
+  EnvBadge,
+  RoleBadge,
+  StatusBadge,
+} from "@/components/deployments/status-badge";
 import {
   listAccounts,
   listVercelProjects,
@@ -63,24 +78,13 @@ const ROLE_LABEL: Record<DeploymentRole, string> = {
   other: "기타",
 };
 
-const ROLE_COLOR: Record<DeploymentRole, string> = {
-  frontend: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
-  backend: "bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
-  worker: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
-  database: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
-  cache: "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400",
-  queue: "bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400",
-  cron: "bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400",
-  storage: "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400",
-  other: "bg-muted text-muted-foreground",
-};
-
-const STATUS_COLOR: Record<PlatformDeployment["status"], string> = {
-  healthy: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
-  degraded: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
-  down: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400",
-  unknown: "bg-muted text-muted-foreground",
-};
+const ENV_LIST: DeploymentEnvironment[] = [
+  "production",
+  "staging",
+  "preview",
+  "development",
+  "other",
+];
 
 const KIND_LABEL: Record<DependencyKind, string> = {
   api_call: "API 호출",
@@ -95,12 +99,45 @@ export default function DeploymentsPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const { deployments, dependencies, isLoading, mutate } =
     usePlatformDeployments(projectId);
+  const {
+    nodes: topoNodes,
+    edges: topoEdges,
+    mutate: mutateTopo,
+  } = useTopology(projectId);
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PlatformDeployment | null>(null);
   const [showDepForm, setShowDepForm] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pingingId, setPingingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [envFilter, setEnvFilter] = useState<DeploymentEnvironment | "all">(
+    "all",
+  );
+
+  // topology 의 effective status 를 deployment 에 머지
+  const statusByDeployment = useMemo(() => {
+    const m: Record<
+      string,
+      { effective: HealthStatus; direct: HealthStatus; cascade_from: string | null }
+    > = {};
+    for (const n of topoNodes) {
+      m[n.id] = {
+        effective: n.status_effective,
+        direct: n.status_direct,
+        cascade_from: n.cascade_from,
+      };
+    }
+    return m;
+  }, [topoNodes]);
+
+  const filtered = useMemo(
+    () =>
+      envFilter === "all"
+        ? deployments
+        : deployments.filter((d) => d.environment === envFilter),
+    [deployments, envFilter],
+  );
 
   async function onDelete(d: PlatformDeployment) {
     if (!window.confirm(`${d.name} 을 삭제할까요?`)) return;
@@ -108,6 +145,7 @@ export default function DeploymentsPage() {
     try {
       await deletePlatformDeployment(projectId, d.id);
       mutate();
+      mutateTopo();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "삭제 실패");
     } finally {
@@ -120,8 +158,22 @@ export default function DeploymentsPage() {
     try {
       await deleteDependency(projectId, depId);
       mutate();
+      mutateTopo();
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function onPing(d: PlatformDeployment) {
+    setPingingId(d.id);
+    try {
+      await manualPing(projectId, d.id);
+      mutate();
+      mutateTopo();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Ping 실패");
+    } finally {
+      setPingingId(null);
     }
   }
 
@@ -130,8 +182,15 @@ export default function DeploymentsPage() {
     return d ? `${d.name} (${ROLE_LABEL[d.role]})` : "?";
   };
 
+  // 환경별 카운트
+  const envCounts = useMemo(() => {
+    const c: Record<string, number> = { all: deployments.length };
+    for (const d of deployments) c[d.environment] = (c[d.environment] || 0) + 1;
+    return c;
+  }, [deployments]);
+
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8 md:py-12">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8 md:py-12">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -141,13 +200,16 @@ export default function DeploymentsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground md:text-4xl">배포</h1>
           <p className="mt-2 text-sm text-muted-foreground md:text-base">
-            이 프로젝트가 사용하는 모든 플랫폼과 의존성을 관리합니다.
+            플랫폼별 배포 + 의존성 + 토폴로지 + cascade 기반 상태를 한 곳에서.
           </p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => mutate()}
+            onClick={() => {
+              mutate();
+              mutateTopo();
+            }}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-foreground hover:bg-muted"
           >
             <RefreshCw className="h-4 w-4" /> 새로고침
@@ -169,73 +231,146 @@ export default function DeploymentsPage() {
         </div>
       )}
 
+      {/* Topology */}
+      {topoNodes.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-base font-bold text-foreground">토폴로지</h2>
+          <TopologyGraph
+            nodes={topoNodes}
+            edges={topoEdges}
+            projectId={projectId}
+            height={420}
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            노드를 클릭하면 상세. 빨강 = down, 노랑 = degraded(또는 upstream 영향), 초록 = healthy.
+            화살표 = 의존성 (점선 = queue / webhook).
+          </p>
+        </section>
+      )}
+
+      {/* Environment filter */}
+      {deployments.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">
+            환경:
+          </span>
+          {(["all", ...ENV_LIST] as const).map((e) => {
+            const count = envCounts[e] ?? 0;
+            if (e !== "all" && count === 0) return null;
+            return (
+              <button
+                key={e}
+                onClick={() => setEnvFilter(e as DeploymentEnvironment | "all")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-bold",
+                  envFilter === e
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70",
+                )}
+              >
+                {e === "all" ? "전체" : e}
+                <span className="ml-1 opacity-60">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Deployment list */}
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중
         </div>
-      ) : deployments.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="rounded-[24px] border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          등록된 배포가 없어요.
+          {deployments.length === 0
+            ? "등록된 배포가 없어요."
+            : "이 환경에 등록된 배포가 없어요."}
         </div>
       ) : (
         <ul className="space-y-2">
-          {deployments.map((d) => (
-            <li
-              key={d.id}
-              className="rounded-2xl border border-border bg-card p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]"
-            >
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                  {d.platform}
-                </span>
-                <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full", ROLE_COLOR[d.role])}>
-                  {ROLE_LABEL[d.role]}
-                </span>
-                <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-flex items-center gap-1", STATUS_COLOR[d.status])}>
-                  <CheckCircle2 className="h-2.5 w-2.5" />
-                  {d.status}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-foreground truncate">{d.name}</p>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                    {d.framework && <span>{d.framework}</span>}
-                    {d.external_url && (
-                      <a
-                        href={d.external_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-500 hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        URL
-                      </a>
-                    )}
+          {filtered.map((d) => {
+            const eff = statusByDeployment[d.id]?.effective ?? d.status;
+            const cascadeFrom = statusByDeployment[d.id]?.cascade_from ?? null;
+            return (
+              <li
+                key={d.id}
+                className="rounded-2xl border border-border bg-card p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)]"
+              >
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                    {d.platform}
+                  </span>
+                  <RoleBadge role={d.role} />
+                  <EnvBadge env={d.environment} />
+                  <StatusBadge status={eff} cascadeFrom={cascadeFrom} />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/projects/${projectId}/deployments/${d.id}`}
+                      className="text-sm font-bold text-foreground hover:underline truncate inline-flex items-center gap-1"
+                    >
+                      {d.name}
+                      <ArrowRight className="h-3 w-3 opacity-50" />
+                    </Link>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      {d.framework && <span>{d.framework}</span>}
+                      {d.external_url && (
+                        <a
+                          href={d.external_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-500 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          URL
+                        </a>
+                      )}
+                      {d.last_checked_at && (
+                        <span>
+                          마지막 체크 {new Date(d.last_checked_at).toLocaleTimeString("ko-KR")}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => onPing(d)}
+                    disabled={pingingId === d.id}
+                    title="지금 health check"
+                    className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                    aria-label="health check"
+                  >
+                    {pingingId === d.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Activity className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(d)}
+                    className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="수정"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(d)}
+                    disabled={busyId === d.id}
+                    className="rounded-full p-2 text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-500 disabled:opacity-30"
+                    aria-label="삭제"
+                  >
+                    {busyId === d.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setEditing(d)}
-                  className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  aria-label="수정"
-                >
-                  <Edit3 className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(d)}
-                  disabled={busyId === d.id}
-                  className="rounded-full p-2 text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-500 disabled:opacity-30"
-                  aria-label="삭제"
-                >
-                  {busyId === d.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -298,6 +433,7 @@ export default function DeploymentsPage() {
           }}
           onSaved={() => {
             mutate();
+            mutateTopo();
             setAdding(false);
             setEditing(null);
           }}
@@ -311,6 +447,7 @@ export default function DeploymentsPage() {
           onClose={() => setShowDepForm(false)}
           onSaved={() => {
             mutate();
+            mutateTopo();
             setShowDepForm(false);
           }}
         />
@@ -320,7 +457,7 @@ export default function DeploymentsPage() {
 }
 
 // ============================================================
-// Add / Edit deployment modal
+// Add / Edit modal
 // ============================================================
 
 function DeploymentFormModal({
@@ -338,14 +475,26 @@ function DeploymentFormModal({
   const [externalId, setExternalId] = useState(existing?.external_project_id ?? "");
   const [name, setName] = useState(existing?.name ?? "");
   const [role, setRole] = useState<DeploymentRole>(existing?.role ?? "other");
+  const [environment, setEnvironment] = useState<DeploymentEnvironment>(
+    existing?.environment ?? "production",
+  );
   const [externalUrl, setExternalUrl] = useState(existing?.external_url ?? "");
+  const [healthCheckUrl, setHealthCheckUrl] = useState(existing?.health_check_url ?? "");
   const [framework, setFramework] = useState(existing?.framework ?? "");
   const [healthEndpoint, setHealthEndpoint] = useState(existing?.health_endpoint ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
+
+  const sloTarget: SLOTarget = existing?.slo_target ?? {};
+  const [sloUptime, setSloUptime] = useState<string>(
+    sloTarget.uptime_pct != null ? String(sloTarget.uptime_pct) : "",
+  );
+  const [sloLatency, setSloLatency] = useState<string>(
+    sloTarget.latency_p95_ms != null ? String(sloTarget.latency_p95_ms) : "",
+  );
+
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Picker (Vercel/Railway 연결된 경우 프로젝트 목록 자동 표시)
   const [picker, setPicker] = useState<VercelProject[] | RailwayProject[] | null>(null);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [connected, setConnected] = useState<Record<string, boolean>>({});
@@ -362,11 +511,8 @@ function DeploymentFormModal({
   async function openPicker() {
     setPickerLoading(true);
     try {
-      if (platform === "vercel") {
-        setPicker(await listVercelProjects());
-      } else if (platform === "railway") {
-        setPicker(await listRailwayProjects());
-      }
+      if (platform === "vercel") setPicker(await listVercelProjects());
+      else if (platform === "railway") setPicker(await listRailwayProjects());
     } catch {
       setPicker([]);
     } finally {
@@ -382,15 +528,24 @@ function DeploymentFormModal({
     }
     setBusy(true);
     try {
+      const slo: SLOTarget = {};
+      const u = parseFloat(sloUptime);
+      if (Number.isFinite(u)) slo.uptime_pct = u;
+      const l = parseInt(sloLatency, 10);
+      if (Number.isFinite(l)) slo.latency_p95_ms = l;
+
       const payload = {
         platform,
         external_project_id: externalId.trim(),
         name: name.trim(),
         role,
+        environment,
         external_url: externalUrl.trim() || undefined,
         framework: framework.trim() || undefined,
         health_endpoint: healthEndpoint.trim() || undefined,
+        health_check_url: healthCheckUrl.trim() || undefined,
         description: description.trim() || undefined,
+        slo_target: Object.keys(slo).length > 0 ? slo : undefined,
       };
       if (existing) {
         await updatePlatformDeployment(projectId, existing.id, payload);
@@ -428,8 +583,8 @@ function DeploymentFormModal({
           </button>
         </div>
 
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Field label="플랫폼">
               <select
                 value={platform}
@@ -453,6 +608,21 @@ function DeploymentFormModal({
                 {(Object.keys(ROLE_LABEL) as DeploymentRole[]).map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="환경">
+              <select
+                value={environment}
+                onChange={(e) =>
+                  setEnvironment(e.target.value as DeploymentEnvironment)
+                }
+                className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm"
+              >
+                {ENV_LIST.map((e) => (
+                  <option key={e} value={e}>
+                    {e}
                   </option>
                 ))}
               </select>
@@ -516,6 +686,16 @@ function DeploymentFormModal({
             </Field>
           </div>
 
+          <Field label="Health check URL (override, 선택)">
+            <input
+              type="text"
+              value={healthCheckUrl}
+              onChange={(e) => setHealthCheckUrl(e.target.value)}
+              placeholder="external_url + endpoint 가 아닌 별도 URL 사용 시"
+              className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm"
+            />
+          </Field>
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Field label="프레임워크 (선택)">
               <input
@@ -535,6 +715,31 @@ function DeploymentFormModal({
                 className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm"
               />
             </Field>
+          </div>
+
+          <div className="rounded-2xl border border-dashed border-border p-3">
+            <p className="text-xs font-bold text-foreground mb-2">SLO 목표 (선택)</p>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Field label="Uptime % (예: 99.9)">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={sloUptime}
+                  onChange={(e) => setSloUptime(e.target.value)}
+                  placeholder="99.9"
+                  className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </Field>
+              <Field label="응답시간 p95 ms (예: 500)">
+                <input
+                  type="number"
+                  value={sloLatency}
+                  onChange={(e) => setSloLatency(e.target.value)}
+                  placeholder="500"
+                  className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </Field>
+            </div>
           </div>
 
           {picker !== null && (

@@ -12,6 +12,7 @@ from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.project_access import require_role, verify_project_access
 from app.core.exceptions import AppError, NotFoundError, ValidationError
 from app.core.supabase import safe_maybe_single, supabase
+from app.services import deployment_topology
 
 router = APIRouter(prefix="/projects/{project_id}/platform-deployments", tags=["platform-deployments"])
 
@@ -25,6 +26,7 @@ VALID_ROLES = {
     "cache", "queue", "cron", "storage", "other",
 }
 VALID_KINDS = {"api_call", "db", "queue", "webhook", "storage", "other"}
+VALID_ENVIRONMENTS = {"production", "staging", "preview", "development", "other"}
 
 
 # ============================================================
@@ -36,12 +38,15 @@ class DeploymentInput(BaseModel):
     external_project_id: str
     name: str
     role: str = "other"
+    environment: str = "production"
     external_service_id: str | None = None
     description: str | None = None
     external_url: str | None = None
     health_endpoint: str | None = None
+    health_check_url: str | None = None
     framework: str | None = None
     region: str | None = None
+    slo_target: dict | None = None
 
 
 @router.get("")
@@ -86,6 +91,8 @@ async def create_deployment(
         raise ValidationError(f"Invalid platform: {body.platform}")
     if body.role not in VALID_ROLES:
         raise ValidationError(f"Invalid role: {body.role}")
+    if body.environment not in VALID_ENVIRONMENTS:
+        raise ValidationError(f"Invalid environment: {body.environment}")
 
     payload = body.model_dump(exclude_none=True)
     payload["project_id"] = project_id
@@ -110,6 +117,8 @@ async def update_deployment(
         raise ValidationError(f"Invalid platform: {body.platform}")
     if body.role not in VALID_ROLES:
         raise ValidationError(f"Invalid role: {body.role}")
+    if body.environment not in VALID_ENVIRONMENTS:
+        raise ValidationError(f"Invalid environment: {body.environment}")
 
     existing = safe_maybe_single(
         supabase.table("project_deployments")
@@ -207,3 +216,91 @@ async def delete_dependency(
         raise NotFoundError("Dependency", dep_id)
 
     supabase.table("deployment_dependencies").delete().eq("id", dep_id).execute()
+
+
+# ============================================================
+# Topology + cascade impact
+# ============================================================
+
+@router.get("/topology")
+async def get_topology(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """Graph 형태로 nodes + edges 반환. 각 node 는 cascade-aware effective status 포함."""
+    return deployment_topology.topology_for_project(project_id)
+
+
+@router.get("/{deployment_id}/impact-downstream")
+async def get_downstream_impact(
+    project_id: str,
+    deployment_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """이 deployment 가 down 되면 영향받는 deployments 목록."""
+    return deployment_topology.cascade_impact(project_id, deployment_id)
+
+
+@router.get("/{deployment_id}/impact-upstream")
+async def get_upstream(
+    project_id: str,
+    deployment_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """이 deployment 가 의존하는 deployments 목록."""
+    return deployment_topology.upstream_dependencies(project_id, deployment_id)
+
+
+# ============================================================
+# Health history + SLO + manual ping
+# ============================================================
+
+@router.get("/{deployment_id}/health-history")
+async def health_history(
+    project_id: str,
+    deployment_id: str,
+    hours: int = 24,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """최근 N시간 health 기록. SLO 차트 + uptime 계산용."""
+    from datetime import datetime, timedelta, timezone
+    since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    rows = (
+        supabase.table("deployment_health_history")
+        .select("status, http_status, response_time_ms, error_message, cascade_from, checked_at")
+        .eq("platform_deployment_id", deployment_id)
+        .gte("checked_at", since)
+        .order("checked_at", desc=False)
+        .execute()
+        .data
+        or []
+    )
+    return {"window_hours": hours, "checks": rows}
+
+
+@router.get("/{deployment_id}/slo")
+async def slo_progress(
+    project_id: str,
+    deployment_id: str,
+    user: dict = Depends(get_current_user),
+    _project: dict = Depends(verify_project_access),
+):
+    """SLO 진행률: 24h uptime + 위반 여부."""
+    return deployment_topology.slo_progress(deployment_id)
+
+
+@router.post("/{deployment_id}/ping")
+async def manual_ping(
+    project_id: str,
+    deployment_id: str,
+    user: dict = Depends(get_current_user),
+    _admin: dict = Depends(require_role("admin")),
+):
+    """관리자가 수동으로 health check 한 번 실행."""
+    from app.workers.tasks.deployment_health import check_project_deployments
+    result = await check_project_deployments(project_id)
+    return result
