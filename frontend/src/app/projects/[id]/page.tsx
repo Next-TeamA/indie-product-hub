@@ -27,6 +27,7 @@ import { useProject } from "@/hooks/use-projects";
 import { useIssues } from "@/hooks/use-issues";
 import { useMarketingInsights, useOperationsInsights } from "@/hooks/use-insights";
 import { useDeployments } from "@/hooks/use-deployments";
+import { DeploymentsHealthCard } from "@/components/deployments/deployments-card";
 import { listPromotions, type Promotion } from "@/lib/api/promotion";
 import { cn } from "@/lib/utils";
 
@@ -465,6 +466,11 @@ export default function DashboardPage() {
               </div>
             </section>
           </div>
+        </div>
+
+        {/* Multi-platform deployments + cascade-aware health */}
+        <div className="mt-8">
+          <DeploymentsHealthCard projectId={id} />
         </div>
       </motion.div>
     </div>

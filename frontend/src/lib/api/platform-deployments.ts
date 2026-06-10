@@ -23,6 +23,21 @@ export type DeploymentRole =
   | "storage"
   | "other";
 
+export type DeploymentEnvironment =
+  | "production"
+  | "staging"
+  | "preview"
+  | "development"
+  | "other";
+
+export type HealthStatus = "healthy" | "degraded" | "down" | "unknown";
+
+export type SLOTarget = {
+  uptime_pct?: number;
+  latency_p95_ms?: number;
+  error_rate_pct?: number;
+};
+
 export type DependencyKind =
   | "api_call"
   | "db"
@@ -39,12 +54,15 @@ export type PlatformDeployment = {
   external_service_id: string | null;
   name: string;
   role: DeploymentRole;
+  environment: DeploymentEnvironment;
   description: string | null;
   external_url: string | null;
   health_endpoint: string | null;
+  health_check_url: string | null;
   framework: string | null;
   region: string | null;
-  status: "healthy" | "degraded" | "down" | "unknown";
+  status: HealthStatus;
+  slo_target: SLOTarget;
   last_checked_at: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -70,12 +88,91 @@ export type DeploymentInput = {
   external_project_id: string;
   name: string;
   role: DeploymentRole;
+  environment?: DeploymentEnvironment;
   external_service_id?: string;
   description?: string;
   external_url?: string;
   health_endpoint?: string;
+  health_check_url?: string;
   framework?: string;
   region?: string;
+  slo_target?: SLOTarget;
+};
+
+// ============================================================
+// Topology + cascade
+// ============================================================
+
+export type TopologyNode = {
+  id: string;
+  name: string;
+  platform: Platform;
+  role: DeploymentRole;
+  environment: DeploymentEnvironment;
+  status_direct: HealthStatus;
+  status_effective: HealthStatus;
+  cascade_from: string | null;
+  external_url: string | null;
+  framework: string | null;
+  last_checked_at: string | null;
+};
+
+export type TopologyEdge = {
+  id: string;
+  source: string;
+  target: string;
+  kind: DependencyKind;
+  description: string | null;
+};
+
+export type TopologyResponse = {
+  nodes: TopologyNode[];
+  edges: TopologyEdge[];
+};
+
+export type ImpactNode = {
+  id: string;
+  name: string;
+  platform: Platform;
+  role: DeploymentRole;
+  environment: DeploymentEnvironment;
+  depth: number;
+  current_status: HealthStatus;
+};
+
+export type ImpactResponse = {
+  deployment_id: string;
+  deployment_name: string;
+  affected?: ImpactNode[];
+  upstream?: ImpactNode[];
+  max_depth: number;
+};
+
+export type HealthCheckRow = {
+  status: HealthStatus;
+  http_status: number | null;
+  response_time_ms: number | null;
+  error_message: string | null;
+  cascade_from: string | null;
+  checked_at: string;
+};
+
+export type HealthHistoryResponse = {
+  window_hours: number;
+  checks: HealthCheckRow[];
+};
+
+export type SLOProgressResponse = {
+  has_data: boolean;
+  deployment_id?: string;
+  uptime_pct_24h?: number | null;
+  avg_response_ms_24h?: number | null;
+  total_checks_24h?: number | null;
+  down_checks_24h?: number | null;
+  degraded_checks_24h?: number | null;
+  slo_target?: SLOTarget;
+  uptime_violation?: boolean;
+  latency_violation?: boolean;
 };
 
 const base = (projectId: string) =>
@@ -136,5 +233,53 @@ export async function deleteDependency(
 ): Promise<void> {
   await apiFetch(`${base(projectId)}/dependencies/${depId}`, {
     method: "DELETE",
+  });
+}
+
+// ============================================================
+// Topology / impact / health / SLO / manual ping
+// ============================================================
+
+export async function getTopology(projectId: string): Promise<TopologyResponse> {
+  return apiFetch(`${base(projectId)}/topology`);
+}
+
+export async function getDownstreamImpact(
+  projectId: string,
+  deploymentId: string,
+): Promise<ImpactResponse> {
+  return apiFetch(`${base(projectId)}/${deploymentId}/impact-downstream`);
+}
+
+export async function getUpstreamImpact(
+  projectId: string,
+  deploymentId: string,
+): Promise<ImpactResponse> {
+  return apiFetch(`${base(projectId)}/${deploymentId}/impact-upstream`);
+}
+
+export async function getHealthHistory(
+  projectId: string,
+  deploymentId: string,
+  hours = 24,
+): Promise<HealthHistoryResponse> {
+  return apiFetch(`${base(projectId)}/${deploymentId}/health-history`, {
+    params: { hours: String(hours) },
+  });
+}
+
+export async function getSloProgress(
+  projectId: string,
+  deploymentId: string,
+): Promise<SLOProgressResponse> {
+  return apiFetch(`${base(projectId)}/${deploymentId}/slo`);
+}
+
+export async function manualPing(
+  projectId: string,
+  deploymentId: string,
+): Promise<{ checked: number; state_changes: unknown[] }> {
+  return apiFetch(`${base(projectId)}/${deploymentId}/ping`, {
+    method: "POST",
   });
 }
