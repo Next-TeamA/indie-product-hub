@@ -2,11 +2,15 @@
 OAuth state stored in Supabase for multi-process safety.
 """
 
+import logging
 import secrets
+import traceback
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies.auth import get_current_user
 from app.core.config import settings
@@ -291,8 +295,19 @@ async def oauth_callback(provider: str, code: str, state: str):
         }
 
     elif provider == "railway":
-        token_data = await railway_client.exchange_code(code)
-        user_info = await railway_client.get_user(token_data["access_token"])
+        try:
+            logger.info("railway.callback start")
+            token_data = await railway_client.exchange_code(code)
+            logger.info("railway.exchange_code ok keys=%s", list(token_data.keys()))
+            user_info = await railway_client.get_user(token_data["access_token"])
+            logger.info("railway.get_user ok keys=%s", list(user_info.keys()))
+        except Exception as exc:
+            tb = traceback.format_exc()
+            logger.error("railway.callback failed:\n%s", tb)
+            return JSONResponse(
+                status_code=500,
+                content={"error": "RAILWAY_CALLBACK_FAILED", "step": exc.__class__.__name__, "message": str(exc), "traceback": tb.splitlines()[-10:]},
+            )
         account_data = {
             "user_id": user_id,
             "provider": "railway",
