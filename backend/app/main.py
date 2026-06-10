@@ -38,6 +38,7 @@ from app.api.routes.project_members import (
     router as project_members_router,
     me_router as my_invitations_router,
 )
+from app.api.routes.platform_deployments import router as platform_deployments_router
 
 
 @asynccontextmanager
@@ -109,3 +110,4 @@ app.include_router(github_app_router, prefix="/api")
 app.include_router(github_app_webhook_router, prefix="/api")
 app.include_router(project_members_router, prefix="/api")
 app.include_router(my_invitations_router, prefix="/api")
+app.include_router(platform_deployments_router, prefix="/api")

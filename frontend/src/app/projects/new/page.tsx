@@ -8,9 +8,17 @@ import { X } from "lucide-react";
 import { Stepper } from "@/components/onboarding/stepper";
 import { PrdStep } from "@/components/onboarding/prd-step";
 import { GithubStep } from "@/components/onboarding/github-step";
-import { DeployStep } from "@/components/onboarding/deploy-step";
+import {
+  DeployStep,
+  type DraftDeployment,
+  type DraftDependency,
+} from "@/components/onboarding/deploy-step";
 import { SnsStep } from "@/components/onboarding/sns-step";
 import { CompleteStep } from "@/components/onboarding/complete-step";
+import {
+  createPlatformDeployment,
+  createDependency as createDeployDependency,
+} from "@/lib/api/platform-deployments";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 const STORAGE_KEY = "onboarding_state";
@@ -29,6 +37,8 @@ type State = {
   github_repo_name: string;
   deploy_platform: string;
   deploy_project_id: string;
+  deployments: DraftDeployment[];
+  dependencies: DraftDependency[];
   selectedSns: string[];
 };
 
@@ -47,7 +57,10 @@ type Action =
     }
   | {
       type: "deploy_done";
-      payload: { deploy_platform: string; deploy_project_id: string };
+      payload: {
+        deployments: DraftDeployment[];
+        dependencies: DraftDependency[];
+      };
     }
   | { type: "sns_done"; payload: { selectedSns: string[] } }
   | { type: "back" }
@@ -71,13 +84,18 @@ function reducer(state: State, action: Action): State {
         github_repo_owner: action.payload.github_repo_owner,
         github_repo_name: action.payload.github_repo_name,
       };
-    case "deploy_done":
+    case "deploy_done": {
+      const primary = action.payload.deployments[0];
       return {
         ...state,
         stage: "sns",
-        deploy_platform: action.payload.deploy_platform,
-        deploy_project_id: action.payload.deploy_project_id,
+        // legacy fields -- 첫 deployment 를 primary 로 박아둠 (기존 sync 코드 호환)
+        deploy_platform: primary?.platform ?? "",
+        deploy_project_id: primary?.external_project_id ?? "",
+        deployments: action.payload.deployments,
+        dependencies: action.payload.dependencies,
       };
+    }
     case "sns_done":
       return {
         ...state,
@@ -106,6 +124,8 @@ const initialState: State = {
   github_repo_name: "",
   deploy_platform: "",
   deploy_project_id: "",
+  deployments: [],
+  dependencies: [],
   selectedSns: [],
 };
 
@@ -181,6 +201,35 @@ export default function NewProjectPage() {
         deploy_project_id: state.deploy_project_id || undefined,
         sns_channels: data.selectedSns,
       });
+
+      // Multi-deployment 등록
+      const localIdToServerId: Record<string, string> = {};
+      for (const d of state.deployments) {
+        try {
+          const created = await createPlatformDeployment(project.id, {
+            platform: d.platform,
+            external_project_id: d.external_project_id,
+            name: d.name,
+            role: d.role,
+            framework: d.framework,
+            external_url: d.external_url,
+          });
+          localIdToServerId[d.local_id] = created.id;
+        } catch (e) {
+          console.error("deployment 등록 실패", e);
+        }
+      }
+      for (const dep of state.dependencies) {
+        const src = localIdToServerId[dep.source_local_id];
+        const tgt = localIdToServerId[dep.target_local_id];
+        if (!src || !tgt) continue;
+        try {
+          await createDeployDependency(project.id, src, tgt, dep.kind);
+        } catch (e) {
+          console.error("dependency 등록 실패", e);
+        }
+      }
+
       setCreatedProjectId(project.id);
       dispatch({ type: "sns_done", payload: data });
     } catch (e) {
