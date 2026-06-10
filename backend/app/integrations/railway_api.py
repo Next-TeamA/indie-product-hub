@@ -1,6 +1,7 @@
 """Railway API wrapper -- OAuth for per-user access."""
 
-from urllib.parse import urlencode
+import base64
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -24,16 +25,27 @@ class RailwayAPIClient:
         }
         return f"{self.AUTH_URL}?{urlencode(params)}"
 
-    async def exchange_code(self, code: str) -> dict:
-        """Exchange auth code for access token.
+    def _basic_auth_header(self) -> str:
+        """Build RFC 6749 §2.3.1 compliant Basic auth header.
 
-        Railway requires client credentials via HTTP Basic auth, not request body.
+        client_id and client_secret must be form-urlencoded BEFORE base64.
+        httpx auth=(id, secret) skips the urlencode step and Railway rejects it
+        with 'not properly encoded'.
         """
+        encoded_id = quote(settings.railway_client_id, safe="")
+        encoded_secret = quote(settings.railway_client_secret, safe="")
+        token = base64.b64encode(f"{encoded_id}:{encoded_secret}".encode("ascii")).decode("ascii")
+        return f"Basic {token}"
+
+    async def exchange_code(self, code: str) -> dict:
+        """Exchange auth code for access token."""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.TOKEN_URL,
-                auth=(settings.railway_client_id, settings.railway_client_secret),
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                headers={
+                    "Authorization": self._basic_auth_header(),
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
                 data={
                     "grant_type": "authorization_code",
                     "code": code,
