@@ -185,15 +185,23 @@ async def list_railway_projects(user: dict = Depends(get_current_user)):
     from app.core.encryption import decrypt_token
     try:
         token = decrypt_token(account["access_token"])
-        logger.info("railway.list_projects start token_len=%d", len(token))
         projects = await railway_client.list_projects(token)
-        logger.info("railway.list_projects ok count=%d", len(projects))
     except Exception as exc:
+        msg = str(exc)
+        # Old tokens granted before we added project:viewer trigger this.
+        if "Not Authorized" in msg:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "RAILWAY_TOKEN_SCOPE_OUTDATED",
+                    "message": "Railway 토큰에 project:viewer 권한이 없어요. 프로젝트 설정에서 Railway 를 disconnect 한 뒤 다시 connect 해주세요.",
+                },
+            )
         tb = traceback.format_exc()
         logger.error("railway.list_projects failed:\n%s", tb)
         return JSONResponse(
             status_code=500,
-            content={"error": "RAILWAY_LIST_PROJECTS_FAILED", "step": exc.__class__.__name__, "message": str(exc), "traceback": tb.splitlines()[-10:]},
+            content={"error": "RAILWAY_LIST_PROJECTS_FAILED", "step": exc.__class__.__name__, "message": msg, "traceback": tb.splitlines()[-10:]},
         )
     return [
         {
