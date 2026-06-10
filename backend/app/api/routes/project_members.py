@@ -17,7 +17,6 @@
 import secrets
 from datetime import datetime, timezone
 
-import httpx
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr
 
@@ -245,19 +244,27 @@ async def create_invitation(
 
     accept_url = f"{settings.frontend_url.rstrip('/')}/invitations/{token}"
 
-    sent = await _send_invite_email(
-        to_email=email,
-        project_name=project.get("name", "프로젝트"),
-        inviter_email=user.get("email") or "",
-        accept_url=accept_url,
-        role=body.role,
-    )
+    # 발송 분기:
+    #  - 미가입 사용자  -> Supabase auth invite (magic link 보냄, 클릭하면 가입 + redirect_to)
+    #  - 이미 가입 사용자 -> 이메일 발송 X. /invitations/me 에서 본인이 확인.
+    #    프론트는 응답의 delivery 보고 owner 에게 "직접 링크 공유" 또는 "이메일 발송됨" 안내.
+    delivery = "in_app"  # 기본: 이미 가입된 사용자 -> in-app
+    if not existing_user_id:
+        ok = await _supabase_invite_user(
+            email=email,
+            accept_url=accept_url,
+            project_name=project.get("name", "프로젝트"),
+            role=body.role,
+        )
+        delivery = "email" if ok else "manual"
 
     return {
         "id": invitation_id,
         "token": token,
         "accept_url": accept_url,
-        "email_sent": sent,
+        "delivery": delivery,        # "email" | "in_app" | "manual"
+        "email_sent": delivery == "email",  # legacy 호환
+        "invitee_registered": bool(existing_user_id),
     }
 
 
@@ -429,54 +436,35 @@ async def _find_user_id_by_email(email: str) -> str | None:
     return None
 
 
-async def _send_invite_email(
-    to_email: str,
-    project_name: str,
-    inviter_email: str,
+async def _supabase_invite_user(
+    email: str,
     accept_url: str,
+    project_name: str,
     role: str,
 ) -> bool:
-    """Resend 로 초대 이메일 발송. RESEND_API_KEY 미설정 시 skip."""
-    if not settings.resend_api_key:
+    """Supabase Auth 의 invite-by-email 흐름 사용.
+
+    Supabase 가 magic link 가 들어간 이메일을 자체 SMTP 로 발송. 사용자는 그
+    링크를 클릭하면 가입(또는 이미 가입돼있으면 로그인)되고 ``redirect_to`` 로
+    이동. 우리는 redirect_to 를 ``/invitations/<token>`` 으로 박아서 가입 후
+    자동으로 우리 수락 페이지로 가도록 함.
+
+    이미 가입된 사용자한테는 호출하기 전에 분기에서 걸러야 함 (이 함수는 미가입자
+    전용). 그래도 안전하게 예외는 잡고 False 반환.
+    """
+    try:
+        from supabase import create_client
+        admin = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        admin.auth.admin.invite_user_by_email(
+            email,
+            {
+                "redirect_to": accept_url,
+                "data": {
+                    "invited_to_project": project_name,
+                    "invited_role": role,
+                },
+            },
+        )
+        return True
+    except Exception:
         return False
-
-    subject = f"[LaunchPad] {project_name} 프로젝트에 초대됐어요"
-    body = f"""
-<div style="font-family: -apple-system, system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #111;">프로젝트 초대</h2>
-  <p style="color: #444; line-height: 1.6;">
-    <b>{inviter_email}</b> 님이 <b>{project_name}</b> 프로젝트에 <b>{role}</b> 권한으로 초대했어요.
-  </p>
-  <p style="margin: 32px 0;">
-    <a href="{accept_url}" style="background:#111; color:#fff; padding:12px 20px; border-radius:12px; text-decoration:none; font-weight:bold;">
-      초대 수락하기
-    </a>
-  </p>
-  <p style="color:#888; font-size: 12px;">
-    링크가 동작하지 않으면 이 주소를 복사해서 브라우저에 붙여넣으세요:<br/>
-    <span style="word-break:break-all;">{accept_url}</span>
-  </p>
-  <p style="color:#aaa; font-size: 11px; margin-top: 32px;">
-    이 초대는 14일 후 만료됩니다. 본인이 요청하지 않은 초대면 무시해도 안전합니다.
-  </p>
-</div>
-"""
-
-    async with httpx.AsyncClient(timeout=15) as client:
-        try:
-            r = await client.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {settings.resend_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "from": "LaunchPad <onboarding@resend.dev>",
-                    "to": [to_email],
-                    "subject": subject,
-                    "html": body,
-                },
-            )
-            return r.status_code in (200, 201, 202)
-        except Exception:
-            return False
