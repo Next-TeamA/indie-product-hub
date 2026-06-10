@@ -27,10 +27,20 @@ class Settings(BaseSettings):
     threads_app_id: str = ""
     threads_client_secret: str = ""
 
-    # GitHub
+    # GitHub OAuth App (legacy -- 사용자 로그인용으로 유지)
     github_client_id: str = ""
     github_client_secret: str = ""
     github_webhook_secret: str = ""
+
+    # GitHub App (Railway/Vercel 패턴 -- per-installation repo access)
+    github_app_id: str = ""
+    github_app_client_id: str = ""
+    github_app_client_secret: str = ""
+    github_app_webhook_secret: str = ""
+    github_app_slug: str = ""
+    # PEM 내용을 그대로 또는 base64 인코딩으로. github_app.py 에서 둘 다 디코드.
+    github_app_private_key: str = ""
+    github_app_private_key_base64: str = ""
 
     # Vercel (OAuth Integration -- https://vercel.com/docs/integrations)
     vercel_client_id: str = ""
