@@ -37,27 +37,72 @@ async def sync_deployments(
     user: dict = Depends(get_current_user),
     project: dict = Depends(verify_project_access),
 ):
-    """Manually trigger deployment sync using user's connected account."""
-    platform = project.get("deploy_platform")
-    deploy_id = project.get("deploy_project_id")
+    """Manually trigger deployment sync for **all** project_deployments.
 
-    if not platform or not deploy_id:
-        return {"status": "skipped", "message": "No deployment platform configured"}
-
-    # Get user's token for the platform
-    account = safe_maybe_single(
-        supabase.table("connected_accounts")
-        .select("access_token")
-        .eq("user_id", user["id"])
-        .eq("provider", platform)
-        .eq("is_active", True)
+    한 프로젝트에 등록된 모든 platform_deployments 를 각 platform 별로 동기화.
+    Legacy projects.deploy_platform/deploy_project_id 도 동기화 대상에 포함
+    (project_deployments 에 backfill 되어 있어야 하지만 누락 케이스 대비).
+    """
+    # 1) project_deployments 전체
+    deploys = (
+        supabase.table("project_deployments")
+        .select("id, platform, external_project_id")
+        .eq("project_id", project_id)
+        .execute()
+        .data
+        or []
     )
-    if not account:
-        return {"status": "skipped", "message": f"No connected {platform} account"}
 
-    token = decrypt_token(account["access_token"])
-    background_tasks.add_task(_sync_deployments, project_id, platform, deploy_id, token)
-    return {"status": "syncing"}
+    # 2) legacy fallback
+    if not deploys and project.get("deploy_platform") and project.get("deploy_project_id"):
+        deploys = [{
+            "id": None,
+            "platform": project["deploy_platform"],
+            "external_project_id": project["deploy_project_id"],
+        }]
+
+    if not deploys:
+        return {"status": "skipped", "message": "No deployments configured"}
+
+    # 3) platform 별로 token 캐싱
+    token_by_platform: dict[str, str] = {}
+    skipped: list[str] = []
+    queued: list[dict] = []
+
+    for d in deploys:
+        platform = d["platform"]
+        if platform not in token_by_platform:
+            account = safe_maybe_single(
+                supabase.table("connected_accounts")
+                .select("access_token")
+                .eq("user_id", user["id"])
+                .eq("provider", platform)
+                .eq("is_active", True)
+            )
+            if not account:
+                skipped.append(platform)
+                token_by_platform[platform] = ""  # sentinel
+                continue
+            token_by_platform[platform] = decrypt_token(account["access_token"])
+
+        token = token_by_platform.get(platform)
+        if not token:
+            continue
+
+        background_tasks.add_task(
+            _sync_deployments,
+            project_id,
+            platform,
+            d["external_project_id"],
+            token,
+        )
+        queued.append({"platform": platform, "external_project_id": d["external_project_id"]})
+
+    return {
+        "status": "syncing" if queued else "skipped",
+        "queued": queued,
+        "skipped_platforms": list(set(skipped)),
+    }
 
 
 def _epoch_to_iso(ms: int | None) -> str | None:

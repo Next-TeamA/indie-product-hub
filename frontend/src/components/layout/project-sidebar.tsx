@@ -15,6 +15,7 @@ import {
   Workflow,
   DollarSign,
   Users,
+  Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/use-user";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/amp", label: "AMP 자동화", icon: Workflow },
   { href: "/insights", label: "인사이트", icon: BarChart3 },
   { href: "/issues", label: "운영 이슈", icon: AlertTriangle },
+  { href: "/deployments", label: "배포", icon: Rocket },
   { href: "/cost", label: "비용", icon: DollarSign },
   { href: "/members", label: "멤버", icon: Users },
   { href: "/settings", label: "프로젝트 설정", icon: Settings },
