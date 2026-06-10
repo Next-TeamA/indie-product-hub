@@ -61,13 +61,23 @@ export default function MembersPage() {
     setErr(null);
     try {
       const r = await createInvitation(projectId, email.trim(), role);
-      setMsg(
-        r.email_sent
-          ? `이메일 발송 완료 (${email}). 14일 내 수락 가능.`
-          : `초대 링크 생성됨. 수동으로 공유해야 합니다 (Resend 미설정).`,
-      );
-      if (!r.email_sent) {
-        // 자동으로 클립보드 복사
+      if (r.delivery === "email") {
+        setMsg(
+          `${email} 으로 초대 메일을 보냈어요. 가입 후 자동으로 수락 페이지로 이동합니다. (14일 내)`,
+        );
+      } else if (r.delivery === "in_app") {
+        setMsg(
+          `${email} 은 이미 LaunchPad 사용자라 메일 대신 in-app 으로 전달돼요. /invitations/me 에서 본인이 확인 가능.`,
+        );
+        try {
+          await navigator.clipboard.writeText(r.accept_url);
+          setCopied(r.id);
+          setTimeout(() => setCopied(null), 2000);
+        } catch {}
+      } else {
+        setMsg(
+          `자동 발송 실패. 아래 링크를 복사해서 직접 공유해주세요: ${r.accept_url}`,
+        );
         try {
           await navigator.clipboard.writeText(r.accept_url);
           setCopied(r.id);

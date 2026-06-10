@@ -82,11 +82,20 @@ export async function removeMember(
 
 // ----- invitations -----
 
+export type InvitationCreated = {
+  id: string;
+  token: string;
+  accept_url: string;
+  delivery: "email" | "in_app" | "manual";
+  email_sent: boolean;
+  invitee_registered: boolean;
+};
+
 export async function createInvitation(
   projectId: string,
   email: string,
   role: InviteRole,
-): Promise<{ id: string; token: string; accept_url: string; email_sent: boolean }> {
+): Promise<InvitationCreated> {
   return apiFetch(`/api/projects/${projectId}/invitations`, {
     method: "POST",
     body: { email, role },
