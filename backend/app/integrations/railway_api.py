@@ -74,8 +74,25 @@ class RailwayAPIClient:
             return data.get("data", {})
 
     async def get_user(self, token: str) -> dict:
-        data = await self._query(token, "query { me { id name email avatar } }")
-        return data.get("me", {})
+        """Get user info via the OIDC userinfo endpoint.
+
+        OAuth access tokens cannot hit the GraphQL `me` query directly --
+        Railway exposes user claims through /oauth/me instead.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                "https://backboard.railway.com/oauth/me",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if response.status_code != 200:
+                raise ExternalAPIError("Railway", f"User info failed: {response.text}")
+            data = response.json()
+            return {
+                "id": data.get("sub"),
+                "name": data.get("name") or data.get("preferred_username"),
+                "email": data.get("email"),
+                "avatar": data.get("picture"),
+            }
 
     async def list_projects(self, token: str) -> list[dict]:
         data = await self._query(token, """
