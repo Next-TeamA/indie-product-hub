@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Check, ExternalLink } from "lucide-react";
+import { Check, ExternalLink, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
-import { connectAccount, listAccounts } from "@/lib/api/accounts";
+import { connectAccount, disconnectAccount, listAccounts } from "@/lib/api/accounts";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } } };
@@ -25,7 +25,7 @@ interface SnsStepProps {
 }
 
 export function SnsStep({ onNext, onBack, onBeforeOAuth, isSubmitting = false }: SnsStepProps) {
-  const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [connected, setConnected] = useState<Record<string, { accountId: string; username: string | null }>>({});
   const [connecting, setConnecting] = useState<string | null>(null);
 
   // Check already connected accounts on mount (after OAuth redirect)
@@ -33,15 +33,13 @@ export function SnsStep({ onNext, onBack, onBeforeOAuth, isSubmitting = false }:
     async function checkConnected() {
       try {
         const accounts = await listAccounts();
-        const state: Record<string, boolean> = {};
+        const state: Record<string, { accountId: string; username: string | null }> = {};
         for (const a of accounts) {
           if (a.provider === "x" || a.provider === "threads") {
-            state[a.provider] = true;
+            state[a.provider] = { accountId: a.id, username: a.provider_username };
           }
         }
-        if (Object.keys(state).length > 0) {
-          setConnected(state);
-        }
+        setConnected(state);
       } catch {
         // not logged in or no accounts
       }
@@ -62,7 +60,23 @@ export function SnsStep({ onNext, onBack, onBeforeOAuth, isSubmitting = false }:
     }
   };
 
-  const connectedList = Object.keys(connected).filter(k => connected[k]);
+  const handleReconnect = async (provider: string) => {
+    if (isSubmitting) return;
+    const accountId = connected[provider]?.accountId;
+    if (!accountId) return;
+    setConnecting(provider);
+    try {
+      await disconnectAccount(accountId);
+      onBeforeOAuth?.();
+      const { auth_url } = await connectAccount(provider, "/projects/new");
+      window.location.assign(auth_url);
+    } catch (e) {
+      console.error(`${provider} reconnect failed:`, e);
+      setConnecting(null);
+    }
+  };
+
+  const connectedList = Object.keys(connected);
 
   return (
     <motion.div className="relative z-10 w-full max-w-lg mx-auto px-6" variants={stagger} initial="hidden" animate="show">
@@ -78,36 +92,58 @@ export function SnsStep({ onNext, onBack, onBeforeOAuth, isSubmitting = false }:
 
       <motion.div variants={item} className="grid grid-cols-1 gap-3">
         {SNS_OPTIONS.map((sns) => {
-          const isConnected = connected[sns.id];
+          const info = connected[sns.id];
+          const isConnected = !!info;
           const isConnecting = connecting === sns.id;
           return (
-            <motion.button
+            <div
               key={sns.id}
-              onClick={() => !isConnected && handleConnect(sns.id)}
-              disabled={isConnecting}
-              className={`flex items-center gap-4 h-14 rounded-2xl px-5 border transition-all duration-200 cursor-pointer text-left disabled:opacity-50 ${
+              className={`flex items-center gap-4 h-14 rounded-2xl px-5 border transition-all duration-200 ${
                 isConnected
                   ? "border-emerald-500/30 bg-emerald-500/5"
                   : "border-border bg-card hover:border-foreground/10"
               }`}
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.985 }}
             >
               <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-bold">
                 {sns.icon}
               </span>
-              <div className="flex-1">
-                <span className="text-sm font-medium block">{sns.label}</span>
-                <span className="text-xs text-muted-foreground">
-                  {isConnecting ? "연결 중..." : isConnected ? "연결됨" : sns.desc}
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium block truncate">{sns.label}</span>
+                <span className="text-xs text-muted-foreground truncate block">
+                  {isConnecting
+                    ? "연결 중..."
+                    : isConnected
+                      ? info.username
+                        ? `@${info.username} 연결됨`
+                        : "연결됨"
+                      : sns.desc}
                 </span>
               </div>
               {isConnected ? (
-                <Check className="w-4 h-4 text-emerald-500" />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleReconnect(sns.id)}
+                    disabled={isConnecting || isSubmitting}
+                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-full disabled:opacity-50"
+                    title="다른 계정으로 바꾸려면 재연결"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    재연결
+                  </button>
+                  <Check className="w-4 h-4 text-emerald-500" />
+                </div>
               ) : (
-                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                <button
+                  type="button"
+                  onClick={() => handleConnect(sns.id)}
+                  disabled={isConnecting || isSubmitting}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground hover:text-primary px-3 py-1.5 rounded-full border border-border hover:border-primary disabled:opacity-50"
+                >
+                  연결 <ExternalLink className="w-3 h-3" />
+                </button>
               )}
-            </motion.button>
+            </div>
           );
         })}
       </motion.div>
@@ -123,7 +159,11 @@ export function SnsStep({ onNext, onBack, onBeforeOAuth, isSubmitting = false }:
           whileHover={isSubmitting ? undefined : { scale: 1.02 }}
           whileTap={isSubmitting ? undefined : { scale: 0.98 }}
         >
-          {isSubmitting ? "생성 중..." : "나중에 하기"}
+          {isSubmitting
+            ? "생성 중..."
+            : connectedList.length > 0
+              ? "완료 →"
+              : "건너뛰기 →"}
         </motion.button>
       </motion.div>
     </motion.div>
