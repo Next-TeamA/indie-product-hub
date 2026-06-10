@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { Check, Search, Lock, Globe, Plus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import {
   connectAccount,
   listAccounts,
@@ -11,7 +11,12 @@ import {
   type GitHubOrg,
   type GitHubRepo,
 } from "@/lib/api/accounts";
-import { getInstallUrl } from "@/lib/api/github-app";
+import {
+  getInstallUrl,
+  listInstallations,
+  listInstallationRepos,
+  type GithubInstallation,
+} from "@/lib/api/github-app";
 
 function GithubIcon({ className }: { className?: string }) {
   return (
@@ -48,18 +53,74 @@ interface GithubStepProps {
   onBeforeOAuth?: () => void;
 }
 
+type Source =
+  | { kind: "org"; login: string; avatar_url: string | null; is_personal: boolean }
+  | { kind: "installation"; login: string; avatar_url: string | null; installation_id: number };
+
+function sourceKey(s: Source): string {
+  return s.kind === "installation"
+    ? `i:${s.installation_id}`
+    : `o:${s.login}`;
+}
+
+function mergeSources(orgs: GitHubOrg[], installations: GithubInstallation[]): Source[] {
+  const result: Source[] = orgs.map((o) => ({
+    kind: "org" as const,
+    login: o.login,
+    avatar_url: o.avatar_url,
+    is_personal: o.is_personal,
+  }));
+  const seen = new Set(orgs.map((o) => o.login.toLowerCase()));
+  for (const inst of installations) {
+    if (seen.has(inst.account_login.toLowerCase())) {
+      // 같은 account 가 OAuth + App 둘 다 있으면 installation 으로 덮어씀
+      // (App 쪽이 명시적으로 install 했으니 더 신뢰)
+      const idx = result.findIndex(
+        (s) => s.login.toLowerCase() === inst.account_login.toLowerCase(),
+      );
+      if (idx >= 0) {
+        result[idx] = {
+          kind: "installation",
+          login: inst.account_login,
+          avatar_url: inst.avatar_url,
+          installation_id: inst.installation_id,
+        };
+      }
+    } else {
+      result.push({
+        kind: "installation",
+        login: inst.account_login,
+        avatar_url: inst.avatar_url,
+        installation_id: inst.installation_id,
+      });
+    }
+  }
+  return result;
+}
+
 export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [orgs, setOrgs] = useState<GitHubOrg[]>([]);
-  const [selectedOrg, setSelectedOrg] = useState<string>("");
+  const [sources, setSources] = useState<Source[]>([]);
+  const [selected, setSelected] = useState<Source | null>(null);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [search, setSearch] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
 
-  // Check if GitHub is already connected + load orgs/repos
+  // OAuth orgs + GitHub App installations 둘 다 가져와서 합침.
+  // window focus 시 다시 fetch 해서 새 탭에서 install 한 결과가 자동 반영되도록.
+  const refresh = useCallback(async () => {
+    const [orgList, instList] = await Promise.all([
+      listGitHubOrgs().catch(() => [] as GitHubOrg[]),
+      listInstallations().catch(() => [] as GithubInstallation[]),
+    ]);
+    const merged = mergeSources(orgList, instList);
+    setSources(merged);
+    return merged;
+  }, []);
+
   useEffect(() => {
     async function init() {
       try {
@@ -67,13 +128,17 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
         const github = accounts.find((a) => a.provider === "github");
         if (github) {
           setConnected(true);
-          const orgList = await listGitHubOrgs();
-          setOrgs(orgList);
-          if (orgList.length > 0) {
-            const personal = orgList[0];
-            setSelectedOrg(personal.login);
-            const repoList = await listGitHubRepos(personal.login);
-            setRepos(repoList);
+          const merged = await refresh();
+          if (merged.length > 0 && !selected) {
+            const first = merged[0];
+            setSelected(first);
+            setLoadingRepos(true);
+            try {
+              const repoList = await loadReposFor(first);
+              setRepos(repoList);
+            } finally {
+              setLoadingRepos(false);
+            }
           }
         }
       } catch {
@@ -83,15 +148,41 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
       }
     }
     init();
+    const onFocus = () => {
+      void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleOrgSelect = async (orgLogin: string) => {
-    setSelectedOrg(orgLogin);
+  async function loadReposFor(src: Source): Promise<GitHubRepo[]> {
+    if (src.kind === "installation") {
+      const r = await listInstallationRepos(src.installation_id);
+      return r.map((x) => ({
+        id: x.id,
+        name: x.name,
+        full_name: x.full_name,
+        owner: x.owner,
+        private: x.private,
+        description: x.description,
+        language: x.language,
+        default_branch: x.default_branch,
+        html_url: x.html_url,
+        pushed_at: x.pushed_at,
+        updated_at: x.updated_at,
+      })) as unknown as GitHubRepo[];
+    }
+    return listGitHubRepos(src.login);
+  }
+
+  const handleSourceSelect = async (src: Source) => {
+    setSelected(src);
     setSelectedRepo(null);
     setSearch("");
     setLoadingRepos(true);
     try {
-      const repoList = await listGitHubRepos(orgLogin);
+      const repoList = await loadReposFor(src);
       setRepos(repoList);
     } finally {
       setLoadingRepos(false);
@@ -172,25 +263,37 @@ export function GithubStep({ onNext, onBack, onBeforeOAuth }: GithubStepProps) {
               <span className="text-sm font-medium text-emerald-600">GitHub 연결됨</span>
             </div>
 
-            {/* Organization selector */}
+            {/* Organization / installation selector */}
             <div className="flex gap-2 flex-wrap">
-              {orgs.map((org) => (
-                <button
-                  key={org.login}
-                  onClick={() => handleOrgSelect(org.login)}
-                  className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
-                    selectedOrg === org.login
-                      ? "border-foreground/20 bg-foreground/5 text-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  {org.avatar_url && (
-                    <img src={org.avatar_url} alt="" className="w-4 h-4 rounded-full" />
-                  )}
-                  {org.login}
-                  {org.is_personal && <span className="text-[10px] text-muted-foreground/60">(개인)</span>}
-                </button>
-              ))}
+              {sources.map((src) => {
+                const k = sourceKey(src);
+                const selectedK = selected ? sourceKey(selected) : "";
+                const isInstallation = src.kind === "installation";
+                return (
+                  <button
+                    key={k}
+                    onClick={() => handleSourceSelect(src)}
+                    title={isInstallation ? "GitHub App 설치됨" : undefined}
+                    className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
+                      selectedK === k
+                        ? "border-foreground/20 bg-foreground/5 text-foreground"
+                        : "border-border text-muted-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {src.avatar_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={src.avatar_url} alt="" className="w-4 h-4 rounded-full" />
+                    )}
+                    {src.login}
+                    {src.kind === "org" && src.is_personal && (
+                      <span className="text-[10px] text-muted-foreground/60">(개인)</span>
+                    )}
+                    {isInstallation && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400">App</span>
+                    )}
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={handleAddOrg}

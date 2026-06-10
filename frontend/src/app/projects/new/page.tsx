@@ -117,17 +117,24 @@ function saveState(state: State) {
   }
 }
 
-function loadAndClearState(): State | null {
+function loadState(): State | null {
   try {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     if (saved) {
-      sessionStorage.removeItem(STORAGE_KEY);
       return JSON.parse(saved) as State;
     }
   } catch {
     // ignore
   }
   return null;
+}
+
+function clearState() {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 export default function NewProjectPage() {
@@ -139,10 +146,12 @@ export default function NewProjectPage() {
   const currentIndex = STEPS.indexOf(state.stage);
   const router = useRouter();
 
-  // Restore state from sessionStorage on mount (after OAuth redirect)
+  // Restore state from sessionStorage on mount (after OAuth / GitHub App redirect).
+  // 새로고침을 해도 stage 가 유지되도록 state 는 지우지 않고 그대로 둠.
+  // 프로젝트 생성이 끝난 시점에서만 clearState() 호출.
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const saved = loadAndClearState();
+      const saved = loadState();
       if (saved) {
         dispatch({ type: "restore", payload: saved });
       }
