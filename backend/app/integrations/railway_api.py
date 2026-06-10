@@ -10,8 +10,8 @@ from app.core.exceptions import ExternalAPIError
 
 class RailwayAPIClient:
     GRAPHQL_URL = "https://backboard.railway.com/graphql/v2"
-    AUTH_URL = "https://railway.com/oauth/authorize"
-    TOKEN_URL = "https://railway.com/oauth/token"
+    AUTH_URL = "https://backboard.railway.com/oauth/auth"
+    TOKEN_URL = "https://backboard.railway.com/oauth/token"
 
     def get_auth_url(self, state: str) -> str:
         """Get Railway OAuth URL for user to authorize."""
@@ -19,6 +19,7 @@ class RailwayAPIClient:
             "client_id": settings.railway_client_id,
             "redirect_uri": f"{settings.backend_url}/api/accounts/callback/railway",
             "response_type": "code",
+            "scope": "openid email profile offline_access",
             "state": state,
         }
         return f"{self.AUTH_URL}?{urlencode(params)}"
